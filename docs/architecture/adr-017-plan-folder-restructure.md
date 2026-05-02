@@ -135,3 +135,20 @@ Single move, all artifacts preserved. The plan-folder structure is the same in `
 - `docs/dev_framework/context-management.md` plan-budget rules updated for the new structure.
 - `docs/dev_framework/dev_framework.md` references survive the path change.
 - Single PR. State-machine `held` addition, structure split, soft-migration detection, and PLAN-WRITE DISCIPLINE multi-agent extension all ship together — half-shipping any of them creates an incoherent intermediate state.
+
+## Revision (v1.1, 2026-05-01) — Dependency data joins the index
+
+**Problem.** The Parallel Developer's bootstrap (ADR-018) had to read multiple W-item files at scan time to detect non-competing items, because the data needed for collision detection (`Touches`, `Depends on`, parallel-safe surfaces) lived only on the W-item files. Reading N W-item files on every Parallel Dev boot defeated the context-budget rationale for the index/SOW split that this ADR established. Worse, once read, those files couldn't be selectively evicted from the persistent session — `/compact` is whole-session and lossy. So the data leaked into the working session and polluted downstream coding work.
+
+**Decision.** Extend this ADR's single-source doctrine to dependency data. Effective immediately:
+
+- The **`Blocked by`** column on the summary table is the single source of dependency data. Comma-separated W-ids that must reach `done` or `shipped` before the item is eligible to claim, or `—` when none.
+- The **`Depends on`** field on the W-item file is **removed**. The "High level" section of a W-item file now has two fields: `What` and `Acceptance criteria`. Dependency information is read from the index alone.
+- The **stream-letter convention** on W-ids becomes load-bearing for Parallel Developer's non-competing scan: items in the same stream (same letter) are assumed to share a code-path area and are skipped against claimed items; items in different streams are assumed non-competing. The convention is enforced by Strategist discipline — named-gap statement in `execution-plans/README.md` §"Index fields" on W-id.
+- **`Parallel-safe` is unchanged in semantics but narrowed in scope** — it gates Orchestrator batch-mode dispatch (ADR-016) only. Parallel Developer (ADR-018) does NOT use this field. The asymmetry is intentional and documented in `execution-plans/README.md` §"Parallel-safe field".
+
+**Surfaces updated:** lines 36 (summary-table column list) and 42 (W-item file "High level" enumeration) above are superseded by this Revision. The current canonical specification lives in `execution-plans/README.md` (summary table example, Index fields, W-item file fields), `dev_framework/developer.md` §"Non-competing scan", and `dev_framework/strategist.md` (where Strategist authors `Blocked by` and the stream-letter convention).
+
+**Migration.** No data migration required — the project is in stub state; no existing plans carry the now-removed `Depends on` field. Adopters with existing plans on the soft-migration single-file format may continue to use `Depends on` inline; the no-`Depends on`-on-W-item-file rule applies only to plans drafted under the folder layout going forward. Strategists backfilling existing folder-layout plans copy the `Depends on` value into the index's `Blocked by` column and remove the line from the W-item file.
+
+**Why a Revision instead of a new ADR.** The change extends the same single-source doctrine this ADR established (Status lives on the index only) to one more field. New rule, same principle. A separate ADR would imply a new principle.

@@ -12,7 +12,7 @@ The Developer has two named invocations sharing one role doc, lifecycle, and dis
 
 - Works in your **main checkout** — the directory the terminal is `cd`'d into when `claude` started.
 - At claim time creates a feature branch (`w-<id>/<slug>`) in place: `git checkout -b w-<id>/<slug> origin/dev`. No worktree.
-- Bootstrap scan proposes the **top critical-path** `pending` item by Depends-on graph.
+- Bootstrap scan proposes the **top critical-path** `pending` item (using the index's `Blocked by` column to derive the dependency graph).
 - The session you actively collaborate with — most coding, most user-QA-loop iteration.
 
 ### Parallel Developer — `"you are the parallel developer"`
@@ -31,8 +31,8 @@ N+1 Parallel Developers (a third or fourth session) are mechanically supported �
 ## What it does
 
 - **Crawls the plan on bootstrap and proposes the next item.** Reads `plan.md`, reconciles state (including `git worktree list` against plan Status to surface stale worktrees from prior items — see §"Cleanup at done-flip"), and recommends what to work on next. The proposal step diverges by invocation pattern:
-  - **Default Developer** → top `pending` item by critical path (Depends-on graph).
-  - **Parallel Developer** → first `pending` item that doesn't compete with already-claimed items (see §"Non-competing scan").
+  - **Default Developer** → top `pending` item by critical path (read from the index's `Blocked by` column).
+  - **Parallel Developer** → first `pending` item that doesn't compete with already-claimed items (see §"Non-competing scan"). Index-only scan; no W-item file reads at boot.
 
   Re-orientation paths are the same in both: an item at `code_review` after a session reset → "Reviewer hadn't returned a verdict yet; want me to re-spawn?" An item at `in_progress` after a context reset → "want me to resume?" Asks the user to confirm before any Status write.
 - **Codes one W-item at a time, in the user's loop.** Reads the W-item file for acceptance + Touches + References + Contingencies. Writes tests + code + commits on the W-item's branch. Operates the **80/20 confidence ladder** at every decision fork (see §"Confidence-driven escalation"): self ≥80% → act; self <80% → call advisor (or a research-flavored consultant subagent); advisor <80% → ask the user. Spawns subagents freely for narrow analysis (Doc Consultant, Code Consultant, one-shot edge-case investigation). The Reviewer/QA peer chain that Orchestrator mode runs is replaced by **user-mediated QA + spawned Reviewer** — different substitutions for those two gates, not a ban on subagents.
@@ -112,15 +112,16 @@ When the Developer claims a `pending` item (`pending → in_progress` flip), the
 
 ### Non-competing scan (Parallel Developer)
 
-The Parallel Developer's bootstrap scan diverges from the Default's "top critical-path" pick. Procedure:
+The Parallel Developer's bootstrap scan diverges from the Default's "top critical-path" pick. Reads the index alone — no W-item files at boot. Procedure:
 
-1. Read `plan.md`. Note all items at Status `in_progress` or `code_review` (claimed) and their Notes attribution.
-2. For each claimed item, read its W-item file: capture `Touches` and any `Parallel-safe considered` factors.
-3. For each `pending` item (in critical-path order): read its W-item file, then check for collision against every claimed item:
-   - **Direct overlap** on `Touches` (same files) → conflict, skip.
-   - **Shared runtime/build surface** that's not in `Touches` but matters — package.json / lockfile, schema, migrations, route registry, env/feature-flag registry, refactor of a callee, shared test fixtures, dev-server port. Same checklist the Strategist uses for `Parallel-safe: true` (see `execution-plans/README.md` §"Parallel-safe field"). If any apply → conflict, skip.
-   - **Depends-on chain** points at a `pending` or `in_progress` item not yet `done` → not eligible, skip.
-4. Propose the first non-conflicting `pending` item to the user. If none qualify, REPORT: "no non-competing items available; all `pending` items overlap with claimed work or are blocked on uncompleted dependencies."
+1. Read `plan.md`. Note all items at Status `in_progress` or `code_review` (claimed) and their Notes attribution. Capture each claimed item's **stream letter** (the letter in the `W-<stream><number>` id — e.g. W-A1's stream letter is `A`).
+2. For each `pending` item (in critical-path order, derived from the `Blocked by` column):
+   - **Stream-letter clash** — if the item's stream letter matches any claimed item's stream letter, skip. Same stream is assumed to share a code-path area; see `execution-plans/README.md` §"Index fields" on W-id.
+   - **Blocked by** — if any W-id in the item's `Blocked by` column on the index is not yet `done` or `shipped`, skip.
+   - Otherwise, this is the candidate.
+3. Propose the candidate to the user. If none qualify, REPORT: "no non-competing items available; every `pending` item shares a stream letter with claimed work or is blocked on uncompleted dependencies."
+
+The stream-letter convention is enforced by Strategist discipline, not mechanically — cross-stream shared-infra collisions (rare; e.g., two items in different streams both bumping `package.json` or both adding migrations) surface as merge conflicts at integration time. The user catches them in the loop. The asymmetry vs. Orchestrator batch mode (which gates on `Parallel-safe: true` for the same surfaces) is intentional and documented in `execution-plans/README.md` §"Parallel-safe field".
 
 Concurrent claim safety is handled by PLAN-WRITE DISCIPLINE: read-fresh + commit + verify-pushed. If two Parallel Developers boot simultaneously and both want the same item, the first to push wins; the second's push fails non-fast-forward, it pulls, re-scans, picks something else.
 

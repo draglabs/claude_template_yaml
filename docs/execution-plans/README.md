@@ -120,14 +120,15 @@ When claiming an item, record the claim in the plan's Notes section — `"W-A1 �
 ### Summary table
 
 ```markdown
-| W-id | Title | Effort | Markers | Status | Branch |
-|------|-------|--------|---------|--------|--------|
-| W-A1 | [Auth alignment](w-a1.md) | S | ⚠️ | done | w-a1/auth |
-| W-A2 | [Task claim](w-a2.md) | M | ⚠️ | held | w-a2/task-claim |
-| W-A3 | [Webhook retry](w-a3.md) | S | — | pending | — |
+| W-id | Title | Effort | Markers | Status | Branch | Blocked by |
+|------|-------|--------|---------|--------|--------|------------|
+| W-A1 | [Auth alignment](w-a1.md) | S | ⚠️ | done | w-a1/auth | — |
+| W-A2 | [Task claim](w-a2.md) | M | ⚠️ | held | w-a2/task-claim | W-A1 |
+| W-A3 | [Webhook retry](w-a3.md) | S | — | pending | — | W-A2 |
+| W-B1 | [Account profile](w-b1.md) | S | — | pending | — | — |
 ```
 
-The Title cell links to the W-item file. Dispatch-relevant fields (Effort, Markers, Status, Branch) sit on the index only. Branch is populated when Status becomes `in_progress`.
+The Title cell links to the W-item file. Dispatch-relevant fields (Effort, Markers, Status, Branch, Blocked by) sit on the index only. Branch is populated when Status becomes `in_progress`. `Blocked by` lists the W-ids that must reach `done` or `shipped` before this item is eligible to claim — Strategist authors at draft time, `—` when none. The dependency graph (used for critical-path ordering and for Parallel Developer's non-competing scan) is derived from this column on the index, not from a field on the W-item file.
 
 ### Claims pointer
 
@@ -156,12 +157,13 @@ Notes capture stumped reasons + resolution, ship-with-concerns text, lessons-lea
 
 | Field | Purpose | Owner |
 |-------|---------|-------|
-| **W-id** | Unique within the plan. Format: `W-<stream><number>` (e.g. W-A1, W-B3). Streams group related items. | Strategist |
+| **W-id** | Unique within the plan. Format: `W-<stream><number>` (e.g. W-A1, W-B3). **Stream letters group items by code-path area.** Items in the same stream MAY share files; items in different streams are assumed non-competing for parallel claim (Parallel Developer's non-competing scan relies on this). Strategists name items consistently with the convention. The convention is enforced by Strategist discipline, not mechanically — cross-stream shared-infra exceptions (rare; e.g., two items in different streams both bumping `package.json`) surface as merge conflicts at integration, not silent corruption; the user catches them in the loop. | Strategist |
 | **Title** | Short title — cell links to the W-item file. | Strategist |
 | **Effort** | XS / S / M / L / XL — drives the tiered execution pattern in `session-policy.md`. | Strategist |
 | **Markers** | ⚠️ architectural/irreversible (forces QA, bumps retry cap to 3). 🔍 spike/research (Orchestrator runs directly, 2h max); also applies to branch-topology work that cannot run inside a worktree. Combine with ⚠️ when destructive. 🧪 requires live QA regardless of tier. | Strategist |
 | **Status** | One of `pending` / `in_progress` / `held` / `blocked` / `done` / `shipped`. Multi-writer — see transition table below. | Orchestrator (most), Integrator-QA (`in_progress → held`), Strategist (`held → in_progress / blocked`) |
 | **Branch** | `w-<id>/<slug>` — populated when Status becomes `in_progress`. | Orchestrator |
+| **Blocked by** | Comma-separated W-ids that must reach `done` or `shipped` before this item is eligible to claim. `—` if none. Forms the dependency graph; both critical-path ordering and Parallel Developer's non-competing scan read from this column. | Strategist |
 
 ## W-item files
 
@@ -179,8 +181,6 @@ Each W-item file has at most 200 lines and three sections:
 **Acceptance criteria:**
 - [ ] Criterion 1
 - [ ] Criterion 2
-
-**Depends on:** W-A0 (or "—" if none)
 
 ## Execution notes
 
@@ -226,8 +226,7 @@ The Implementation log is the one section that gets appended after draft, at the
 |-------|---------|---------|
 | **What** | High level | One sentence — what artifact does this item produce? |
 | **Acceptance** | High level | Checkboxes. All must be green before the item is `done`. |
-| **Depends on** | High level | Other W-ids that must be complete first. Forms the dependency graph. |
-| **Parallel-safe** | Execution notes | `true` = eligible for batch-mode dispatch (ADR-016). `false` = per-task peer chain (ADR-013). Owned by the Strategist; set at plan time. Default: `false`. |
+| **Parallel-safe** | Execution notes | `true` = eligible for **Orchestrator batch-mode dispatch** (ADR-016). `false` = per-task peer chain (ADR-013). Owned by the Strategist; set at plan time. Default: `false`. **Does not gate Parallel Developer** (ADR-018) — Parallel Dev relies on the stream-letter convention on the index instead. See §"Parallel-safe field" below. |
 | **Parallel-safe considered** | Execution notes | Required line when Parallel-safe is `true`; names the shared surfaces the Strategist evaluated (package.json, lockfile, migrations, schema, route registry, shared test fixtures, refactor-of-a-callee). Forces the judgment to be recorded rather than mechanized. |
 | **Touches** | Execution notes | Files the item will modify. Executor uses this as scope boundary. |
 | **References** | Execution notes | Optional read-only orientation files with line ranges (e.g. `src/legacy/foo.py:120-280`). Intended for port / migration / refactor work where pre-existing structure must be understood. Modifying one is scope creep. |
@@ -251,6 +250,8 @@ The `Parallel-safe` field gates batch-mode dispatch (ADR-016). When `true`, the 
 The framework does NOT auto-derive `Parallel-safe` from `Touches`. The Strategist considers the shared surfaces above and decides explicitly. Whenever `Parallel-safe` is set to `true`, the W-item file MUST include a `Parallel-safe considered: <factors>` line naming what was evaluated — this forces the judgment to be recorded rather than mechanized.
 
 **Default when unset:** `false`. Adopter plans that predate ADR-016 (no `Parallel-safe` field on any W-item) continue to flow through the per-task peer chain. Strategists backfill the field when they decide to opt items into batch mode. No plan breaks at sync time.
+
+**Asymmetry: this field gates Orchestrator batch mode only.** Parallel Developer (Developer-mode parallel; ADR-018) does NOT use `Parallel-safe`. Its non-competing scan reads the index alone — stream-letter clash check + `Blocked by` check — and trusts the stream-letter convention to imply collision risk (same letter = same code-path area = likely shares files). The asymmetry is intentional: Orchestrator batch mode is autonomous and benefits from explicit Strategist curation of shared-infra collisions across `Touches`-disjoint items; Parallel Developer is user-supervised, so the rare cross-stream shared-infra collision (lockfile bump, schema bump, registry edit) surfaces as a merge conflict the user catches in the loop.
 
 ## Status state machine
 
@@ -398,7 +399,7 @@ A fresh Developer session reconciles similarly per its bootstrap (`developer.md`
 - Item at `code_review` → Reviewer subagent didn't return (session reset before verdict, or interrupted); propose re-spawning the Reviewer brief on the same branch + SHA before any new work. Reviewer is stateless and idempotent.
 - Item at `in_progress` after a context reset → ambiguous (mid-coding, mid-QA-loop, or pre-`/compact`). Confirm with user.
 - Item at `held` → awaiting Strategist disposition; skip.
-- Otherwise → propose top `pending` item by critical path (Depends-on graph).
+- Otherwise → propose top `pending` item by critical path (using the index's `Blocked by` column to derive the dependency graph).
 
 Summary-table-vs-W-item-section drift is structurally impossible under the folder layout (Status appears once on the index). The pre-ADR-017 STEP 0 check for that drift retires.
 

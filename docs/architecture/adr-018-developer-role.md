@@ -131,6 +131,21 @@ Why two invocations instead of one role with conditional behavior: the working-d
 
 **The "check dev" handoff** (Default Dev pulling Parallel's merged work into its own feature branch) is standard git: `git fetch origin dev && git merge origin/dev`. No framework-special protocol.
 
+#### Revision (v3.2, 2026-05-01): non-competing scan reads the index alone
+
+The original scan procedure inlined above ("reads claimed items, checks each `pending` item's `Touches` + Parallel-safe shared surfaces, proposes the first non-conflicting item") forced the Parallel Developer to fan out and read multiple W-item files at boot to assemble the data needed for collision detection. That defeated the context-budget rationale ADR-017 established for the index/SOW split — and worse, the bulk content couldn't be selectively evicted from the persistent session via `/compact`.
+
+ADR-017 §Revision (v1.1) extends single-source doctrine to dependency data: a `Blocked by` column on the index replaces the W-item file's `Depends on` field, and the W-id stream-letter convention becomes load-bearing for non-competing detection (same letter = assumed code-path overlap; different letter = assumed non-competing).
+
+Under v3.2, the Parallel Developer's scan reads the index alone:
+
+1. Note claimed items' stream letters (the letter in `W-<stream><number>`).
+2. For each `pending` item in critical-path order: skip if its stream letter matches a claimed item's; skip if any `Blocked by` entry on the index isn't `done`/`shipped`; otherwise propose.
+
+`Touches` and `Parallel-safe considered` are no longer scan inputs. `Parallel-safe` (the field) narrows to Orchestrator batch-mode dispatch (ADR-016) only — Parallel Developer does not gate on it. The asymmetry is intentional: batch mode is autonomous and benefits from explicit infra-collision curation; Parallel Dev is user-supervised and a rare cross-stream infra collision surfaces as a merge conflict the user catches in the loop.
+
+Canonical procedure: `dev_framework/developer.md` §"Non-competing scan (Parallel Developer)". Canonical data-model spec: `execution-plans/README.md` §"Summary table" + §"Index fields". The inline description above (this section's third bullet, "reads claimed items, checks each `pending` item's `Touches`...") is superseded.
+
 ### Five-surface role-add
 
 Per the framework-change doctrine: adding a role updates five surfaces in one PR.

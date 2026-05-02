@@ -58,8 +58,10 @@ STEP 1 — Orient. Read in this order:
      The Orchestrator's brief above already pasted "What", "Acceptance
      criteria", "Files you will touch", and "References" verbatim from
      this source — read the source anyway to confirm nothing was lost
-     in translation, especially Contingencies and Depends on which the
-     brief may not echo.
+     in translation, especially Contingencies which the brief may not
+     echo. (Dependencies live on the index's `Blocked by` column, not
+     on the W-item file — the Orchestrator already verified them at
+     dispatch time; you do not need to re-check.)
   4. Every file listed in "Files you will touch" below — in full, even if
      you think you'll only modify one small piece.
   5. Every file listed in "References" below (if any) — read the specified

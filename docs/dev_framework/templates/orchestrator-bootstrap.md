@@ -282,8 +282,9 @@ STEP 2 — Report back with:
      item awaiting Strategist disposition. NEVER re-dispatch on
      `in_progress` / `done` / `shipped`.
      If multiple W-items are eligible and carry `Parallel-safe: true`
-     on the plan (and their Depends-on items are all `done`/`shipped`,
-     and none are at Status `held`), report the full eligible batch —
+     on the plan (and every W-id in each item's `Blocked by` column on
+     the index is `done`/`shipped`, and none are at Status `held`),
+     report the full eligible batch —
      up to ~3 items — as a single dispatch unit. Under the folder
      format you read each candidate W-item's file on demand to confirm
      its Parallel-safe field; under single-file format you read the
@@ -577,9 +578,9 @@ STEP 5 — Merge + push + ledger update + auto-advance.
 STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches).
 
   Applies when STEP 2 reported a batch of ≥2 Parallel-safe: true W-items
-  whose Depends-on items are all done/shipped and none are blocked by an
-  open Integration claim. See session-policy.md §"Batch mode" and
-  ADR-016.
+  whose `Blocked by` entries (on the index) are all done/shipped and
+  none are blocked by an open Integration claim. See session-policy.md
+  §"Batch mode" and ADR-016.
 
   STEP 3B.1 — Pre-create one worktree per item.
 
