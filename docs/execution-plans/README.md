@@ -172,9 +172,20 @@ Notes capture stumped reasons + resolution, ship-with-concerns text, lessons-lea
 
 Each W-item is its own file in the plan folder, `w-<id-lowercase>.md`. The H1 is just the W-id (e.g. `# W-A1`). Title lives on the index table only — no duplication.
 
-Each W-item file has at most 200 lines and three sections:
+Each W-item file has at most 200 lines, a YAML frontmatter block at the top, and prose sections below.
 
 ```markdown
+---
+parallel-safe: false
+touches:
+  - src/foo.ts
+  - src/bar.ts
+references:
+  - path: src/legacy/foo.py
+    lines: "120-280"
+    purpose: auth middleware pattern
+---
+
 # W-A1
 
 ## High level
@@ -184,16 +195,6 @@ Each W-item file has at most 200 lines and three sections:
 **Acceptance criteria:**
 - [ ] Criterion 1
 - [ ] Criterion 2
-
-## Execution notes
-
-**Parallel-safe:** true | false — see §"Parallel-safe field" below. Default when unset: false.
-
-**Parallel-safe considered:** <required when Parallel-safe is true — names the shared surfaces evaluated>
-
-**Touches:** `src/foo.ts`, `src/bar.ts`
-
-**References:** `src/legacy/foo.py:120-280` (auth middleware pattern) — optional read-only orientation material for the Executor.
 
 ## Contingencies
 
@@ -219,22 +220,33 @@ Appended by the Developer at `code_review → done` (Developer mode only in v1; 
 - Anything intentionally deferred (or `none`).
 ```
 
-**No Status field on the W-item file.** Status lives only on the index. The W-item file is the static SOW; the index is the runtime ledger. This is the single-source rule introduced by ADR-017 — there is no second place for Status to drift to.
+When `parallel-safe: true`, the frontmatter MUST also include a `parallel-safe-considered:` list naming the shared surfaces the Strategist evaluated (see §"Parallel-safe field" below). Omit the field entirely when `parallel-safe: false`.
+
+Introduced by [ADR-020](../architecture/adr-020-yaml-frontmatter-w-items.md). The frontmatter is the structural-metadata surface; the body is prose. Tools that consume the metadata (the Reviewer's `scripts/check-touches.sh` mechanical scope check, the Orchestrator's batch-mode collision evaluation) read frontmatter without loading the full body. Pre-ADR-020 plans use the prior `## Execution notes` prose shape — both formats coexist during transition.
+
+**No Status field on the W-item file.** Status lives only on the index. The W-item file is the static SOW; the index is the runtime ledger. This is the single-source rule introduced by ADR-017 — there is no second place for Status to drift to. ADR-020 preserves this: the frontmatter carries structural metadata only (`parallel-safe`, `touches`, `references`), never `status`.
+
+**What is NOT in the W-item file (frontmatter or body) and why:**
+
+- `status` — index-only, per ADR-017's drift-bait elimination.
+- `effort` / `markers` — index summary-table columns; the Orchestrator reads them at-a-glance there.
+- `blocked-by` — index `Blocked by` column, per ADR-017 v1.1 (single source for dependency data).
+- `id` / `title` — H1, filename, and the index summary table all carry these; frontmatter duplication earns nothing.
 
 The Implementation log is the one section that gets appended after draft, at the `code_review → done` flip. It is append-only (not mutated after merge) and therefore does not reintroduce drift bait — see ADR-018.
 
 ### W-item file fields
 
-| Field | Section | Purpose |
-|-------|---------|---------|
-| **What** | High level | One sentence — what artifact does this item produce? |
-| **Acceptance** | High level | Checkboxes. All must be green before the item is `done`. |
-| **Parallel-safe** | Execution notes | `true` = eligible for **Orchestrator batch-mode dispatch** (ADR-016). `false` = per-task peer chain (ADR-013). Owned by the Strategist; set at plan time. Default: `false`. **Does not gate Parallel Developer** (ADR-018) — Parallel Dev relies on the stream-letter convention on the index instead. See §"Parallel-safe field" below. |
-| **Parallel-safe considered** | Execution notes | Required line when Parallel-safe is `true`; names the shared surfaces the Strategist evaluated (package.json, lockfile, migrations, schema, route registry, shared test fixtures, refactor-of-a-callee). Forces the judgment to be recorded rather than mechanized. |
-| **Touches** | Execution notes | Files the item will modify. Executor uses this as scope boundary. |
-| **References** | Execution notes | Optional read-only orientation files with line ranges (e.g. `src/legacy/foo.py:120-280`). Intended for port / migration / refactor work where pre-existing structure must be understood. Modifying one is scope creep. |
-| **Contingencies** | Contingencies | Pre-planned fallbacks and edge cases. Strategist-authored at draft time. |
-| **Implementation log** | Implementation log (post-completion) | Appended by the Developer at `code_review → done` flip. Captures approach, key decisions, pivots, surprises, followups. Distilled from the W-item's working log file (see §"Working log files") alongside the diff — the curated retrospective; the working log is the chronological record. Developer mode only in v1 (ADR-018). |
+| Field | Location | Purpose |
+|-------|----------|---------|
+| **parallel-safe** | Frontmatter | `true` = eligible for **Orchestrator batch-mode dispatch** (ADR-016). `false` = per-task peer chain (ADR-013). Owned by the Strategist; set at plan time. Default: `false`. **Does not gate Parallel Developer** (ADR-018) — Parallel Dev relies on the stream-letter convention on the index instead. See §"Parallel-safe field" below. |
+| **parallel-safe-considered** | Frontmatter | Required when `parallel-safe: true`; list of shared-surface factors the Strategist evaluated (e.g., `package.json bumps`, `shared route registry`, `migration ordering`, `test fixtures`, `refactor-of-a-callee`). Forces the judgment to be recorded rather than mechanized. Omit the field when `parallel-safe: false`. |
+| **touches** | Frontmatter | List of file paths the item will modify. Executor uses this as the scope boundary; Reviewer runs `scripts/check-touches.sh` against this list to mechanically verify the diff stayed in scope (ADR-020). |
+| **references** | Frontmatter | Optional list of read-only orientation entries. Each: `path` (required), `lines` (optional, e.g. `"120-280"`), `purpose` (optional, short string). Intended for port / migration / refactor work where pre-existing structure must be understood. Modifying a References file is scope creep. |
+| **What** | Body §High level | One sentence — what artifact does this item produce? |
+| **Acceptance** | Body §High level | Checkboxes. All must be green before the item is `done`. |
+| **Contingencies** | Body §Contingencies | Pre-planned fallbacks and edge cases. Strategist-authored at draft time. |
+| **Implementation log** | Body §Implementation log (post-completion) | Appended by the Developer at `code_review → done` flip. Captures approach, key decisions, pivots, surprises, followups. Distilled from the W-item's working log file (see §"Working log files") alongside the diff — the curated retrospective; the working log is the chronological record. Developer mode only in v1 (ADR-018). |
 
 ## Working log files
 
@@ -322,9 +334,9 @@ The `Parallel-safe` field gates batch-mode dispatch (ADR-016). When `true`, the 
 - Shared test fixtures or test-DB seed
 - Dev-environment setup (dev-server port, docker-compose service names)
 
-The framework does NOT auto-derive `Parallel-safe` from `Touches`. The Strategist considers the shared surfaces above and decides explicitly. Whenever `Parallel-safe` is set to `true`, the W-item file MUST include a `Parallel-safe considered: <factors>` line naming what was evaluated — this forces the judgment to be recorded rather than mechanized.
+The framework does NOT auto-derive `parallel-safe` from `touches`. The Strategist considers the shared surfaces above and decides explicitly. Whenever `parallel-safe: true`, the W-item file MUST include a `parallel-safe-considered:` list in frontmatter naming what was evaluated — this forces the judgment to be recorded rather than mechanized.
 
-**Default when unset:** `false`. Adopter plans that predate ADR-016 (no `Parallel-safe` field on any W-item) continue to flow through the per-task peer chain. Strategists backfill the field when they decide to opt items into batch mode. No plan breaks at sync time.
+**Default when unset:** `false`. Adopter plans that predate ADR-016 (no parallel-safe data on any W-item) continue to flow through the per-task peer chain. Strategists backfill the field when they decide to opt items into batch mode. No plan breaks at sync time. Pre-ADR-020 plans carry parallel-safe as a prose `**Parallel-safe:**` line under `## Execution notes`; both shapes are read by the framework during the soft-migration window.
 
 **Asymmetry: this field gates Orchestrator batch mode only.** Parallel Developer (Developer-mode parallel; ADR-018) does NOT use `Parallel-safe`. Its non-competing scan reads the index alone — stream-letter clash check + `Blocked by` check — and trusts the stream-letter convention to imply collision risk (same letter = same code-path area = likely shares files). The asymmetry is intentional: Orchestrator batch mode is autonomous and benefits from explicit Strategist curation of shared-infra collisions across `Touches`-disjoint items; Parallel Developer is user-supervised, so the rare cross-stream shared-infra collision (lockfile bump, schema bump, registry edit) surfaces as a merge conflict the user catches in the loop.
 

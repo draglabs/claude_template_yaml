@@ -59,20 +59,52 @@ feature branch, not just the latest commit.
 
 ## Files changed
 
-{{paste "Touches" list + any additional files the Executor flagged}}
+{{paste `touches` list verbatim from the W-item file's YAML frontmatter
+  (ADR-020), or the prose `**Touches:**` line for pre-ADR-020 plans, +
+  any additional files the Executor flagged in its Scope creep field}}
 
 Read each one in full at the path specified above. Diff interpretation
 is secondary to reading the file in its final state and asking "does
 this belong here?"
 
+## Mechanical scope check (run BEFORE answering question 6)
+
+Before reading the diff, run `scripts/check-touches.sh` from the
+worktree root. This compares `git diff --name-only origin/dev` against
+the `touches:` list in the W-item file's YAML frontmatter (ADR-020).
+The script is the verified scope signal — your prose judgment in
+question 6 builds on top of it.
+
+    cd {{worktree path}}
+    ./scripts/check-touches.sh \
+      docs/execution-plans/<plan>/w-{{id}}.md \
+      origin/dev
+
+Exit codes:
+  - 0 → every modified file is within `touches`. Proceed to the diff.
+  - 1 → at least one modified file is out of scope. The script prints
+        the out-of-scope paths to stdout (one per line). Treat each
+        as a scope-creep finding for question 6 unless the W-item brief
+        explicitly authorized it.
+  - 2 → script could not decide (no frontmatter, missing file, missing
+        `touches`). Fall back to manual scope judgment via the prose
+        Touches line.
+
+A non-zero exit is not by itself a `block` — the verdict still depends on
+severity (a one-line config tweak vs. a new feature). But it IS a
+verified signal you must address in question 6.
+
 ## References (orientation-only files the Executor was given)
 
-{{paste "References" list verbatim if the W-item had any; otherwise omit
-  this section}}
+{{paste `references` list verbatim from the W-item file's YAML frontmatter
+  (ADR-020), or the prose `**References:**` line for pre-ADR-020 plans,
+  if the W-item had any; otherwise omit this section}}
 
 These should NOT appear in the diff. If the Executor modified any file
 listed here, that is scope creep by definition — References are
 orientation material, not write surface. Flag under question 6.
+(`scripts/check-touches.sh` does NOT inspect References — that's a
+Reviewer judgment call.)
 
 ## Review questions (answer each)
 
@@ -92,9 +124,12 @@ orientation material, not write surface. Flag under question 6.
 5. **Edge cases:** what inputs/scenarios could break this that the tests
    don't cover?
 6. **Scope creep:** any files or behaviors added that weren't in scope?
-   Specifically check: did the Executor modify any file listed under
-   "References"? Those are orientation-only — a modification is scope
-   creep by definition.
+   Start from the `scripts/check-touches.sh` output above — every path
+   it printed is a verified scope-creep finding. Then add: did the
+   Executor modify any file listed under "References"? Those are
+   orientation-only — a modification is scope creep by definition (the
+   script does not catch this; it's a manual check). Cite each finding
+   with file:line where the diff lands.
 7. **Production-deploy doctrine (ADR-019):** did any commit in this work
    invoke a production deploy by a path other than
    `scripts/main_to_prod.sh`? Examples to flag: raw

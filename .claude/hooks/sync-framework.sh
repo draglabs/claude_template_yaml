@@ -147,16 +147,21 @@ if [[ -f "$MCP_STUB" && ! -f "$LOCAL_MCP" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 5c. Initialize dev-slot infrastructure (scripts/ + docs/dev/slots.yaml)
+# 5c. Initialize project-local stubs (scripts/ + docs/dev/slots.yaml)
 #     if missing. Idempotent: never overwrites filled-in stubs. Adopters
-#     fill the project-specific bodies once via scripts/setup_dev_slots.sh
-#     plus the deploy stubs; subsequent syncs leave their work alone.
+#     fill any project-specific bodies once; subsequent syncs leave their
+#     work alone.
 #
 #     Stubs live under $TEMPLATE_ROOT/docs/dev_framework/_stubs/<relpath>
 #     and copy to $PROJECT_DIR/<relpath>, preserving the executable bit
 #     for .sh files (cp -p).
 #
-#     See docs/architecture/adr-019-dev-slots-and-deploy-stubs.md.
+#     Stubs covered:
+#       - Dev-slot infrastructure (ADR-019): launch_local.sh,
+#         teardown_local.sh, main_to_prod.sh, setup_dev_slots.sh,
+#         docs/dev/slots.yaml.
+#       - Reviewer-side mechanical scope check (ADR-020):
+#         check-touches.sh — generic, no project-specific body to fill.
 # ---------------------------------------------------------------------------
 
 DEV_SLOT_STUBS=(
@@ -164,6 +169,7 @@ DEV_SLOT_STUBS=(
   "scripts/teardown_local.sh"
   "scripts/main_to_prod.sh"
   "scripts/setup_dev_slots.sh"
+  "scripts/check-touches.sh"
   "docs/dev/slots.yaml"
 )
 

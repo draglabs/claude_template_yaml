@@ -51,7 +51,11 @@ STEP 1 — Orient. Read in this order:
      project-level deviations from the standard SOP.
   3. The W-item SOW. Path depends on plan format (per ADR-017):
        - Folder format: docs/execution-plans/<plan>/w-{{id}}.md (the
-         W-item file — High level, Execution notes, Contingencies).
+         W-item file — YAML frontmatter for structural metadata under
+         ADR-020 [touches, references, parallel-safe], plus prose body:
+         High level, Contingencies). Pre-ADR-020 plans use a prose
+         "## Execution notes" section instead of frontmatter; both
+         shapes are valid during soft migration.
        - Single-file format (pre-ADR-017):
          docs/execution-plans/<active-plan>.md §{{W-id}} (the per-W-item
          section inline on the plan).
@@ -92,14 +96,20 @@ STEP 3 — Write.
 {{paste "Acceptance" bullets verbatim}}
 
 ## Files you will touch
-{{paste "Touches" list verbatim}}
+{{paste `touches` list verbatim from the W-item file's YAML frontmatter
+  (ADR-020); for pre-ADR-020 plans, paste from the `**Touches:**` prose
+  line under `## Execution notes`. The Reviewer will run
+  `scripts/check-touches.sh` against this list as a mechanical scope
+  check — modifications outside it are flagged as scope creep.}}
 
 ## References (read-only orientation; do NOT modify)
-{{paste "References" list verbatim — files with optional line ranges,
-  e.g. `src/legacy/admin_helper/routes.py:120-280` (auth middleware
-  pattern). Present on port / migration / refactor W-items where
-  pre-existing structure needs to be understood before writing. Omit
-  this section entirely if the W-item has no References in the plan.}}
+{{paste `references` list verbatim from the W-item file's YAML frontmatter
+  (ADR-020) — entries with `path` + optional `lines` + optional `purpose`,
+  e.g. `path: src/legacy/admin_helper/routes.py`, `lines: "120-280"`,
+  `purpose: auth middleware pattern`. For pre-ADR-020 plans, paste from
+  the `**References:**` prose line. Present on port / migration / refactor
+  W-items where pre-existing structure needs to be understood before
+  writing. Omit this section entirely if the W-item has no references.}}
 
 ## Locked decisions that constrain this work
 {{paste relevant locked decisions from CLAUDE.md}}
