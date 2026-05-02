@@ -12,6 +12,7 @@ docs/execution-plans/
   exec-<slug>/             # one folder per active or archived plan
     plan.md                # the index — runtime state surface
     w-a1.md                # W-item SOW (one file per W-item)
+    w-a1.log.md            # Working log (lazy — created when Developer claims; ADR-018)
     w-a2.md
     claims.md              # Integration claims (open + resolved)
 ```
@@ -20,6 +21,7 @@ Naming:
 - Folder: `exec-<slug>/` (e.g. `exec-phase-1/`).
 - Index: always `plan.md`.
 - W-item files: `w-<id-lowercase>.md` (e.g. `w-a1.md`, `w-b3.md`).
+- Working log files: `w-<id-lowercase>.log.md` (e.g. `w-a1.log.md`) — lazy; created at the Developer's first append after claiming an item (Developer mode only; ADR-018).
 - Claims file: always `claims.md` (created lazily — first claim filing creates it).
 
 Introduced by [ADR-017](../architecture/adr-017-plan-folder-restructure.md). The folder shape separates runtime state (the index) from static SOW (W-item files) so that Status appears in exactly one place.
@@ -53,8 +55,9 @@ After moving:
 
 - **Index (`plan.md`)** — under **150 lines / 15 W-items**. Larger initiatives split into focused sub-plans by stream or theme.
 - **W-item file** — under **200 lines**. If a W-item file is growing past 200 lines, the work item itself is too big — split it into multiple W-items.
+- **Working log file (`w-<id>.log.md`)** — **no limit**. Chronological growth is expected during active QA cycles; the discipline is "log signal, not noise" rather than a line cap. See §"Working log files" for what's worth logging.
 
-These bounds keep each artifact readable within a session's context budget. Per-dispatch reads stay scoped to the W-item the agent is working on, not the full phase.
+These bounds keep each artifact readable within a session's context budget. Per-dispatch reads stay scoped to the W-item the agent is working on, not the full phase. The working log is exempt because it is read only by the Developer that owns the item — it is not on the Reviewer or Strategist surface.
 
 ## The index (`plan.md`)
 
@@ -198,7 +201,7 @@ Pre-planned fallbacks, known edge cases, "if X happens, do Y" guidance. Optional
 
 ## Implementation log
 
-Appended by the Developer at `code_review → done` (Developer mode only in v1; ADR-018). Absent until that flip — the section header does not appear on a W-item file at draft.
+Appended by the Developer at `code_review → done` (Developer mode only in v1; ADR-018). Absent until that flip — the section header does not appear on a W-item file at draft. The Developer drafts it by reading the W-item's working log file (see §"Working log files" below) alongside the diff — the Implementation log is the curated retrospective; the working log is the chronological record.
 
 **Approach:** One paragraph on how the work was actually done.
 
@@ -231,7 +234,79 @@ The Implementation log is the one section that gets appended after draft, at the
 | **Touches** | Execution notes | Files the item will modify. Executor uses this as scope boundary. |
 | **References** | Execution notes | Optional read-only orientation files with line ranges (e.g. `src/legacy/foo.py:120-280`). Intended for port / migration / refactor work where pre-existing structure must be understood. Modifying one is scope creep. |
 | **Contingencies** | Contingencies | Pre-planned fallbacks and edge cases. Strategist-authored at draft time. |
-| **Implementation log** | Implementation log (post-completion) | Appended by the Developer at `code_review → done` flip. Captures approach, key decisions, pivots, surprises, followups. Persists the journey on the project after `/compact` collapses the persistent session and the spawned Reviewer subagent finishes (Reviewer never saw the journey). Developer mode only in v1 (ADR-018). |
+| **Implementation log** | Implementation log (post-completion) | Appended by the Developer at `code_review → done` flip. Captures approach, key decisions, pivots, surprises, followups. Distilled from the W-item's working log file (see §"Working log files") alongside the diff — the curated retrospective; the working log is the chronological record. Developer mode only in v1 (ADR-018). |
+
+## Working log files
+
+Each Developer-claimed W-item gets its own working log file in the plan folder, `w-<id-lowercase>.log.md`. Freeform chronological scratchpad the Developer appends to throughout `in_progress` (build + user-mediated QA). Survives `/compact` so a post-compact session can re-establish working context cheaply by reading the log instead of re-deriving it from session memory that was just summarized away.
+
+Introduced by [ADR-018](../architecture/adr-018-developer-role.md) Revision v3.3. Developer mode only — Orchestrator-mode dispatch does not produce working logs (Executor subagents are stateless and per-task; their working memory dies with the dispatch).
+
+### Lifecycle
+
+- **Lazy creation.** Created at the `pending → in_progress` claim — Developer's first append creates the file. W-items that never reach `in_progress` have no log file.
+- **Appended throughout `in_progress`.** Build decisions, dead ends, fixes attempted, user-reported QA issues, retest outcomes. Chronological. The QA back-and-forth (change-this-not-that, scope creep, refinement) lives here verbatim.
+- **Distilled at `code_review → done`.** Developer reads the working log alongside the diff and writes the Implementation log on the W-item file (structured retrospective: approach, key decisions, pivots, surprises, postponed concerns, followups). The working log file itself **persists** in the plan folder; it is not deleted. The Implementation log is the curated retrospective; the working log is the honest chronological record.
+- **Archives with the plan.** When the plan folder moves to `docs/archive/`, the log files move with it.
+
+### Format
+
+Freeform markdown. Suggested layout — timestamped session blocks with short prose underneath:
+
+```markdown
+# W-A1 working log
+
+## 2026-05-02 14:30 — claimed, scoping
+Decided to use FooStore pattern instead of subclassing BarStore. Reason:
+matches the rest of the auth surface; subclass would be one-off.
+
+## 2026-05-02 15:10 — first attempt failed
+Tried passing the session through as a closure; ran into the test harness'
+`expectFn` race. Pivot: pull session out of the request context at handler
+entry instead.
+
+## 2026-05-02 16:45 — ready for QA
+Feature builds. `npm test` green. User to take it.
+
+## 2026-05-02 17:05 — QA round 1
+User: "header doesn't show on /settings". Fixed — middleware was scoped to
+/auth only. Retest passing.
+
+## 2026-05-02 17:30 — QA round 2 (scope creep, accepted)
+User wants the header to also collapse on mobile. Adding to scope per user
+direction; not a separate W-item.
+
+## 2026-05-02 18:00 — QA complete
+User confirms everything works. /compact now, then code review.
+```
+
+The timestamp + short prose pattern is suggested, not required. The discipline that matters: **append something at every meaningful state change** — at claim, at design decisions, at dead ends, at "ready for QA," at each QA round, at QA complete. The agent's working memory after `/compact` is whatever it can re-read here.
+
+### What's worth logging
+
+- Decisions and the reason (why this library, why this approach).
+- Dead ends — what didn't work and why.
+- Fixes applied during the QA loop, with a one-line note on what triggered each fix.
+- Retest outcomes (user-confirmed pass / new issue surfaced).
+- Phase-transition markers ("ready for QA," "QA complete," "Reviewer block — re-coding") — these are the anchors the Developer reads to infer phase after `/compact`.
+- Anything the Developer would want to recover after `/compact` — context that would be expensive to re-derive.
+
+### What's NOT worth logging
+
+- Verbose narration of every file read or test run.
+- Tool-call output already visible in the diff.
+- Routine work (`wrote test, made it pass`) without a decision attached.
+
+### Size
+
+**No hard size limit.** The W-item file's 200-line limit (see §"Size limits") does not apply to log files — chronological growth is expected. Long QA cycles produce long logs; that's the point. Even so, the discipline is "log signal, not noise" — verbose narration bloats the file without earning context.
+
+### Who reads it
+
+- The Developer that owns the W-item — primary user.
+- A fresh Developer session that picks up an interrupted item — reads the log to recover state.
+- Strategist on triage if a claim is filed mid-work and the log clarifies why.
+- The Reviewer subagent does **not** read it — Reviewer reads the diff + W-item file + `coding-standards.md` only (per `reviewer-brief.md`). The log is Developer working memory, not part of the code-review surface.
 
 ## Parallel-safe field
 
@@ -397,7 +472,7 @@ A fresh Orchestrator session MUST reconcile the plan ledger against git reality 
 A fresh Developer session reconciles similarly per its bootstrap (`developer.md`). The state IS the memory:
 
 - Item at `code_review` → Reviewer subagent didn't return (session reset before verdict, or interrupted); propose re-spawning the Reviewer brief on the same branch + SHA before any new work. Reviewer is stateless and idempotent.
-- Item at `in_progress` after a context reset → ambiguous (mid-coding, mid-QA-loop, or pre-`/compact`). Confirm with user.
+- Item at `in_progress` after a context reset → ambiguous (mid-coding, mid-QA-loop, or pre-`/compact`). Read the W-item's working log file (`w-<id>.log.md`); the latest timestamped header names the most recent phase-transition marker (`ready for QA`, `QA complete`, etc.), recovering phase + working context cheaply. If still unclear, confirm with user.
 - Item at `held` → awaiting Strategist disposition; skip.
 - Otherwise → propose top `pending` item by critical path (using the index's `Blocked by` column to derive the dependency graph).
 

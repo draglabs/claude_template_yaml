@@ -147,6 +147,40 @@ if [[ -f "$MCP_STUB" && ! -f "$LOCAL_MCP" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# 5c. Initialize dev-slot infrastructure (scripts/ + docs/dev/slots.yaml)
+#     if missing. Idempotent: never overwrites filled-in stubs. Adopters
+#     fill the project-specific bodies once via scripts/setup_dev_slots.sh
+#     plus the deploy stubs; subsequent syncs leave their work alone.
+#
+#     Stubs live under $TEMPLATE_ROOT/docs/dev_framework/_stubs/<relpath>
+#     and copy to $PROJECT_DIR/<relpath>, preserving the executable bit
+#     for .sh files (cp -p).
+#
+#     See docs/architecture/adr-019-dev-slots-and-deploy-stubs.md.
+# ---------------------------------------------------------------------------
+
+DEV_SLOT_STUBS=(
+  "scripts/launch_local.sh"
+  "scripts/teardown_local.sh"
+  "scripts/main_to_prod.sh"
+  "scripts/setup_dev_slots.sh"
+  "docs/dev/slots.yaml"
+)
+
+for relpath in "${DEV_SLOT_STUBS[@]}"; do
+  src="$TEMPLATE_ROOT/docs/dev_framework/_stubs/$relpath"
+  dst="$PROJECT_DIR/$relpath"
+  if [[ -f "$src" && ! -f "$dst" ]]; then
+    mkdir -p "$(dirname "$dst")"
+    if cp -p "$src" "$dst" 2>/dev/null; then
+      echo "[sync-framework] initialized $relpath from stub"
+    else
+      echo "[sync-framework] WARN: failed to initialize $relpath"
+    fi
+  fi
+done
+
+# ---------------------------------------------------------------------------
 # 6. CLAUDE.md managed-block reconciliation.
 #    The template's CLAUDE.md wraps framework-owned sections in:
 #      <!-- BEGIN FRAMEWORK MANAGED -->

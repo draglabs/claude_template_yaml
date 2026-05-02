@@ -6,3 +6,4 @@ mockups/node_modules/
 mockups/dist/
 .DS_Store
 .claude/settings.local.json
+.local/

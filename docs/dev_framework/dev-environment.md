@@ -111,6 +111,32 @@ Each project gets a fixed port range at first-time setup, recorded as `{{ports}}
 
 **Per-W-item binding + teardown.** When a Developer (Default or Parallel) brings up a local runtime to drive the user-QA loop, it picks a port within `{{ports}}`. When the W-item ships through to `done`, the runtime is torn down — see [`developer.md`](developer.md) §"Cleanup at done-flip". Leaving containers running between W-items accumulates resource residue and burns port slots the next session expects to be free.
 
+## Slot registry and launch scripts
+
+[ADR-019](../architecture/adr-019-dev-slots-and-deploy-stubs.md) mechanizes the port-allocation discipline above into a committed slot registry plus four scripts. After first-time setup, the Developer launches and tears down local runtimes by **slot name**, not by manually-chosen port.
+
+**Slot registry** at `docs/dev/slots.yaml` — committed; defines four named slots:
+
+- **`dev0`** — Default Developer's slot (coordination, hot-fixes, neutral runtime; `worktree_required: false`).
+- **`dev1`, `dev2`, `dev3`** — Parallel Developer slots (formal ticket work; `worktree_required: true`).
+
+Each slot carries a `hostname` (`<slot>.{{sub}}.localhost`, auto-resolves via RFC 6761), a `port` within `{{ports}}`, a `role`, and an `intended_use` array.
+
+**Live state** at `.local/dev_slots/<slot>.yaml` — gitignored; written by `launch_local.sh` when a slot is claimed, removed by `teardown_local.sh`. Captures which W-item / ticket currently holds the slot.
+
+**Four scripts in `scripts/`:**
+
+- **`setup_dev_slots.sh`** — one-time, interactive. Asks for base port, fills in `slots.yaml` (hostnames + ports), generates and (with confirmation) appends a Caddy block to your Caddyfile. Re-runnable; updates between `# BEGIN <sub>-dev-slots` / `# END <sub>-dev-slots` markers. Does NOT edit CLAUDE.md — `{{ports}}` lives inside the framework-managed block which gets overwritten on every sync (per [ADR-014](../architecture/adr-014-framework-sync-on-session-start.md)); `slots.yaml` is the authoritative source of truth.
+- **`launch_local.sh <slot>`** — claim a slot and run the project-specific launch body (Docker run, dev server, etc.). Slot-claim plumbing pre-filled; the launch body itself is a stub on first sync — fill it in once per project, then commit.
+- **`teardown_local.sh <slot>`** — release a slot and run the project-specific teardown body. Same stub-and-fill shape.
+- **`main_to_prod.sh`** — named escape hatch for user-approved direct-deploy projects. Most projects keep this as a stub (CI-only remains the default per CLAUDE.md §"Two process rules" #2).
+
+**Caddy reverse-proxies** `<slot>.{{sub}}.localhost` → `localhost:<port>`. The `setup_dev_slots.sh` script generates the Caddyfile block. First-time TLS: run `caddy trust` once to suppress browser cert warnings on `.localhost` hosts.
+
+**Sync semantics.** All four scripts and `slots.yaml` ship as **idempotent-init stubs** under `docs/dev_framework/_stubs/` in the canonical template ([ADR-014](../architecture/adr-014-framework-sync-on-session-start.md) sync flow). First sync copies them; subsequent syncs leave the adopter's filled-in versions alone.
+
+**Discipline.** When a script is still a stub (exit-1 with "PROJECT-SPECIFIC ... is not implemented yet"), halt — fill it in and commit before launching. Never improvise `docker run` or `docker stop` outside the scripts. The Reviewer enforces the same rule for `main_to_prod.sh`: any prod-deploy commit by a path other than `main_to_prod.sh` is a `block`.
+
 ## Relationship to production
 
 Dev and prod are separate CI workflows and separate URLs:

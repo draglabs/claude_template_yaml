@@ -195,6 +195,55 @@ pending → in_progress → code_review → done → shipped
    - **Postpone** → Reviewer flagged concerns the user accepts as a known limitation. Implementation log includes a `**Postponed concerns:**` line naming the concerns + why they're being deferred + where they'll be addressed (follow-up W-item id, or `tracked as known limitation`). Merge proceeds as in Ship; plan.md Status flip on dev to `done`. Open a follow-up W-item if the postponed concern is anything beyond a true known-limitation.
 9. **Phase exit.** When all items in the phase are `done`, user authorizes promotion. Developer promotes `dev → main`, flips `done → shipped` (one commit) for each item.
 
+## Phase discipline
+
+`in_progress` covers two session-level phases — **Build** (pre-QA) and **QA** (post-QA-handoff). **Code Review** is the third phase, the only one with its own on-disk Status state (`code_review`). The phase split is a session-level convention; the on-disk Status machine is unchanged. Build → QA transition has no Status flip; only QA → Code Review does.
+
+The `/compact` re-orient hook tells the Developer to re-read its role doc. **The relevant phase subsection below is the re-read target** — read it before continuing. If unclear which phase you're in, ask the user; the working log file's most recent timestamped header will name the latest phase-transition marker (`ready for QA`, `QA complete`, etc.).
+
+### Build (in_progress, pre-QA)
+
+You're building the feature. The user is available but the QA loop hasn't started.
+
+**Rules:**
+- TDD where it pays — see [`coding-standards.md`](coding-standards.md).
+- 80/20 confidence ladder at every decision fork — self ≥80% → act; self <80% → advisor; advisor <80% → user. See §"Confidence-driven escalation."
+- Spawn analysis subagents (Doc / Code Consultant) for narrow research — they don't bloat your session.
+- **Maintain the working log file** (`w-<id>.log.md`). Append at every meaningful state change: claim, design decision, dead end, pivot. See [`execution-plans/README.md`](../execution-plans/README.md) §"Working log files" for what's worth logging. The log is your durable memory across `/compact`.
+- Don't surprise the user with scope expansion mid-build — ask, or file a claim per §"Claim-filing (rare path)."
+- **Local runtime via slot script.** When you bring up a local runtime for QA, use `./scripts/launch_local.sh dev<N>` (Default Dev: `dev0`; Parallel Dev: your assigned slot — `dev1`/`dev2`/`dev3`). The slot determines hostname (`dev<N>.{{sub}}.localhost`) and port. If the script is still a stub (exits with "PROJECT-SPECIFIC LAUNCH BODY is not implemented yet"), halt — fill in the docker/dev-server commands per the project, commit, then launch. **Never improvise docker commands outside the script.** First-time setup: run `./scripts/setup_dev_slots.sh` once if `slots.yaml` ports are still `0`. See [ADR-019](../architecture/adr-019-dev-slots-and-deploy-stubs.md).
+
+**Phase exit:** when the feature builds, basic tests pass, and you're ready for the user to drive QA, append a `## YYYY-MM-DD HH:MM — ready for QA` block to the working log naming what to test, then tell the user "ready for QA." You're now in QA phase. **No on-disk Status flip** — Status stays `in_progress`.
+
+### QA (in_progress, post-QA-handoff)
+
+User leads. They run the feature, report what works and what doesn't, you fix. Iterate until the user confirms the feature is clean.
+
+**Rules:**
+- User reports are ground truth. Investigate, fix, retest. Don't argue.
+- Don't reject scope creep. The QA loop is where the feature gets refined; "change this not that" is normal. Treat user direction as input.
+- **Append to the working log per round.** Each round: what was the issue, what was the fix, did retest pass. The log absorbs the back-and-forth so a `/compact` between rounds doesn't lose context.
+- `/compact` is the user's call. Recommended at QA-start (right after the "ready for QA" marker) to renew discipline-doc context, and again at QA-complete. Mid-QA `/compact` is fine when context bloats — re-read this subsection + the working log to re-orient.
+- 80/20 ladder still applies for "should I add this to scope" judgments; user has final say.
+
+**Phase exit:** user confirms the feature works. Append `## YYYY-MM-DD HH:MM — QA complete` to the working log. You're now in Code Review phase. Status will flip to `code_review` on the next plan-write (see §Code Review below).
+
+### Code Review (code_review)
+
+User has confirmed behavior. The remaining gate is independent code-quality review by a fresh Reviewer subagent. **This is the one phase with its own on-disk Status state.**
+
+**Rules:**
+- `/compact` (recommended) before the plan-write — collapses the QA-loop journey from session memory; the working log preserves the durable chronological record.
+- Plan-write Status flip `in_progress → code_review` happens **on `dev`** (see §"Plan-write discipline (Developer)"). Push.
+- Sync the feature branch / worktree with `origin/dev` via rebase locally. Don't force-push `origin/<feature>`.
+- Spawn the Reviewer subagent on the local synced state per [`templates/reviewer-brief.md`](templates/reviewer-brief.md). The Reviewer does **not** read the working log — it reads the diff + W-item file + `coding-standards.md`. Working log is Developer working memory, not part of the code-review surface.
+- Three outcomes — Ship, Resolve, Postpone — all user-mediated. Operational detail in §"Code review (sync, then spawned Reviewer subagent)."
+- On **Ship**: distill the working log into the Implementation log on the W-item file. Atomic with the merge commit. Run cleanup (worktree + branches + local runtime; see §"Cleanup at done-flip").
+- On **Resolve**: Status flips back to `in_progress`. Re-engage user QA loop. The phase regresses to QA — re-read the QA subsection above.
+- On **Postpone**: log the Postponed concerns in the Implementation log; merge proceeds as Ship.
+
+**Phase exit:** Ship or Postpone → `code_review → done`. Resolve → back to QA phase. (`done → shipped` happens later at phase exit, when all items in the phase are done and the user authorizes promotion.)
+
 ## Plan-write discipline (Developer)
 
 Every Status write follows the same discipline as Orchestrator / Integrator-QA / Strategist:
@@ -295,7 +344,7 @@ The bootstrap reconciliation is the safety net for cleanup discipline that didn'
 
 **Prod deploy-branch flip-back.** If the user pointed prod at this feature branch (or `dev`) for the user-QA loop — the escape hatch documented in [`dev-environment.md`](dev-environment.md) §"Pointing prod at a non-main branch" — confirm the deploy-branch is back at `main` before declaring the W-item closed. The Developer doesn't know the project's CI shape, so the forcing function is to **ask the user** at done-flip: "Is prod's deploy branch back at `main`?" If no, surface the flip-back as a user action (it's a CI config edit, not a git operation the Developer runs). Skipping this means prod silently keeps tracking dev/feature, and the next item that merges to `main` doesn't reach the live URL until someone notices.
 
-**Local dev runtime teardown.** If the user-QA loop ran against a local runtime the Developer brought up — Docker container, native dev server, etc. — tear it down at the `code_review → done` flip (Ship and Postpone outcomes; Resolve loops back so leave the runtime up for the re-test). Docker: `docker ps` to find the project's containers (they bind ports within `{{ports}}`), then `docker stop <id> && docker rm <id>`. Native runtimes: kill the process holding the port. The freed port within `{{ports}}` returns to the project's pool for the next item or the next session. Leaving the runtime up between items accumulates resource residue and burns a port slot — same failure-mode shape as not removing worktrees.
+**Local dev runtime teardown via slot script.** If the user-QA loop ran against a local runtime in a slot (per [ADR-019](../architecture/adr-019-dev-slots-and-deploy-stubs.md)), tear it down at the `code_review → done` flip (Ship and Postpone outcomes; Resolve loops back so leave the runtime up for the re-test): `./scripts/teardown_local.sh dev<N>`. The script runs the project-specific teardown body (`docker stop`/`rm`, process kill, etc.) and removes the slot's state file at `.local/dev_slots/dev<N>.yaml`, freeing the slot for the next claim. If the teardown script is still a stub, halt and fill it in — same forcing function as the launch stub. Leaving the runtime up between items accumulates resource residue and burns a slot — same failure-mode shape as not removing worktrees. **Never improvise `docker stop`/`rm` commands outside the teardown script.**
 
 ## Implementation log
 
@@ -325,7 +374,7 @@ Section appended to the W-item file at the `code_review → done` flip, atomic w
 - Anything intentionally deferred. Open as a separate W-item or note here for the next phase (or "none").
 ```
 
-Honest beats tidy. If a decision was reversed, log the reversal, not just the final answer. If an advisor call shifted the design, log it. With `/compact` collapsing the persistent session's journey and the Reviewer subagent never having seen it, the Implementation log is the only durable record.
+Honest beats tidy. If a decision was reversed, log the reversal, not just the final answer. If an advisor call shifted the design, log it. The Developer drafts the Implementation log at the `code_review → done` flip by reading the W-item's working log file (`w-<id>.log.md` — see [`execution-plans/README.md`](../execution-plans/README.md) §"Working log files") alongside the diff. The working log is the chronological record (durable across `/compact` because it lives on disk); the Implementation log is the curated retrospective distilled from it (durable on the W-item file forever). The Reviewer subagent never sees either — both are Developer-side artifacts.
 
 ## Claim-filing (rare path)
 

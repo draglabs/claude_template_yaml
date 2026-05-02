@@ -116,6 +116,41 @@ This is **Developer-mode-specific** in v1. `/compact` collapses the persistent s
 
 The Implementation log does NOT violate ADR-017's "static SOW" principle for the W-item file. The log is appended at done-flip and is then static for the lifetime of the project. ADR-017 was about preventing Status drift via mid-flight runtime mutations of the W-item file. A done-flip append is a different shape and does not reintroduce drift bait.
 
+#### Revision (v3.3, 2026-05-02): live working log + phase discipline
+
+Field iteration after v3.1 surfaced the **QA-loop context bloat** failure mode: the Developer's persistent session linearly accumulates the full feature-build context plus every QA round-trip's investigation, and nothing in the existing loop sheds that mid-item. The user's heuristic of `/clear`-per-W-item bounded the cost per item but burned a full bootstrap reload (~12K tokens of Layer 0+1) per item. `/compact` was the cheaper alternative but required the agent to re-establish working context on every fire — cost-prohibitive if the role doc was the only re-read surface.
+
+The fix is a durable on-disk artifact that survives `/compact`, so the persistent session can shed mid-item context aggressively without losing the journey:
+
+1. **Live working log file.** Each Developer-claimed W-item gets a sibling `w-<id>.log.md` file in the plan folder, separate from the W-item SOW. Lazy creation at the `pending → in_progress` claim. Freeform chronological — Developer appends decisions, dead ends, fixes, retest outcomes, and **phase-transition markers** (`ready for QA`, `QA complete`) at every meaningful state change. Distilled into the Implementation log on the W-item file at `code_review → done`; the log file itself persists in the plan folder and archives with the plan.
+
+   Separate file (option C in the design conversation) over single-file-with-embedded-log (option A: distill + remove) or both-on-W-item-file (option B): keeps the W-item file under its 200-line limit, preserves an honest chronological record permanently, and gives the Reviewer surface a clean exclusion (Reviewer reads diff + W-item file + `coding-standards.md`; never the working log).
+
+2. **Session-level phase discipline.** `in_progress` covers two distinct session-level phases — **Build** (pre-QA) and **QA** (post-QA-handoff). Code Review is the third phase, the only one with its own on-disk Status state (`code_review`). The split is a session-level convention; **the on-disk Status machine is unchanged** — Build → QA transition has no Status flip. `developer.md` adds a `## Phase discipline` section with three subsections (Build / QA / Code Review), each a re-read target after `/compact`. The user `/compact`s at QA-handoff and again at QA-complete to renew discipline-doc context; the agent re-reads the matching subsection plus the working log to recover phase + working state.
+
+3. **Reorient hook differentiation.** The `compact` branch of `.claude/hooks/session-reorient.sh` now tells a Developer to read its active W-item's working log file in addition to the role doc, and to ask the user which phase is current if unclear (the latest timestamped header in the log will name it). Other roles and other reorient sources are unchanged.
+
+The QA back-and-forth (change-this-not-that, scope creep, refinement) is **acknowledged as reality but not formalized** — the working log absorbs it as it happens; the discipline doc says "user leads, you investigate, log as you go," not a tidy round-trip protocol.
+
+**Why a separate file rather than embedding the log on the W-item file:**
+
+Honest records are a project value, but the W-item file's 200-line limit is structural — it gates per-dispatch context cost (Reviewer reads it, Strategist re-reads it on triage, fresh sessions re-bootstrap it). A QA cycle with 10+ rounds easily exceeds 200 lines of chronological log. Embedding the log on the W-item file would either force the limit to soften (degrades the cost model for every reader) or force log-truncation (loses honest record). Separate file decouples: the W-item file stays bounded and reader-cheap; the working log grows freely and is read only by the Developer that owns the item.
+
+**What this does NOT do:**
+
+- Does not change the on-disk Status machine. `pending → in_progress → code_review → done → shipped` is unchanged. No `qa` state.
+- Does not change Reviewer surface. Reviewer still reads diff + W-item file + `coding-standards.md`; not the working log.
+- Does not extend to Orchestrator mode. Working log is Developer-mode only — Executor subagents are stateless and per-task, so a persistent log artifact has no consumer.
+- Does not formalize the QA loop's content shape. The log is freeform; `/compact`-as-phase-transition is a usage pattern, not a Status-machine state.
+
+**Surfaces updated in this revision:**
+
+- `docs/execution-plans/README.md` — new artifact type (working log files), updated plan-folder structure diagram + naming bullet + new "## Working log files" spec section. Soft-edit to Implementation log description noting distillation source.
+- `docs/dev_framework/developer.md` — new `## Phase discipline` section with Build / QA / Code Review subsections; "log as you go" rule lands inline in §Build and §QA.
+- `.claude/hooks/session-reorient.sh` — `compact` branch updated with Developer-specific re-read target (working log + matching phase subsection + ask-user-if-unclear).
+
+The mechanism (template + role-doc split + hook update) and the rule (working-log discipline + phase discipline) ship together — doctrine compliance.
+
 ### Invocation patterns: Default and Parallel
 
 The Developer has two named invocations sharing one role doc, lifecycle, and discipline:

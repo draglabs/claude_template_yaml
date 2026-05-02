@@ -59,9 +59,15 @@ dropped. Re-orient before your next substantive action:
      depending on which role you are currently operating as.
   2. Re-read CLAUDE.md §"Locked-in decisions" and
      docs/framework_exceptions/dev_framework_exceptions.md for project deviations.
-  3. If Orchestrator: reconcile the status ledger per
+  3. If Developer: read your active W-item's working log file
+     (docs/execution-plans/<plan>/w-<id>.log.md) to recover phase + working
+     context. The latest timestamped header names the current phase
+     (Build / QA / Code Review). If unclear, ask the user. Re-read the
+     matching subsection of developer.md §"Phase discipline" — that is
+     the discipline target for this phase, not the whole role doc.
+  4. If Orchestrator: reconcile the status ledger per
      docs/dev_framework/templates/orchestrator-bootstrap.md STEP 0.
-  4. Acknowledge re-orientation in one line, then continue.
+  5. Acknowledge re-orientation in one line, then continue.
 EOF
     ;;
   clear)

@@ -1,0 +1,44 @@
+version: 1
+kind: dev_slot_registry
+purpose: committed slot definitions for developer local runtime coordination
+local_state_root: .local/dev_slots
+hostname_pattern: "<slot>.<sub>.localhost"
+notes:
+  - run scripts/setup_dev_slots.sh once to fill in ports + hostnames for this project
+  - hostnames auto-resolve via .localhost (RFC 6761) — no /etc/hosts edits needed
+  - Caddy reverse-proxies the hostname to the slot's port (configured by setup script)
+  - first launch may show a cert warning until `caddy trust` runs once
+  - per-slot live state lives in .local/dev_slots/<slot>.yaml (gitignored)
+  - canonical doctrine: docs/architecture/adr-019-dev-slots-and-deploy-stubs.md
+slots:
+  dev0:
+    role: default_developer
+    intended_use:
+      - neutral server management
+      - hot fixes
+      - coordination work
+    hostname: PLACEHOLDER
+    port: 0
+    worktree_required: false
+  dev1:
+    role: parallel_developer
+    intended_use:
+      - parallel ticket work
+      - QA launch target
+    hostname: PLACEHOLDER
+    port: 0
+    worktree_required: true
+  dev2:
+    role: parallel_developer
+    intended_use:
+      - parallel ticket work
+    hostname: PLACEHOLDER
+    port: 0
+    worktree_required: true
+  dev3:
+    role: parallel_developer
+    intended_use:
+      - parallel ticket work
+    hostname: PLACEHOLDER
+    port: 0
+    worktree_required: true

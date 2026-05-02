@@ -36,6 +36,11 @@ All file reads for this review MUST be against that path and that commit
 branch. The Executor's changes are only in the worktree until the
 Orchestrator merges.
 
+**Do not read working log files (`w-<id>.log.md` if present in the plan
+folder).** Those are Developer-mode working memory (ADR-018 Revision
+v3.3) and not part of the code-review surface. Stick to the named files
+listed under "Files changed" + the canonical references below.
+
 If this W-item is on a retry cycle (Orchestrator re-dispatched the
 Executor to address your prior concerns OR a QA fail), the worktree will
 have MORE commits than when you last saw it — the Executor adds new
@@ -90,7 +95,18 @@ orientation material, not write surface. Flag under question 6.
    Specifically check: did the Executor modify any file listed under
    "References"? Those are orientation-only — a modification is scope
    creep by definition.
-7. **Risk tier:** ship / ship-with-concerns / block.
+7. **Production-deploy doctrine (ADR-019):** did any commit in this work
+   invoke a production deploy by a path other than
+   `scripts/main_to_prod.sh`? Examples to flag: raw
+   `ssh user@host docker pull`, ad-hoc `kubectl apply`, manual
+   `pm2 restart` on prod, `docker push prod-registry/...` from a laptop.
+   If so, verdict is `block` — the doctrine violation is the issue, not
+   whether the deploy succeeded. Note: a still-stub `main_to_prod.sh`
+   (i.e., the script exits 1) means the project is CI-only and prod
+   deploys go through CI — that's the correct steady state, do NOT
+   flag it. Flag only when a commit actually ran a non-CI prod deploy
+   outside the script. See ../../architecture/adr-019-dev-slots-and-deploy-stubs.md.
+8. **Risk tier:** ship / ship-with-concerns / block.
 
 ## Return format (to the Orchestrator)
 

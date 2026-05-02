@@ -45,7 +45,7 @@ Every role also reads this file (CLAUDE.md) as Layer 0 — the always-loaded bas
 ## Two process rules (every session)
 
 1. **Docs before code.** Architectural additions get documented by the Strategist and merged before the Orchestrator dispatches implementation. Enforced at the merge boundary by the Reviewer (`block` if no matching doc) and at the phase boundary by the Strategist's alignment audit.
-2. **CI-only deploys to production.** Production changes land via `git push origin main` → CI. Never from a laptop. Never via `docker exec`. Dev environment behavior depends on mode — see [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md).
+2. **CI-only deploys to production.** Production changes land via `git push origin main` → CI. Never from a laptop. Never via `docker exec`. Dev environment behavior depends on mode — see [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md). **Direct-deploy escape hatch:** projects that have user-approved direct-to-server deploy use [`scripts/main_to_prod.sh`](scripts/main_to_prod.sh) as the canonical entry point — never improvise prod commands outside it. See [ADR-019](docs/architecture/adr-019-dev-slots-and-deploy-stubs.md). Most projects keep this script as a stub (the unimplemented `exit 1` state IS the correct steady state for CI-deployed projects).
 
 ## Presenting options
 
@@ -112,6 +112,15 @@ npm run build            # production build
 npm run typecheck        # type check (CI gate)
 npm test                 # test suite (CI gate)
 ./scripts/check-consistency.sh  # hardcode/drift check (CI gate)
+
+# Dev slots (ADR-019) — one-time setup, then launch/teardown by slot name:
+./scripts/setup_dev_slots.sh             # one-time: pick base port + write Caddyfile block
+./scripts/launch_local.sh <slot>         # bring up a local runtime in a slot (e.g. dev0)
+./scripts/teardown_local.sh <slot>       # release a slot
+
+# Production deploy:
+./scripts/main_to_prod.sh                # NAMED ESCAPE HATCH for user-approved direct-deploy
+                                         # (most projects: keep as stub; CI-only is the default)
 ```
 
 ## Stack
