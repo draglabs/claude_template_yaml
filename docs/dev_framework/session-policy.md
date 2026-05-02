@@ -154,10 +154,10 @@ Orchestrator
 
 A W-item is batch-eligible iff:
 1. The plan has `Parallel-safe: true` on the item.
-2. All its `Depends on` items are `done` or `shipped`.
+2. All W-ids in the item's `Blocked by` column on the index are `done` or `shipped`.
 3. No open Integration claim (IC-NNN) on the plan names it as a Blocked item.
 
-The Orchestrator groups up to ~3 eligible items into a batch and dispatches them concurrently. Items that fail eligibility at the moment of dispatch (e.g., a Depends-on just flipped to blocked) sit out the current batch and are reconsidered for the next one.
+The Orchestrator groups up to ~3 eligible items into a batch and dispatches them concurrently. Items that fail eligibility at the moment of dispatch (e.g., a `Blocked by` entry just flipped to blocked) sit out the current batch and are reconsidered for the next one.
 
 ### Integrator-QA retry model
 
@@ -387,7 +387,7 @@ The Orchestrator does NOT escalate when:
 
 Claude Code loses context on four paths: fresh startup, `--resume`, manual `/clear`, automatic or manual `/compact`. Two `SessionStart` hooks fire on all four — wired in `.claude/settings.json`, runs in order:
 
-1. **`.claude/hooks/sync-framework.sh`** — destructively syncs `docs/dev_framework/` and `.claude/hooks/` from the canonical `claude_template` repo, initializes `docs/framework_exceptions/` if missing, and refreshes the framework-managed block of CLAUDE.md. See §"Framework sync on context resets" below and [ADR-014](../architecture/adr-014-framework-sync-on-session-start.md).
+1. **`.claude/hooks/sync-framework.sh`** — destructively syncs `docs/dev_framework/` and `.claude/hooks/` from the canonical `claude_template_yaml` repo, initializes `docs/framework_exceptions/` if missing, and refreshes the framework-managed block of CLAUDE.md. See §"Framework sync on context resets" below and [ADR-014](../architecture/adr-014-framework-sync-on-session-start.md).
 2. **`.claude/hooks/session-reorient.sh`** — injects a role re-orientation instruction tailored to the reset `source`. The hook routes by source and tells the session which docs to re-read and — for Orchestrators — to run the ledger reconciliation before dispatching. See [ADR-012](../architecture/adr-012-auto-reorient-hook.md).
 
 Both are mechanical enforcements of rules that used to be English-only: "re-read the SOP after context loss" and "keep the framework canonical." Each one is a command, not a hope.
@@ -398,9 +398,9 @@ Hooks are canonical to the template; projects that adopt the template inherit th
 
 ## Framework sync on context resets
 
-`docs/dev_framework/*` is canonical — it is maintained in the `claude_template` source repo and copy-pasted into every adopting project. The sync hook enforces this:
+`docs/dev_framework/*` is canonical — it is maintained in the `claude_template_yaml` source repo and copy-pasted into every adopting project. The sync hook enforces this:
 
-- **Template root discovery:** `$CLAUDE_TEMPLATE_ROOT` env var → `.env` file var → `../claude_template` sibling dir, in priority order. Missing root: hook warns and skips.
+- **Template root discovery:** `.env` file `CLAUDE_TEMPLATE_ROOT=` line → `../claude_template_yaml` → `../../claude_template_yaml` → `../../../claude_template_yaml`, in priority order. Shell environment variables are intentionally not consulted. Missing root: hook warns and skips.
 - **Template-self detection:** if the current project's resolved path equals the template root's, the hook reports "no sync needed" and exits. This repo is safe from syncing onto itself.
 - **Destructive sync of `docs/dev_framework/`** via `rsync -a --delete` — any local edits are silently overwritten. Adopters who need framework changes open a PR against the template repo, not against their local copy.
 - **Destructive sync of `.claude/hooks/`** via the same pattern — hooks are part of the canonical machinery.

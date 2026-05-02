@@ -26,7 +26,7 @@ Before substantive action:
      user has not declared a role ("you are a strategist" / "you are the
      orchestrator" / "you are a designer" / "you are the developer" / "you are the parallel developer" / "you are the template developer"),
      ask. Note: "template developer" is only meaningful in the canonical
-     claude_template repo.
+     claude_template_yaml repo.
   2. After the role is confirmed, load your role's Layer 1 docs per
      docs/dev_framework/context-management.md. Premature loading wastes
      context budget.
@@ -71,7 +71,7 @@ EOF
 Before acting:
   1. If the user has not declared a role ("you are a strategist" / "you are
      the orchestrator" / "you are a designer" / "you are the developer" / "you are the parallel developer" / "you are the template developer"),
-     ask. "Template developer" is only meaningful in the canonical claude_template
+     ask. "Template developer" is only meaningful in the canonical claude_template_yaml
      repo. If the user is changing role from before, state the new role explicitly.
   2. After the role is confirmed: load your role doc
      (docs/dev_framework/{strategist,designer,session-policy,developer,template-developer}.md),

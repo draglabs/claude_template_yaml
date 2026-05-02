@@ -106,3 +106,27 @@ The adopter also needs to have the hook scripts themselves on disk. On the first
 - Manual test: `$CLAUDE_TEMPLATE_ROOT` unset, `.env` absent, `../claude_template` absent — run `/clear`, confirm the hook warns but does not error.
 - Manual test: run `/clear` in the template repo itself, confirm the hook reports "This project IS the template — no sync."
 - `session-policy.md` gains a §"Framework sync on context resets" that points at this ADR.
+
+## Revision (v1.1, 2026-05-02) — Template renamed; resolution chain narrowed
+
+**Problem.** Two changes shipped together:
+
+1. **Template renamed.** The canonical template repo is now `claude_template_yaml` (this repo). The original `claude_template` is forked away from. Every reference to the old name in framework code paths and docs would silently misroute — adopters with `../claude_template` siblings on disk would keep syncing from a defunct location.
+2. **Shell-env resolution dropped.** A stale `CLAUDE_TEMPLATE_ROOT` exported in an adopter's shell config (commonly an old dotfile pointing at `~/code/claude_template`) silently shadows everything else. Failure mode: adopter pulls framework from a long-defunct location for months without noticing. Removing the shell-env path eliminates the silent-shadow class entirely.
+
+**Decision.** Effective 2026-05-02:
+
+- Template root is `claude_template_yaml`. All references in hooks, framework docs, and ADRs use the new name.
+- Resolution chain narrows from 3 sources to 2 (with deeper sibling fallback to handle nested adopter project layouts):
+  1. `CLAUDE_TEMPLATE_ROOT=` line in the project's `.env` file.
+  2. `../claude_template_yaml`
+  3. `../../claude_template_yaml`
+  4. `../../../claude_template_yaml`
+- Shell environment variables (`$CLAUDE_TEMPLATE_ROOT` from the parent shell) are intentionally NOT consulted. Adopters configure via local `.env` or rely on the sibling-depth fallback.
+- The deeper sibling fallback (`../..`, `../../..`) replaces the prior single-depth `../claude_template` to support adopters whose projects are nested under `code/projects/<team>/<repo>` rather than directly under `code/`.
+
+**Surfaces updated:** lines 33–35 (Template root discovery), line 59 (alternative consideration about feature-branch experimentation via `$CLAUDE_TEMPLATE_ROOT`), line 88 (first-time bootstrap reference to `claude_template`), line 106 (acceptance test for unset env). Canonical specification lives in `.claude/hooks/sync-framework.sh` (the script), `CLAUDE.md` §"Framework sync on SessionStart", and `dev_framework/session-policy.md` §"Framework sync on context resets".
+
+**Migration.** The old `claude_template` repo on adopters' disks does not need to be removed — it is simply no longer found by the resolution chain. Adopters who relied on the shell-env override path must move the value into their project's `.env` file (or rename/relocate the template repo to one of the sibling-fallback paths). Adopters with no override saw no change other than the template-name update.
+
+**Why a Revision instead of a new ADR.** The mechanism (sync on SessionStart, destructive into `dev_framework/`, additive into `hooks/`, managed-block on CLAUDE.md) is unchanged. Only the input-resolution table and the template name move. New rule, same principle.

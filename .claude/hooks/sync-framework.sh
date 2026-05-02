@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # sync-framework.sh — runs on SessionStart, keeps the framework canonical.
 #
-# Resolves claude_template location, destructively syncs docs/dev_framework/
+# Resolves claude_template_yaml location, destructively syncs docs/dev_framework/
 # and .claude/hooks/ from the template, initializes docs/framework_exceptions/
 # if missing, and refreshes the managed block in CLAUDE.md. All failure modes
 # warn + continue — sync is value-add, never a session-start blocker.
@@ -18,29 +18,39 @@ PROJECT_DIR="$(cd "$PROJECT_DIR" 2>/dev/null && pwd -P)"
 
 # ---------------------------------------------------------------------------
 # 1. Resolve template root, in this order:
-#    (a) CLAUDE_TEMPLATE_ROOT from the shell environment
-#    (b) CLAUDE_TEMPLATE_ROOT= line in the project's .env
-#    (c) sibling directory ../claude_template
-# Error (exit 0 with warning) if none resolve.
+#    (a) CLAUDE_TEMPLATE_ROOT= line in the project's .env
+#    (b) sibling directory ../claude_template_yaml
+#    (c) sibling directory ../../claude_template_yaml
+#    (d) sibling directory ../../../claude_template_yaml
+#
+# Shell environment variables are intentionally NOT consulted — adopters
+# configure via local .env or rely on the sibling-depth fallback. Removing
+# the shell-env path eliminates surprise when an adopter's environment has
+# a stale CLAUDE_TEMPLATE_ROOT export pointing at a long-defunct location.
 # ---------------------------------------------------------------------------
 
-TEMPLATE_ROOT="${CLAUDE_TEMPLATE_ROOT:-}"
+TEMPLATE_ROOT=""
 
-if [[ -z "$TEMPLATE_ROOT" && -f "$PROJECT_DIR/.env" ]]; then
+if [[ -f "$PROJECT_DIR/.env" ]]; then
   # Pull CLAUDE_TEMPLATE_ROOT= line from .env if present. Strip quotes.
   TEMPLATE_ROOT="$(grep -E '^CLAUDE_TEMPLATE_ROOT=' "$PROJECT_DIR/.env" 2>/dev/null \
                     | head -1 | cut -d= -f2- | sed 's/^["'"'"']//; s/["'"'"']$//')"
 fi
 
 if [[ -z "$TEMPLATE_ROOT" ]]; then
-  CANDIDATE="$PROJECT_DIR/../claude_template"
-  if [[ -d "$CANDIDATE" ]]; then
-    TEMPLATE_ROOT="$CANDIDATE"
-  fi
+  PARENT="$PROJECT_DIR"
+  for depth in 1 2 3; do
+    PARENT="$(dirname "$PARENT")"
+    CANDIDATE="$PARENT/claude_template_yaml"
+    if [[ -d "$CANDIDATE" ]]; then
+      TEMPLATE_ROOT="$CANDIDATE"
+      break
+    fi
+  done
 fi
 
 if [[ -z "$TEMPLATE_ROOT" || ! -d "$TEMPLATE_ROOT" ]]; then
-  echo "[sync-framework] WARN: claude_template not found. Tried: \$CLAUDE_TEMPLATE_ROOT env, .env, ../claude_template. Skipping sync."
+  echo "[sync-framework] WARN: claude_template_yaml not found. Tried: .env CLAUDE_TEMPLATE_ROOT, ../claude_template_yaml, ../../claude_template_yaml, ../../../claude_template_yaml. Skipping sync."
   exit 0
 fi
 

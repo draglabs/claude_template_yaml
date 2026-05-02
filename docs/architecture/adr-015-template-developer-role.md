@@ -6,7 +6,7 @@
 
 ## Context
 
-The framework had three persistent roles — Strategist, Designer, Orchestrator — designed for work inside a product project. When operating on the `claude_template` repo itself (framework maintenance), the Strategist role was overloaded to also act as framework maintainer. The overloading was formalized via a carve-out in `docs/framework_exceptions/dev_framework_exceptions.md` (EX-001) that granted the Strategist write access to `docs/dev_framework/*` when — and only when — the current repo was the template itself.
+The framework had three persistent roles — Strategist, Designer, Orchestrator — designed for work inside a product project. When operating on the `claude_template_yaml` repo itself (framework maintenance), the Strategist role was overloaded to also act as framework maintainer. The overloading was formalized via a carve-out in `docs/framework_exceptions/dev_framework_exceptions.md` (EX-001) that granted the Strategist write access to `docs/dev_framework/*` when — and only when — the current repo was the template itself.
 
 Two problems with the overload:
 
@@ -15,7 +15,7 @@ Two problems with the overload:
 
 ## Decision
 
-Split framework maintenance out into a first-class role: **Template Developer**, documented in `docs/dev_framework/template-developer.md`. Only meaningful when operating in the canonical `claude_template` repo. In adopter repos, framework changes are made by opening a PR against the template, not by invoking this role.
+Split framework maintenance out into a first-class role: **Template Developer**, documented in `docs/dev_framework/template-developer.md`. Only meaningful when operating in the canonical `claude_template_yaml` repo. In adopter repos, framework changes are made by opening a PR against the template, not by invoking this role.
 
 Surface changes landed in the same PR as this ADR:
 
@@ -37,7 +37,7 @@ Both English rule (role doc, CLAUDE.md row) and mechanical enforcement (hook upd
 
 - No more role overloading. "Strategist" and "Template Developer" are distinct session identities with distinct Layer 1 contexts. A user can say "you are the Strategist" in a product repo and "you are the Template Developer" in the template repo without the session's internal behavior flipping based on which directory it happens to be in.
 - Bootstrap coherence. `session-reorient.sh` now lists the role when prompting for role declaration on `/clear` and `/startup`. A user in the template repo is pointed at the right role from the hook itself, not by convention.
-- Adopter clarity. The role doc opens with an explicit "only meaningful in the canonical `claude_template` repo" preamble, so an adopter who sees `template-developer.md` in their repo (via sync) understands it is inert for them.
+- Adopter clarity. The role doc opens with an explicit "only meaningful in the canonical `claude_template_yaml` repo" preamble, so an adopter who sees `template-developer.md` in their repo (via sync) understands it is inert for them.
 - EX-001 no longer exists as an active exception. The exceptions file returns to its intended shape: zero active entries, which is the healthy state.
 
 **What this costs:**
@@ -60,7 +60,7 @@ Both English rule (role doc, CLAUDE.md row) and mechanical enforcement (hook upd
 
 ## Acceptance criteria for the shipping PR
 
-- `docs/dev_framework/template-developer.md` exists and opens with the "only meaningful in the canonical `claude_template` repo" preamble.
+- `docs/dev_framework/template-developer.md` exists and opens with the "only meaningful in the canonical `claude_template_yaml` repo" preamble.
 - `CLAUDE.md` (within the FRAMEWORK MANAGED block) has the Template Developer row in §Roles.
 - `session-reorient.sh` `startup` and `clear` branches name `template-developer` in the role list and path glob.
 - `strategist.md` §"Does not modify framework docs" no longer references the EX-001 carve-out; it points at Template Developer instead.

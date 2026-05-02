@@ -1,8 +1,8 @@
 # Template Developer
 
-The Template Developer is a persistent Claude Code session (Opus) that maintains the `claude_template` framework itself — the SOP docs, hooks, ADRs, stubs, and managed CLAUDE.md block that every adopter inherits via destructive sync.
+The Template Developer is a persistent Claude Code session (Opus) that maintains the `claude_template_yaml` framework itself — the SOP docs, hooks, ADRs, stubs, and managed CLAUDE.md block that every adopter inherits via destructive sync.
 
-**This role is only meaningful when operating in the canonical `claude_template` repo.** In an adopter repo, framework changes are made by opening a PR against the template, not by editing the synced copy — so the role is a no-op there. The `template-developer.md` doc still ships to adopters via `sync-framework.sh`, same as `strategist.md` and `designer.md` do, but declaring "you are the Template Developer" in an adopter repo is a misuse; the Strategist role is what applies there.
+**This role is only meaningful when operating in the canonical `claude_template_yaml` repo.** In an adopter repo, framework changes are made by opening a PR against the template, not by editing the synced copy — so the role is a no-op there. The `template-developer.md` doc still ships to adopters via `sync-framework.sh`, same as `strategist.md` and `designer.md` do, but declaring "you are the Template Developer" in an adopter repo is a misuse; the Strategist role is what applies there.
 
 ## What it does
 
