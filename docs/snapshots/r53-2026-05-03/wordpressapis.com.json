@@ -1,0 +1,93 @@
+{
+    "ResourceRecordSets": [
+        {
+            "Name": "wordpressapis.com.",
+            "Type": "MX",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "10 my.draglabs.com."
+                }
+            ]
+        },
+        {
+            "Name": "wordpressapis.com.",
+            "Type": "NS",
+            "TTL": 172800,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-794.awsdns-35.net."
+                },
+                {
+                    "Value": "ns-1068.awsdns-05.org."
+                },
+                {
+                    "Value": "ns-1963.awsdns-53.co.uk."
+                },
+                {
+                    "Value": "ns-146.awsdns-18.com."
+                }
+            ]
+        },
+        {
+            "Name": "wordpressapis.com.",
+            "Type": "SOA",
+            "TTL": 900,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-794.awsdns-35.net. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"
+                }
+            ]
+        },
+        {
+            "Name": "wordpressapis.com.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=spf1 a:my.mail.draglabs.com a:my.draglabs.com ~all\""
+                }
+            ]
+        },
+        {
+            "Name": "_dmarc.wordpressapis.com.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=DMARC1; p=reject; pct=100\""
+                }
+            ]
+        },
+        {
+            "Name": "cloudron-3db320._domainkey.wordpressapis.com.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=DKIM1; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDU/9jcRDq693iEUOwW4ntrCB5PfsAVl2CyndYTojonBqeE2IYVZ2+0e89Z29ltUwSFa3mA6qnXrJgvTAeXrTY9c45oNb96gK/8JRr5HobAdw63P/fqAGH3ZZZJY5fl2A6UR4bEDcKoZDt/944EDZzjch0ArB3WbHhIn/oh8ZNQhQIDAQAB\""
+                }
+            ]
+        },
+        {
+            "Name": "forum.wordpressapis.com.",
+            "Type": "A",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "209.126.80.182"
+                }
+            ]
+        },
+        {
+            "Name": "help.wordpressapis.com.",
+            "Type": "A",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "209.126.80.182"
+                }
+            ]
+        }
+    ]
+}

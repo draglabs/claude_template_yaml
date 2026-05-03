@@ -1,0 +1,98 @@
+{
+    "ResourceRecordSets": [
+        {
+            "Name": "tantratimer.com.",
+            "Type": "MX",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "1 ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "5 ALT1.ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "5 ALT2.ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "10 ALT3.ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "10 ALT4.ASPMX.L.GOOGLE.COM"
+                }
+            ]
+        },
+        {
+            "Name": "tantratimer.com.",
+            "Type": "NS",
+            "TTL": 172800,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-108.awsdns-13.com."
+                },
+                {
+                    "Value": "ns-1845.awsdns-38.co.uk."
+                },
+                {
+                    "Value": "ns-790.awsdns-34.net."
+                },
+                {
+                    "Value": "ns-1500.awsdns-59.org."
+                }
+            ]
+        },
+        {
+            "Name": "tantratimer.com.",
+            "Type": "SOA",
+            "TTL": 900,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-108.awsdns-13.com. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"
+                }
+            ]
+        },
+        {
+            "Name": "tantratimer.com.",
+            "Type": "TXT",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=spf1 include:_spf.google.com include:_spf.firebasemail.com ~all\""
+                },
+                {
+                    "Value": "\"google-site-verification=Wl1uJc6KvHyEMQfbJuTzrYFZiS2oBSV_GyAniJjBrO8\""
+                }
+            ]
+        },
+        {
+            "Name": "firebase1._domainkey.tantratimer.com.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "mail-tantratimer-com.dkim1._domainkey.firebasemail.com."
+                }
+            ]
+        },
+        {
+            "Name": "firebase2._domainkey.tantratimer.com.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "mail-tantratimer-com.dkim2._domainkey.firebasemail.com."
+                }
+            ]
+        },
+        {
+            "Name": "admin.tantratimer.com.",
+            "Type": "A",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "199.36.158.100"
+                }
+            ]
+        }
+    ]
+}

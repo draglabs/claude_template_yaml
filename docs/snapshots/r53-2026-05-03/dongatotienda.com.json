@@ -1,0 +1,56 @@
+{
+    "ResourceRecordSets": [
+        {
+            "Name": "dongatotienda.com.",
+            "Type": "A",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "99.83.190.102"
+                },
+                {
+                    "Value": "75.2.70.75"
+                }
+            ]
+        },
+        {
+            "Name": "dongatotienda.com.",
+            "Type": "NS",
+            "TTL": 172800,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-1161.awsdns-17.org."
+                },
+                {
+                    "Value": "ns-524.awsdns-01.net."
+                },
+                {
+                    "Value": "ns-1680.awsdns-18.co.uk."
+                },
+                {
+                    "Value": "ns-42.awsdns-05.com."
+                }
+            ]
+        },
+        {
+            "Name": "dongatotienda.com.",
+            "Type": "SOA",
+            "TTL": 900,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-1161.awsdns-17.org. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"
+                }
+            ]
+        },
+        {
+            "Name": "www.dongatotienda.com.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "proxy-ssl.webflow.com"
+                }
+            ]
+        }
+    ]
+}

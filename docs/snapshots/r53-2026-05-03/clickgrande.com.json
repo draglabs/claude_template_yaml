@@ -1,0 +1,175 @@
+{
+    "ResourceRecordSets": [
+        {
+            "Name": "clickgrande.com.",
+            "Type": "A",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "89.40.10.19"
+                }
+            ]
+        },
+        {
+            "Name": "clickgrande.com.",
+            "Type": "MX",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "1 ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "5 ALT1.ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "5 ALT2.ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "10 ALT3.ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "10 ALT4.ASPMX.L.GOOGLE.COM"
+                }
+            ]
+        },
+        {
+            "Name": "clickgrande.com.",
+            "Type": "NS",
+            "TTL": 172800,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-1340.awsdns-39.org."
+                },
+                {
+                    "Value": "ns-1925.awsdns-48.co.uk."
+                },
+                {
+                    "Value": "ns-277.awsdns-34.com."
+                },
+                {
+                    "Value": "ns-861.awsdns-43.net."
+                }
+            ]
+        },
+        {
+            "Name": "clickgrande.com.",
+            "Type": "SOA",
+            "TTL": 900,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-1340.awsdns-39.org. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"
+                }
+            ]
+        },
+        {
+            "Name": "clickgrande.com.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=spf1 a:my.clickgrande.com ~all\""
+                }
+            ]
+        },
+        {
+            "Name": "\\100.clickgrande.com.",
+            "Type": "TXT",
+            "TTL": 86400,
+            "ResourceRecords": [
+                {
+                    "Value": "\"google-site-verification=G6Zz3S5hkUg4zzysI7I9Ks_aJLnB5lKalG_k6QV3J6Y\""
+                }
+            ]
+        },
+        {
+            "Name": "_dmarc.clickgrande.com.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=DMARC1; p=reject; pct=100\""
+                }
+            ]
+        },
+        {
+            "Name": "cloudron._domainkey.clickgrande.com.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=DKIM1; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDVGb+U+QfRyaSWw7yLsqIvtSWvNtHaaLHFp9ZNZw9D6Xgk0EP2cuHgcLj0xod7YzaZRor4O2yze680Cdi1oypKf5JnWlkxBwiodc8USbYPmuAi3pV0ALpmOyRq9Gd1DIeMrDQ0FE2ZUe3T1Jtlzxzv3NsfqdvPjd3zHFxgSh6rJQIDAQAB\""
+                }
+            ]
+        },
+        {
+            "Name": "cal2.clickgrande.com.",
+            "Type": "A",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "89.40.10.19"
+                }
+            ]
+        },
+        {
+            "Name": "calendar.clickgrande.com.",
+            "Type": "A",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "89.40.10.19"
+                }
+            ]
+        },
+        {
+            "Name": "k5hivsle5m2j.clickgrande.com.",
+            "Type": "CNAME",
+            "TTL": 3600,
+            "ResourceRecords": [
+                {
+                    "Value": "gv-witso3gmo3ku53.dv.googlehosted.com"
+                }
+            ]
+        },
+        {
+            "Name": "my.clickgrande.com.",
+            "Type": "A",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "89.40.10.19"
+                }
+            ]
+        },
+        {
+            "Name": "my.clickgrande.com.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=spf1 a:my.my.clickgrande.com ~all\""
+                }
+            ]
+        },
+        {
+            "Name": "cloudron._domainkey.my.clickgrande.com.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=DKIM1; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDTAsnosx8go+H3AMS4JOKFlSomEYljg3pPZgJgJkC0mB7YlZLAMmb5rkJTDY1wPVAkHZd0sk+9VuWMeexdawVMGkcIbDt8Rp3Ft0hMAFJ5F4x8PQd+yWSkrIut0P5IcQIKlDbtTz9gGeyZraEGsHAN/GjDA542zIfQyyEaAFvlSwIDAQAB\""
+                }
+            ]
+        },
+        {
+            "Name": "n8n.clickgrande.com.",
+            "Type": "A",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "89.40.10.19"
+                }
+            ]
+        }
+    ]
+}

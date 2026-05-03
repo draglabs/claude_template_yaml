@@ -1,0 +1,135 @@
+{
+    "ResourceRecordSets": [
+        {
+            "Name": "conectatec.co.",
+            "Type": "A",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "154.53.46.41"
+                }
+            ]
+        },
+        {
+            "Name": "conectatec.co.",
+            "Type": "MX",
+            "TTL": 3600,
+            "ResourceRecords": [
+                {
+                    "Value": "1 ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "5 ALT1.ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "5 ALT2.ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "10 ALT3.ASPMX.L.GOOGLE.COM"
+                },
+                {
+                    "Value": "10 ALT4.ASPMX.L.GOOGLE.COM"
+                }
+            ]
+        },
+        {
+            "Name": "conectatec.co.",
+            "Type": "NS",
+            "TTL": 172800,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-578.awsdns-08.net."
+                },
+                {
+                    "Value": "ns-1136.awsdns-14.org."
+                },
+                {
+                    "Value": "ns-1929.awsdns-49.co.uk."
+                },
+                {
+                    "Value": "ns-260.awsdns-32.com."
+                }
+            ]
+        },
+        {
+            "Name": "conectatec.co.",
+            "Type": "SOA",
+            "TTL": 900,
+            "ResourceRecords": [
+                {
+                    "Value": "ns-578.awsdns-08.net. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"
+                }
+            ]
+        },
+        {
+            "Name": "conectatec.co.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=spf1 a:my.mail.draglabs.com a:my.draglabs.com include:_spf.google.com ~all\""
+                }
+            ]
+        },
+        {
+            "Name": "\\100.conectatec.co.",
+            "Type": "TXT",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "\"google-site-verification=9ZTB92oZUpPPRnd9Bz6jSVVCw84y9067W25pAwKm04A\""
+                }
+            ]
+        },
+        {
+            "Name": "_dmarc.conectatec.co.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=DMARC1; p=none; pct=100\""
+                }
+            ]
+        },
+        {
+            "Name": "cloudron-3db320._domainkey.conectatec.co.",
+            "Type": "TXT",
+            "TTL": 1,
+            "ResourceRecords": [
+                {
+                    "Value": "\"v=DKIM1; t=s; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQDU/8oFK2y0jlK1rNBnPj8RgbqmdUygL9yB0eUo6Ht2gQwNewG8Qx3IY7azOc14RxsLxFAW+u5wX98GBpVbZcj1nB47GU69wy2z6to4zru+T4HoQSXq6C7WynRmZzBImONDHyy6mYOfQwWiRymY6ieSmjTpCBHjm8ur2osw5mMtJQIDAQAB\""
+                }
+            ]
+        },
+        {
+            "Name": "arevecgvh5gq.conectatec.co.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "gv-qicitlreihba3a.dv.googlehosted.com"
+                }
+            ]
+        },
+        {
+            "Name": "my.conectatec.co.",
+            "Type": "A",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "154.53.46.41"
+                }
+            ]
+        },
+        {
+            "Name": "www.conectatec.co.",
+            "Type": "CNAME",
+            "TTL": 300,
+            "ResourceRecords": [
+                {
+                    "Value": "proxy-ssl.webflow.com"
+                }
+            ]
+        }
+    ]
+}
