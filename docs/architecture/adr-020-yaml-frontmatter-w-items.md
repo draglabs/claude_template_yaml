@@ -71,6 +71,7 @@ The "Execution notes" section header retires — every field that lived under it
 | `parallel-safe-considered` | list of strings | Required when `parallel-safe: true`; omit otherwise | Names the shared surfaces the Strategist evaluated. |
 | `touches` | list of strings | Yes | File paths the item is permitted to modify. Reviewer scope check reads from here. |
 | `references` | list of objects | Optional | Each entry: `path` (required), `lines` (optional, e.g. `"120-280"`), `purpose` (optional, short string). Read-only orientation material; modifying a References file is scope creep. |
+| `target-repo` | string | Optional | Multi-repo split layout only. Names the code subdirectory for this W-item. Defaults to `DEFAULT_CODE_SUBDIR` from `$PROJECT_DIR/.env` when unset. Added by [ADR-021](adr-021-split-layout.md); `check-touches.sh` ignores it (orthogonal to the touches scope check). |
 
 Fields the W-item file does NOT carry (and the reasons):
 

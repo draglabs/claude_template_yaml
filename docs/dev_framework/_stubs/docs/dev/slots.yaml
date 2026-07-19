@@ -3,13 +3,25 @@ kind: dev_slot_registry
 purpose: committed slot definitions for developer local runtime coordination
 local_state_root: .local/dev_slots
 hostname_pattern: "<slot>.<sub>.localhost"
+# http_surface: does this project expose HTTP routes that need Caddy fronting?
+#   true  → setup_dev_slots.sh generates a Caddyfile block per slot;
+#           the Reviewer's QA-target MED rule applies.
+#   false → CLI tool / library / headless project. No Caddy block generated;
+#           the QA-target rule no-ops.
+# Set by setup_dev_slots.sh based on the Strategist's first-contact interview
+# answer (per strategist.md §"First-contact interview"). PLACEHOLDER until then.
+http_surface: PLACEHOLDER
 notes:
   - run scripts/setup_dev_slots.sh once to fill in ports + hostnames for this project
+  - the Strategist must confirm {{sub}} and {{ports}} in CLAUDE.md first — setup will halt otherwise
   - hostnames auto-resolve via .localhost (RFC 6761) — no /etc/hosts edits needed
-  - Caddy reverse-proxies the hostname to the slot's port (configured by setup script)
+  - port = HTTP/Caddy-routed port (the canonical thing a slot represents, when http_surface is true)
+  - Caddy reverse-proxies the slot hostname to the slot's port (configured by setup script)
+  - extras = optional map of project-specific secondary ports (DB, cache, queue, etc.)
+  - the launch_local.sh project body reads extras directly from this file as needed
   - first launch may show a cert warning until `caddy trust` runs once
   - per-slot live state lives in .local/dev_slots/<slot>.yaml (gitignored)
-  - canonical doctrine: docs/architecture/adr-019-dev-slots-and-deploy-stubs.md
+  - canonical doctrine: docs/architecture/adr-019-dev-slots-and-deploy-stubs.md (Revision v1.1)
 slots:
   dev0:
     role: default_developer
@@ -18,7 +30,8 @@ slots:
       - hot fixes
       - coordination work
     hostname: PLACEHOLDER
-    port: 0
+    port: 0                # HTTP/Caddy-routed — set by setup_dev_slots.sh
+    # extras: {}           # optional; e.g. { db: 5440, redis: 6379 } — project-managed
     worktree_required: false
   dev1:
     role: parallel_developer
@@ -26,19 +39,22 @@ slots:
       - parallel ticket work
       - QA launch target
     hostname: PLACEHOLDER
-    port: 0
+    port: 0                # HTTP/Caddy-routed
+    # extras: {}           # optional; e.g. { db: 5441 }
     worktree_required: true
   dev2:
     role: parallel_developer
     intended_use:
       - parallel ticket work
     hostname: PLACEHOLDER
-    port: 0
+    port: 0                # HTTP/Caddy-routed
+    # extras: {}
     worktree_required: true
   dev3:
     role: parallel_developer
     intended_use:
       - parallel ticket work
     hostname: PLACEHOLDER
-    port: 0
+    port: 0                # HTTP/Caddy-routed
+    # extras: {}
     worktree_required: true

@@ -2,6 +2,64 @@
 
 How to keep the doc surface manageable as the project evolves. Every doc added to the "required reading" list costs context window budget for every session. This doc defines the rules for keeping that cost under control.
 
+## Project layout
+
+The framework supports two directory structures. Understanding which one your project uses determines what `$CODE_ROOT` means in every role doc and brief. See [ADR-021](../architecture/adr-021-split-layout.md) for the decision record.
+
+### Split layout (canonical)
+
+Claude Code is invoked from a **parent directory** (`$PROJECT_DIR`) that holds only tracking material. The git repo lives as a subdirectory:
+
+```
+$PROJECT_DIR/           ← invoke claude from here
+  CLAUDE.md
+  .claude/
+  docs/
+  .env                  ← contains DEFAULT_CODE_SUBDIR + CLAUDE_TEMPLATE_ROOT
+  <repo-slug>/          ← git root; name = GitHub repo slug
+    src/
+    .git/
+```
+
+`$CODE_ROOT = $PROJECT_DIR/$CODE_SUBDIR`
+
+For **multi-repo projects** (N code repos under one parent), W-item files set an optional `target-repo: <subdir>` field in their YAML frontmatter (per [ADR-020](../architecture/adr-020-yaml-frontmatter-w-items.md)). `$CODE_ROOT = $PROJECT_DIR/$TARGET_REPO`, defaulting to `$PROJECT_DIR/$DEFAULT_CODE_SUBDIR` when `target-repo` is unset.
+
+### Flat layout (legacy)
+
+Project dir == git root. `$CODE_ROOT == $PROJECT_DIR`. The sync hook emits a migration NOTICE on every session start. See [`migration-guide-split-layout.md`](migration-guide-split-layout.md) for steps.
+
+### `$PROJECT_DIR` git tracking is optional
+
+Under split layout, the parent directory is **not required to be a git repo**. Two sanctioned modes ([ADR-021](../architecture/adr-021-split-layout.md)):
+
+- **Untracked parent (default):** plain files for CLAUDE.md / docs / .claude. Plan-write visibility is via shared filesystem only — concurrent sessions see plan.md edits immediately, but the push-then-fail collision guard is unavailable. Sufficient for solo or single-machine multi-session work.
+- **Tracked parent (optional):** `$PROJECT_DIR` is its own git repo with its own remote. Plan edits commit + push there. Full PLAN-WRITE DISCIPLINE concurrent-claim safety + durable plan history; right for team work or multi-machine setups.
+
+Code-side git operations (`git push origin dev`, `git push origin main`) ALWAYS happen in `$CODE_ROOT` and are independent of whether the parent is tracked.
+
+### How roles use $CODE_ROOT
+
+| Role | Working tree | Notes |
+|---|---|---|
+| Strategist | `$PROJECT_DIR` | Reads `docs/`; never reads `$CODE_ROOT/src/` |
+| Orchestrator | `$PROJECT_DIR` | Reads plan; worktrees created inside `$CODE_ROOT` |
+| Developer (Default) | `$CODE_ROOT` | Coding happens here; plan lives at `$PROJECT_DIR/docs/` |
+| Developer (Parallel) | `/tmp/worktrees/<project>/<branch>` | `<project>` = `basename $CODE_ROOT` |
+| Executor | `/tmp/worktrees/<project>/<branch>` | Same slug convention |
+| Template Developer | `$PROJECT_DIR` (template only) | Template has no `$CODE_ROOT` |
+
+Git commands run from `$CODE_ROOT` (or a worktree rooted there). Plan and doc writes run from `$PROJECT_DIR`.
+
+### .env variables
+
+```bash
+DEFAULT_CODE_SUBDIR=my-repo-slug    # primary code repo (required for split layout)
+CLAUDE_TEMPLATE_ROOT=/path/to/...   # framework sync source (optional; sibling fallback exists)
+```
+
+---
+
 ## The problem
 
 Agent sessions have finite context windows. Every doc loaded at session start competes with the code the session needs to reason about. As a project grows, the "required reading" grows with it — and eventually sessions start with so much context that they can't hold the actual work in memory.

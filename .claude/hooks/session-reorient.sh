@@ -97,3 +97,18 @@ if you are unsure which role you are operating as.
 EOF
     ;;
 esac
+
+# Filesystem scope boundary — emitted for EVERY session-start source.
+# Counters the newer-model instinct to fan out across the surrounding code
+# directory on the first action. See CLAUDE.md §"Project layout".
+cat <<'EOF'
+
+[session-reorient] Filesystem scope — stay inside this project.
+  - Confine your own exploration to the project dir (PWD / $PROJECT_DIR) and,
+    under split layout, its code repo ($CODE_ROOT = $PROJECT_DIR/$CODE_SUBDIR).
+  - Do NOT range into sibling projects, ancestor dirs, or unrelated trees in
+    the surrounding code directory on your own initiative.
+  - Crawling up the filetree or reading outside directories is opt-in — do it
+    only when the user explicitly asks. (Harness CLAUDE.md auto-discovery is a
+    separate mechanism and is unaffected; this governs your own actions.)
+EOF

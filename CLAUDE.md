@@ -73,6 +73,18 @@ Feature branches merge to **`dev`**, dev promotes to **`main`** at phase boundar
 
 Code-level rules (TDD, no hardcoded lifecycle values, fail loudly) live in [`docs/dev_framework/coding-standards.md`](docs/dev_framework/coding-standards.md) and are enforced by the Executor (writing) and Reviewer (checking) subagent briefs. The Orchestrator and Strategist do NOT load that doc — they delegate enforcement to the subagent layer.
 
+## Project layout
+
+**Canonical layout: split** ([ADR-021](docs/architecture/adr-021-split-layout.md)). Claude Code is invoked from a parent directory (`$PROJECT_DIR`) that holds tracking material (`CLAUDE.md`, `docs/`, `.claude/`, `.mcp.json`). The git repo lives at `$PROJECT_DIR/$CODE_SUBDIR`. `$CODE_ROOT = $PROJECT_DIR/$CODE_SUBDIR`.
+
+Set `DEFAULT_CODE_SUBDIR=<repo-slug>` in `$PROJECT_DIR/.env`. For multi-repo projects, W-item files set `target-repo: <subdir>` in their YAML frontmatter (per [ADR-020](docs/architecture/adr-020-yaml-frontmatter-w-items.md)) to override the default.
+
+**`$PROJECT_DIR` git tracking is optional.** Two sanctioned modes ([ADR-021](docs/architecture/adr-021-split-layout.md) §"`$PROJECT_DIR` git tracking: optional"): *untracked parent* (default, simpler — plan-write visibility via shared filesystem only) or *tracked parent* (optional — `$PROJECT_DIR` is its own git repo for full PLAN-WRITE DISCIPLINE concurrent-claim safety + durable plan history). Code-side `git push origin dev/main` always operates on `$CODE_ROOT`, independent of which parent mode.
+
+**Exploration scope — stay inside the project.** Confine your own file exploration to `$PROJECT_DIR` and `$CODE_ROOT` (its code repo). Do not range into sibling projects, ancestor directories, or other trees in the surrounding code directory on your own initiative — crawling up the filetree or reading outside directories is opt-in, done only when the user explicitly asks for it. This governs *your* exploration actions; the harness's automatic `CLAUDE.md` ancestor-discovery is a separate mechanism and is unaffected.
+
+Flat layout (project dir == git root) is legacy. Session-start sync emits a migration NOTICE if detected. See [`docs/dev_framework/migration-guide-split-layout.md`](docs/dev_framework/migration-guide-split-layout.md).
+
 ## Framework sync on SessionStart
 
 On every session start (fresh, resume, `/clear`, `/compact`), two hooks run in order:
@@ -80,7 +92,7 @@ On every session start (fresh, resume, `/clear`, `/compact`), two hooks run in o
 1. `.claude/hooks/sync-framework.sh` — destructively syncs `docs/dev_framework/` and `.claude/hooks/` from the canonical `claude_template_yaml` repo, initializes `docs/framework_exceptions/` if missing, and refreshes this managed block. Adopters are expected to make changes ONLY in `docs/framework_exceptions/*`, never in `docs/dev_framework/*`. See [ADR-014](docs/architecture/adr-014-framework-sync-on-session-start.md).
 2. `.claude/hooks/session-reorient.sh` — injects a role re-orientation reminder tailored to the `source` of the reset. See [ADR-012](docs/architecture/adr-012-auto-reorient-hook.md).
 
-The template root is resolved via `.env` file `CLAUDE_TEMPLATE_ROOT=` line → `../claude_template_yaml` → `../../claude_template_yaml` → `../../../claude_template_yaml`, in that order. Shell environment variables are intentionally not consulted (a stale export pointing at a defunct location would silently misroute the sync). If none resolve, sync is skipped with a warning.
+The template root is resolved via `$PROJECT_DIR/.env` `CLAUDE_TEMPLATE_ROOT=` line → immediate-subdir `.env` files (split-layout adopters whose `.env` lives in the code repo) → `../claude_template_yaml` → `../../claude_template_yaml` → `../../../claude_template_yaml`, in that order. Shell environment variables are intentionally not consulted (a stale export pointing at a defunct location would silently misroute the sync). If none resolve, sync is skipped with a warning.
 
 ## MCP (.mcp.json)
 
@@ -113,12 +125,15 @@ npm run typecheck        # type check (CI gate)
 npm test                 # test suite (CI gate)
 ./scripts/check-consistency.sh  # hardcode/drift check (CI gate)
 
-# Dev slots (ADR-019) — one-time setup, then launch/teardown by slot name:
+# Dev slots (ADR-019) — one-time setup, then launch/teardown by slot name.
+# Run these from $PROJECT_DIR (parent), not from $CODE_ROOT — scripts live at
+# the parent under split layout per ADR-021 §"Script placement doctrine" and use
+# CWD-relative paths internally.
 ./scripts/setup_dev_slots.sh             # one-time: pick base port + write Caddyfile block
 ./scripts/launch_local.sh <slot>         # bring up a local runtime in a slot (e.g. dev0)
 ./scripts/teardown_local.sh <slot>       # release a slot
 
-# Production deploy:
+# Production deploy (also from $PROJECT_DIR):
 ./scripts/main_to_prod.sh                # NAMED ESCAPE HATCH for user-approved direct-deploy
                                          # (most projects: keep as stub; CI-only is the default)
 ```
