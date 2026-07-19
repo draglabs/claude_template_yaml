@@ -20,7 +20,7 @@ These are project-scoped and expected by every session on this repo.
 **Who uses it:**
 - **Strategist (primary):** `list_repos`, `query`, `context`, `impact`, `detect_changes`, `cypher` for factual code questions without loading `src/`. See [`strategist.md`](strategist.md) §"Staying code-aware without loading code."
 - **Orchestrator (occasional):** `impact` before dispatching a W-item to sanity-check that the plan's "Touches" list actually matches the blast radius. Lightweight — one call, short answer, no source loaded.
-- **Developer (mid-coding):** `context` on a symbol before modifying; `impact` before committing to confirm blast radius. Replaces some advisor calls in the 80/20 ladder for code-cross-cutting questions.
+- **Developer (mid-coding):** `context` on a symbol before modifying; `impact` before committing to confirm blast radius. Replaces some consultant calls in the 80/20 ladder for code-cross-cutting questions.
 - **Executor (authoring aid):** `context` on a symbol you're about to modify; `impact` before committing to confirm you understand what your change touches.
 - **Reviewer (audit):** `impact` to check whether the diff touched things outside the brief's scope — stronger signal than the Executor's self-reported "Scope creep" field.
 

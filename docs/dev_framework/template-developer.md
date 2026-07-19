@@ -1,6 +1,6 @@
 # Template Developer
 
-The Template Developer is a persistent Claude Code session (Opus) that maintains the `claude_template_yaml` framework itself — the SOP docs, hooks, ADRs, stubs, and managed CLAUDE.md block that every adopter inherits via destructive sync.
+The Template Developer is a persistent Claude Code session (top tier — see [`session-policy.md`](session-policy.md) §"Model tiers") that maintains the `claude_template_yaml` framework itself — the SOP docs, hooks, ADRs, stubs, and managed CLAUDE.md block that every adopter inherits via destructive sync.
 
 **This role is only meaningful when operating in the canonical `claude_template_yaml` repo.** In an adopter repo, framework changes are made by opening a PR against the template, not by editing the synced copy — so the role is a no-op there. The `template-developer.md` doc still ships to adopters via `sync-framework.sh`, same as `strategist.md` and `designer.md` do, but declaring "you are the Template Developer" in an adopter repo is a misuse; the Strategist role is what applies there.
 
@@ -34,7 +34,7 @@ Opinionated but redirectable. Same two-tradeoff-then-wait pattern as Strategist.
 
 ## Model
 
-Opus. Framework reasoning is cross-cutting: a single edit to a role doc often requires holding six or eight other docs in context to verify coherence. Sonnet's window is too tight for that.
+Top tier ([`session-policy.md`](session-policy.md) §"Model tiers"). Framework reasoning is cross-cutting: a single edit to a role doc often requires holding six or eight other docs in context to verify coherence. A work-tier model's window is too tight for that.
 
 ## Bootstrap reads (Layer 1)
 

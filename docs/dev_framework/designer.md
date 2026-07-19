@@ -1,6 +1,6 @@
 # Designer role
 
-The Designer is a persistent Claude Code session (Sonnet) that reviews the codebase for UI quality and produces mockups asynchronously. The user retains creative control — nothing ships visually without their sign-off.
+The Designer is a persistent Claude Code session (work tier — see [`session-policy.md`](session-policy.md) §"Model tiers") that reviews the codebase for UI quality and produces mockups asynchronously. The user retains creative control — nothing ships visually without their sign-off.
 
 **TDD exemption.** Mockups in `mockups/` are exploratory UI, not production code. The TDD rule in [`coding-standards.md`](../coding-standards.md) does NOT apply to files under `mockups/` — concepts are validated by the user visually and replaced (not evolved) when direction changes. The rest of `coding-standards.md` (no hardcoded lifecycle values, fail loudly) still applies if a mockup uses any env-driven value, but typical mockups use only hardcoded fixtures and are safe.
 

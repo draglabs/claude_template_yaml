@@ -9,7 +9,7 @@ Under peer dispatch, the Reviewer is spawned **by the Orchestrator** — a peer 
 ```
 ## Review diff for {{W-id}} — {{title}}
 
-You are an Opus Reviewer subagent spawned by the Orchestrator. Your job
+You are a top-tier Reviewer subagent spawned by the Orchestrator. Your job
 is NOT to modify files and NOT to commit. Your job is to judge whether
 the Executor's diff should ship, and hand a verdict back to the
 Orchestrator.
@@ -141,11 +141,53 @@ Reviewer judgment call.)
    deploys go through CI — that's the correct steady state, do NOT
    flag it. Flag only when a commit actually ran a non-CI prod deploy
    outside the script. See ../../architecture/adr-019-dev-slots-and-deploy-stubs.md.
-8. **Risk tier:** ship / ship-with-concerns / block.
+8. **QA target doctrine (ADR-019 Revision v1.1) — conditional:** when
+   the project uses Caddy-routed dev slots, the user-QA loop should
+   target `https://<slot>.<sub>.localhost/` (the Caddy-fronted hostname),
+   NOT raw `localhost:<port>`. The slot hostname is the prod-shaped path
+   through the proxy and matches the host header / TLS behavior production
+   users see. Check:
+   - **Pre-condition (primary):** read `docs/dev/slots.yaml` and look at
+     the top-level `http_surface` field. If `http_surface: false` (project
+     is non-HTTP — CLI tool, library, headless pipeline) or `http_surface:
+     PLACEHOLDER` (Strategist hasn't run setup yet), this rule no-ops —
+     skip to question 9. If `http_surface: true`, continue.
+   - **Pre-condition (belt-and-suspenders):** confirm a Caddyfile block
+     actually exists. Look for a `# BEGIN <sub>-dev-slots` marker in
+     `/opt/homebrew/etc/Caddyfile`, `/usr/local/etc/Caddyfile`,
+     `/etc/caddy/Caddyfile`, or `~/Caddyfile`. If `http_surface: true`
+     but no Caddyfile block exists, surface as `ship-with-concerns` with
+     a note that the project claims HTTP surface but Caddy isn't configured
+     (likely Strategist/Developer forgot to re-run `setup_dev_slots.sh`).
+   - **Evidence to look for:** the W-item's working log (`w-<id>.log.md`),
+     the Implementation log on the W-item file, commit messages, or QA-loop
+     transcripts in the diff/notes. Phrases like `localhost:3060`,
+     `http://localhost:`, `curl localhost:<port>`, or screenshots showing
+     the raw bind port indicate raw-localhost QA when the slot hostname
+     would have worked.
+   - **Verdict:** if `http_surface: true` AND a Caddy block exists AND
+     there's evidence of raw-localhost QA on an HTTP surface, flag as
+     **ship-with-concerns** (MED). Cite the evidence (file:line of the
+     log entry or commit ref). Not a `block` — the behavior may be correct;
+     the doctrine violation is the QA path, not the code itself. If no
+     evidence either way, do not flag (absence of "I hit localhost" is
+     not evidence of misbehavior).
+   - **Exception:** if the surface being QA'd is non-HTTP (CLI behavior,
+     database state checks, a queue worker) even within an `http_surface:
+     true` project, this rule does not apply to that specific surface.
+9. **Risk tier:** ship / ship-with-concerns / block.
 
 ## Return format (to the Orchestrator)
 
 1. Verdict: `ship` / `ship-with-concerns` / `block`.
+   On `block`, additionally classify: **Block class: `execution` or
+   `approach`** (ADR-022). `execution` = the approach is sound but the
+   implementation is incomplete or wrong (the same Executor can fix it
+   via continuation). `approach` = the approach itself is wrong — a
+   design, decomposition, or interpretation error (the Orchestrator
+   must dispatch a fresh Executor; a continued one tends to rationalize
+   its own prior choices). If genuinely unsure, classify `approach` —
+   fresh eyes are the safe default.
 2. Per-question answers from the list above (short paragraphs).
 3. Specific concerns, each with a file:line reference if applicable. On
    `block`, these are what the next Executor dispatch will address — be
@@ -156,9 +198,11 @@ Reviewer judgment call.)
 5. Recommended action (the Orchestrator will follow this):
    - `ship` → "proceed to QA if required, else merge."
    - `ship-with-concerns` → "document concerns in merge commit; proceed."
-   - `block` → "re-dispatch Executor with these concerns as sharpened
-               brief; the worktree branch already exists and the Executor
-               will add fix-commits on top."
+   - `block` → "retry the Executor with these concerns — continuation
+               or fresh dispatch per Block class (session-policy
+               §'Orchestrator-owned retry mechanics'); the worktree
+               branch already exists and the Executor will add
+               fix-commits on top."
 6. Process exceptions (optional, usually "none"):
    - If the Executor's brief had a SOP-level gap that caused reviewable
      friction — brief omitted a locked decision that mattered, tier /

@@ -2,21 +2,32 @@
 
 **Source of truth for how a Claude Code session executes work on this repo.** Linked from `CLAUDE.md`; editable directly without touching CLAUDE.md.
 
-Applies to any session (Opus or Sonnet) driving work items from [execution-plans/](../execution-plans/) or equivalent phase plans.
+Applies to any session (any model tier) driving work items from [execution-plans/](../execution-plans/) or equivalent phase plans.
 
 **Project deviations** from this policy live in [`dev_framework_exceptions.md`](../framework_exceptions/dev_framework_exceptions.md), maintained by the project's Strategist. Every agent reads that file alongside CLAUDE.md. This policy doc is canonical — it is not edited per-project.
+
+## Model tiers (role-relative, ADR-022)
+
+Framework docs and briefs never name literal models — model generations change under the framework. Two named tiers, resolved to concrete model names **at spawn time**:
+
+- **Top tier** — the strongest generally available Claude model in the harness at the moment of spawn. Judgment work: Reviewer, Integrator-QA, and judgment-heavy persistent sessions.
+- **Work tier** — a cost-efficient tier below the top tier, sufficient for well-briefed, bounded work: Executor, QA, consultants.
+
+The Integrator-QA additionally requires the **long-context variant** available at the top tier (see §"Batch mode").
+
+**Invariant: a review gate runs at a tier ≥ the tier that wrote the code.** Subagents inherit the parent session's model by default in the current harness — so the spawner sets the work-tier model *explicitly* for Executors/QA/consultants, and for a Reviewer either inherits (when the session itself runs top tier) or explicitly sets the top-tier model. Merge-commit trailers record the **actual resolved model names**, never names copied from a template. See [ADR-022](../architecture/adr-022-runtime-recalibration.md).
 
 ## Roles
 
 | Role | Played by | Responsibility |
 |---|---|---|
 | **Orchestrator** | The active Claude Code session. | **Dispatcher + merger + review coordinator.** Picks the next W-item, pre-creates the worktree off `origin/dev`, dispatches Executor, then spawns Reviewer and (when required) QA as peer subagents, owns the retry loop, merges, pushes. Does NOT write code. Does NOT open diffs or `src/` directly — reads Reviewer/QA verdicts instead (which may cite `file:line`). |
-| **Executor** | Sonnet subagent spawned via Agent tool by the Orchestrator. | **Writer.** Writes code + tests in a pre-created worktree, commits to the feature branch, returns a code-only package to the Orchestrator. Does NOT spawn Reviewer or QA. Does NOT merge or push. |
-| **Reviewer** | Opus subagent spawned via Agent tool **by the Orchestrator**. Sequential-mode (per-task) only. | Reviews the Executor's diff against canonical docs + coding standards. Returns verdict + concerns to the Orchestrator. Does not modify files. |
-| **QA** | Sonnet subagent spawned via Agent tool **by the Orchestrator** — per-W-item (pre-merge, sequential mode only), at phase exit, or post-promotion. | Runs end-to-end tests against a pre-merge worktree build or the live dev environment. Returns structured pass/fail to the Orchestrator. Cleans up test artifacts on success. |
-| **Integrator-QA** | Opus 1M subagent spawned via Agent tool **by the Orchestrator** — batch mode (ADR-016) only, end of parallel batch. | Integrates N parallel-safe W-item branches, resolves merges, reviews against coding standards, runs full test suite (including live/Playwright), fixes within acceptance, files claims for scope changes. Absorbs per-task Reviewer and pre-merge QA for items in the batch. |
-| **Doc Consultant** | Sonnet subagent spawned by any role. | Reads the doc corpus and answers a targeted question. Returns a short citation-backed answer. Does not modify files. |
-| **Code Consultant** | Sonnet subagent spawned primarily by the Strategist. | Reads code and answers a targeted question. Returns a short citation-backed answer. Does not modify files. |
+| **Executor** | Work-tier subagent spawned via Agent tool by the Orchestrator. | **Writer.** Writes code + tests in a pre-created worktree, commits to the feature branch, returns a code-only package to the Orchestrator. Does NOT spawn Reviewer or QA. Does NOT merge or push. |
+| **Reviewer** | Top-tier subagent spawned via Agent tool **by the Orchestrator**. Sequential-mode (per-task) only. | Reviews the Executor's diff against canonical docs + coding standards. Returns verdict + concerns to the Orchestrator. Does not modify files. |
+| **QA** | Work-tier subagent spawned via Agent tool **by the Orchestrator** — per-W-item (pre-merge, sequential mode only), at phase exit, or post-promotion. | Runs end-to-end tests against a pre-merge worktree build or the live dev environment. Returns structured pass/fail to the Orchestrator. Cleans up test artifacts on success. |
+| **Integrator-QA** | Top-tier long-context subagent spawned via Agent tool **by the Orchestrator** — batch mode (ADR-016) only, end of parallel batch. | Integrates N parallel-safe W-item branches, resolves merges, reviews against coding standards, runs full test suite (including live/Playwright), fixes within acceptance, files claims for scope changes. Absorbs per-task Reviewer and pre-merge QA for items in the batch. |
+| **Doc Consultant** | Work-tier subagent spawned by any role. | Reads the doc corpus and answers a targeted question. Returns a short citation-backed answer. Does not modify files. |
+| **Code Consultant** | Work-tier subagent spawned primarily by the Strategist. | Reads code and answers a targeted question. Returns a short citation-backed answer. Does not modify files. |
 
 Briefing templates for each subagent role live in [`templates/`](templates/). Load them when spawning a subagent — not at session start.
 
@@ -27,19 +38,20 @@ Briefing templates for each subagent role live in [`templates/`](templates/). Lo
 ```
 User ↔ Orchestrator
            │
-           ├─▶ Executor (Sonnet, worktree)  ── code-only return ───▶ Orchestrator
+           ├─▶ Executor (work tier, worktree) ── code-only return ───▶ Orchestrator
            │
-           ├─▶ Reviewer (Opus)              ── verdict + concerns ─▶ Orchestrator
+           ├─▶ Reviewer (top tier)            ── verdict + concerns ─▶ Orchestrator
            │       │
-           │       └─ on block: Orchestrator re-dispatches Executor
-           │         with concerns as sharpened brief, then re-spawns
-           │         Reviewer. Consumes one retry.
+           │       └─ on block: Orchestrator retries the Executor —
+           │         continuation or fresh dispatch per §"Orchestrator-
+           │         owned retry mechanics" — then re-spawns Reviewer.
+           │         Consumes one retry.
            │
-           ├─▶ QA (Sonnet, when required)   ── verdict + results ──▶ Orchestrator
+           ├─▶ QA (work tier, when required)  ── verdict + results ──▶ Orchestrator
            │       │
-           │       └─ on fail: same retry loop, Orchestrator dispatches
-           │         fresh Executor with QA findings; re-runs Reviewer
-           │         then QA. Consumes one retry.
+           │       └─ on fail: same retry loop with QA findings as the
+           │         concerns; re-runs Reviewer then QA. Consumes one
+           │         retry.
            │
            ▼ on ship + pass (or retry cap + escalation)
        Orchestrator ──▶ merge to dev ──▶ push ──▶ auto-advance
@@ -58,38 +70,43 @@ Applies to sequential-mode (per-task) dispatch — W-items with `Parallel-safe: 
 
 All tiers use the same peer-dispatch flow. Tiers differ only in **which gates are mandatory** and **how many retries the Orchestrator gets before escalating**.
 
-"Retries" means attempts **after** the initial write. `retries: 2` means: write → Reviewer (+ QA), and if blocked, up to 2 more (fresh Executor with concerns → Reviewer + QA) loops.
+"Retries" means attempts **after** the initial write. `retries: 2` means: write → Reviewer (+ QA), and if blocked, up to 2 more (Executor fix cycle with concerns → Reviewer + QA) loops.
 
 | Tier | Bucket | Executor | Reviewer | QA | Retries | Total loops | Notes |
 |---|---|---|---|---|---|---|---|
-| **XS** | Easy | Sonnet, worktree | Opus (required) | Skip unless 🧪 | 2 | 3 | Trivial edits. |
-| **S** | Easy | Sonnet, worktree | Opus (required) | Skip unless 🧪 | 2 | 3 | |
-| **M** | Unknown tier | Sonnet, worktree | Opus (required) | Skip unless 🧪 | 2 | 3 | Ambiguous effort — same budget as easy by default. |
-| **L** | Hard | Sonnet, worktree | Opus (required) | Required | 3 | 4 | |
-| **XL** | Hard | Sonnet, worktree | Opus (required) | Required | 3 | 4 | Split if > 4h. |
-| ⚠️ override | — | Sonnet, worktree | Opus (required) | Required (forced) | 3 | 4 | Locks to Hard regardless of base tier. |
+| **XS** | Easy | Work tier, worktree | Top tier (required) | Skip unless 🧪 | 2 | 3 | Trivial edits. |
+| **S** | Easy | Work tier, worktree | Top tier (required) | Skip unless 🧪 | 2 | 3 | |
+| **M** | Unknown tier | Work tier, worktree | Top tier (required) | Skip unless 🧪 | 2 | 3 | Ambiguous effort — same budget as easy by default. |
+| **L** | Hard | Work tier, worktree | Top tier (required) | Required | 3 | 4 | |
+| **XL** | Hard | Work tier, worktree | Top tier (required) | Required | 3 | 4 | Split if > 4h. |
+| ⚠️ override | — | Work tier, worktree | Top tier (required) | Required (forced) | 3 | 4 | Locks to Hard regardless of base tier. |
 
 **Every W-item** gets a worktree + a feature branch (`w-<id>/<slug>`). Nothing lands on `dev` except via Orchestrator merge after all required gates pass.
 
 ### How the retry budget is used
 
 - **Initial attempt:** Orchestrator dispatches Executor; Executor writes, commits, returns. Orchestrator spawns Reviewer. Orchestrator spawns QA if required. This initial cycle is NOT a retry.
-- **Each retry:** Reviewer `block` or QA `fail` triggers Orchestrator to dispatch a fresh Executor with the concerns verbatim as sharpened context, then re-spawn Reviewer (and QA if required). One fix cycle consumes one retry.
+- **Each retry:** Reviewer `block` or QA `fail` triggers one Executor fix cycle — continuation or fresh dispatch per §"Orchestrator-owned retry mechanics" — with the concerns verbatim as sharpened context, then re-spawn Reviewer (and QA if required). One fix cycle consumes one retry.
 - **Exhaustion:** on retry cap reached with an unresolved block, Orchestrator escalates to the user (see §"When to escalate to the user"). The W-item flips to `blocked` in the plan.
-- A fix that satisfies Reviewer but breaks QA (or vice versa) still counts as one retry, not two. One fresh-Executor dispatch = one retry regardless of which gate failed.
+- A fix that satisfies Reviewer but breaks QA (or vice versa) still counts as one retry, not two. One fix cycle = one retry regardless of which gate failed and which mechanism was used.
 
 ### Orchestrator-owned retry mechanics
 
 Retry state lives in the Orchestrator session; it is NOT written to the plan ledger. The plan records only Status transitions (`pending` → `in_progress` → `blocked` / `done` / `shipped`) — retry counts are ephemeral.
 
-When the Orchestrator dispatches a fresh Executor for a retry, the brief includes:
-- The feature branch name (worktree already exists; Executor checks out the existing commits).
-- The full verbatim concerns from the Reviewer (or QA) that caused the block.
-- A one-line instruction: "address these concerns; do not reopen the original scope."
+Two retry mechanisms exist ([ADR-022](../architecture/adr-022-runtime-recalibration.md)):
+
+- **Continuation (default).** The Orchestrator sends the blocking concerns to the *same* Executor via SendMessage — context intact, cheapest path. The message contains the full verbatim concerns from the Reviewer (or QA) and the one-line instruction: "address these concerns; do not reopen the original scope." Appropriate when the block is about incomplete or incorrect *execution* of a sound approach.
+- **Fresh dispatch.** A new Executor spawned via the Agent tool with a rebuilt brief containing: the feature branch name (worktree already exists; Executor checks out the existing commits), the full verbatim concerns, and the same no-scope-reopen instruction. **Mandatory** when any of:
+  1. The Reviewer's `block` carries `Block class: approach` — the approach is wrong, not the execution. A continued Executor tends to rationalize its own prior choices; fresh eyes don't.
+  2. The same concern (or its direct descendant) survives a continuation retry — one continuation attempt per concern, then fresh eyes.
+  3. The prior Executor is no longer reachable (session ended, agent expired).
+
+The routing signal is mechanical: the Reviewer's `block` return includes a **Block class** field (`execution` / `approach`); QA `fail`s are treated as `execution` unless the QA return says otherwise. Either mechanism consumes one retry against the tier cap.
 
 The Executor writes a new commit on top of the existing ones — **no rebase, no amend.** The Reviewer reads history; the chain of fix-commits shows the loop's work.
 
-**SendMessage is not available in the Claude Code CLI runtime.** Retries are always fresh Agent-tool invocations, not continuations of a prior Executor. The Executor's context is rebuilt from the brief each time. This is the canonical mechanism; it is not optimization for a rainy day.
+**History note.** Earlier framework versions mandated fresh dispatch exclusively because SendMessage was unavailable in the Claude Code CLI runtime (ADR-013, verified 2026-04-23). The runtime now provides SendMessage; continuation-by-default is a deliberate choice, with fresh dispatch retained where independent judgment matters. See ADR-022.
 
 ### Escalation
 
@@ -107,21 +124,21 @@ The Orchestrator does NOT escalate when:
 
 ## Batch mode
 
-An alternative dispatch path for W-items marked `Parallel-safe: true` on the plan. Introduced in [ADR-016](../architecture/adr-016-batch-mode-integrator-qa.md) to amortize Opus review cost across independent work. When multiple parallel-safe W-items are ready to dispatch, the Orchestrator runs them as a batch instead of serially.
+An alternative dispatch path for W-items marked `Parallel-safe: true` on the plan. Introduced in [ADR-016](../architecture/adr-016-batch-mode-integrator-qa.md) to amortize top-tier review cost across independent work. When multiple parallel-safe W-items are ready to dispatch, the Orchestrator runs them as a batch instead of serially.
 
 ### Batch dispatch flow
 
 ```
 Orchestrator
-  ├─▶ Executor (worktree, Sonnet) — W-X1      ─┐
-  ├─▶ Executor (worktree, Sonnet) — W-X2      ─┤  concurrent,
-  ├─▶ Executor (worktree, Sonnet) — W-X3      ─┘  ~3 cap
+  ├─▶ Executor (worktree, work tier) — W-X1   ─┐
+  ├─▶ Executor (worktree, work tier) — W-X2   ─┤  concurrent,
+  ├─▶ Executor (worktree, work tier) — W-X3   ─┘  ~3 cap
               │
               ▼ all return with PASS shapes (Tests + Self-check included)
          Orchestrator
               │
               ▼
-  ─▶ Integrator-QA (Opus 1M, sees all N worktrees)
+  ─▶ Integrator-QA (top tier, long-context; sees all N worktrees)
               │
               ├─ First pass: high-profile scan
               │     └─ red flag + <80% confidence → integration-failure
@@ -143,12 +160,12 @@ Orchestrator
 
 | Concern | Sequential (ADR-013) | Batch (ADR-016) |
 |---|---|---|
-| Reviewer stage | Per-task Opus call | Absorbed into Integrator-QA (one Opus 1M call per batch) |
-| Pre-merge QA | Per-task Sonnet call (L/XL/🧪/⚠️) | Absorbed into Integrator-QA |
+| Reviewer stage | Per-task top-tier call | Absorbed into Integrator-QA (one top-tier long-context call per batch) |
+| Pre-merge QA | Per-task work-tier call (L/XL/🧪/⚠️) | Absorbed into Integrator-QA |
 | Phase-exit QA | Unchanged (live dev env) | Unchanged |
-| Retries on `block` | Fresh Executor + fresh Reviewer, counted against cap | Integrator-QA fixes inline within acceptance — no Executor bounce. Claim path handles scope issues. |
+| Retries on `block` | Executor retry cycle (continuation or fresh dispatch) + fresh Reviewer, counted against cap | Integrator-QA fixes inline within acceptance — no Executor bounce. Claim path handles scope issues. |
 | Merge authority | Orchestrator, after Reviewer ships | Orchestrator, after Integrator-QA returns `clean` or `partial` (only clean items merge on partial) |
-| Conflict resolution | Orchestrator (conflicts rare — one branch merges at a time) | Integrator-QA (single Opus 1M context sees all diffs; conflicts more likely given concurrent work) |
+| Conflict resolution | Orchestrator (conflicts rare — one branch merges at a time) | Integrator-QA (single long-context view sees all diffs; conflicts more likely given concurrent work) |
 
 ### Eligibility
 
@@ -235,11 +252,11 @@ After merging to **`dev`** and pushing (and after flipping the W-item Status to 
 
 ## Mandatory overrides
 
-- **⚠️ items** — Opus review is already the default. ⚠️ additionally forces QA regardless of tier and bumps the retry cap to 3.
+- **⚠️ items** — Top-tier review is already the default. ⚠️ additionally forces QA regardless of tier and bumps the retry cap to 3.
 - **🔍 items** — The Orchestrator runs the spike directly (research, not code). 2h max. No Executor dispatch. Validate conclusions in the real runtime environment, not simplified tests. This is the ONE case where the Orchestrator touches content, because there's no diff to produce.
 - **🧪 items** — QA required regardless of tier. Orchestrator dispatches QA after Reviewer ships.
 - **Parallel execution** — only for dependency-graph-independent W-items marked `Parallel-safe: true` on the plan (see [ADR-016](../architecture/adr-016-batch-mode-integrator-qa.md) and `execution-plans/README.md §"Parallel-safe field"`). Two dispatch paths:
-  - **Batch mode (Parallel-safe: true):** Orchestrator dispatches up to ~3 concurrent Executors, one worktree each. When all return, a single Integrator-QA (Opus 1M) call absorbs per-task Reviewer + pre-merge QA — one Opus call amortized across the batch instead of N. See §"Batch mode" below.
+  - **Batch mode (Parallel-safe: true):** Orchestrator dispatches up to ~3 concurrent Executors, one worktree each. When all return, a single Integrator-QA (top tier, long-context) call absorbs per-task Reviewer + pre-merge QA — one top-tier call amortized across the batch instead of N. See §"Batch mode" below.
   - **Sequential mode (Parallel-safe: false or unset):** Orchestrator runs each W-item through its own per-task peer chain (Executor, Reviewer, optional QA) serially. This is the ADR-013 default.
   Practical cap on batch size is ~3 W-items — wider batches increase Integrator-QA blast radius on failure.
 - **Doc questions → Doc Consultant, not inline reads.** When the Orchestrator needs to check a locked decision, cross-reference acceptance criteria, or verify a constraint, spawn a Doc Consultant subagent instead of reading the docs inline. The Consultant's 10-line answer costs far less context than loading 3 full docs. Exception: docs already loaded at session start (Layer 1).
@@ -260,7 +277,7 @@ The Orchestrator does NOT open diffs or source files directly. Verdicts cite `fi
 
 ## Orchestrator model choice
 
-Under peer dispatch the Orchestrator sees Reviewer and QA verdicts inline — per-question answers, per-criterion results — which is more context than the old 6-line pass packages of earlier models. **Opus** is preferred when retry judgment is likely to matter (⚠️ density, ambiguous Reviewer concerns, scope-creep calls). **Sonnet** remains sufficient for phases of routine W-items where most items ship on first pass.
+Under peer dispatch the Orchestrator sees Reviewer and QA verdicts inline — per-question answers, per-criterion results — which is more context than the old 6-line pass packages of earlier models. The **top tier** is preferred when retry judgment is likely to matter (⚠️ density, ambiguous Reviewer concerns, scope-creep calls). The **work tier** remains sufficient for phases of routine W-items where most items ship on first pass.
 
 ## Branching and isolation (dev → main)
 
@@ -280,13 +297,13 @@ Every W-item follows one of two flows depending on its `Parallel-safe` field (se
 
 ### Sequential mode (Parallel-safe: false or unset)
 
-1. **Orchestrator** pre-creates the worktree explicitly off `origin/dev` with `git worktree add -b w-<id>/<slug> <path> origin/dev`, then dispatches the Executor via the Agent tool (WITHOUT the `isolation: "worktree"` flag — the Orchestrator owns worktree creation under this model). The Executor works inside the pre-created worktree.
+1. **Orchestrator** pre-creates the worktree explicitly off `origin/dev` with `git worktree add -b w-<id>/<slug> <path> origin/dev`, then dispatches the Executor via the Agent tool (WITHOUT the `isolation: "worktree"` flag — the Orchestrator owns worktree creation under this model). The Executor works inside the pre-created worktree. The standard worktree path is `/tmp/worktrees/<project>/w-<id>-<slug>`, where `<project>` = `basename $CODE_ROOT` (the git repo name; see [`context-management.md §Project layout`](context-management.md#project-layout)). Under split layout this is the `$CODE_SUBDIR` name; under flat layout it is `basename $PROJECT_DIR`.
 
    **Mechanism, not intention.** The Agent tool's `isolation: "worktree"` flag creates a worktree from the parent session's current HEAD. If the Orchestrator happens to be sitting on `main` (or any other branch) when it dispatches, the worktree — and therefore the feature branch — inherits THAT base. Rule compliance here requires the Orchestrator to pre-create the worktree off `origin/dev` explicitly so the base becomes a literal command-line argument. "I read the rule" is not enforcement. The command is.
 
 2. **Executor** writes code + tests inside the worktree, commits to the feature branch, runs its own unit/integration tests + coding-standards self-check, returns a code-only package to the Orchestrator.
 
-3. **Orchestrator** spawns the Reviewer (Opus) as a peer Agent-tool call, passing the worktree path and the latest commit SHA. On `block`, Orchestrator dispatches a fresh Executor with the concerns and re-spawns the Reviewer. Retry cap per tier.
+3. **Orchestrator** spawns the Reviewer (top tier) as a peer Agent-tool call, passing the worktree path and the latest commit SHA. On `block`, Orchestrator runs one Executor fix cycle — continuation or fresh dispatch per §"Orchestrator-owned retry mechanics" — and re-spawns the Reviewer. Retry cap per tier.
 
 4. **Orchestrator** (if tier L/XL or marker 🧪 or ⚠️) spawns the QA as a peer Agent-tool call after Reviewer ships. Same retry pattern on `fail`.
 
@@ -297,7 +314,7 @@ Every W-item follows one of two flows depending on its `Parallel-safe` field (se
 Same worktree pre-creation discipline per item (step 1), same Executor self-test discipline (step 2). Differences:
 
 - Orchestrator dispatches up to ~3 Executors concurrently.
-- When all N Executors return, Orchestrator spawns a single Integrator-QA (Opus 1M) that absorbs per-task Reviewer + pre-merge QA for every item in the batch (replaces steps 3–4).
+- When all N Executors return, Orchestrator spawns a single Integrator-QA (top tier, long-context) that absorbs per-task Reviewer + pre-merge QA for every item in the batch (replaces steps 3–4).
 - Integrator-QA returns `clean` / `partial` / `integration-failure` / `stumped`. On `clean`, Orchestrator merges every item. On `partial`, Orchestrator merges the non-blocked items and leaves the claim-blocked items for Strategist disposition. On `integration-failure` or `stumped`, Orchestrator surfaces to the user (no merge).
 - Fix commits authored by the Integrator-QA are already in dev (or an integration branch the Integrator is using) when its return lands; Orchestrator does not re-merge those.
 
@@ -312,18 +329,20 @@ Merge w-a2/some-feature: short description
 
 <diff 1-line summary from Executor>
 
-Executor: Claude Sonnet (worktree-isolated)
-Reviewer: Claude Opus, <verdict>
-QA: Claude Sonnet, <pass | n/a>
+Executor: <model resolved at spawn> (worktree-isolated)
+Reviewer: <model resolved at spawn>, <verdict>
+QA: <model resolved at spawn>, <pass | n/a>
 Retries used: <n>/<retries>
 
 Lessons learned:
   - <bullet from Executor pass shape, verbatim>
   - <bullet>
 
-Co-Authored-By: Claude Sonnet <noreply@anthropic.com>
-Co-Authored-By: Claude Opus <noreply@anthropic.com>
+Co-Authored-By: Claude <executor model> <noreply@anthropic.com>
+Co-Authored-By: Claude <reviewer model> <noreply@anthropic.com>
 ```
+
+Model lines record the **actual model names resolved at spawn time** — never copy literal names from a template. A trailer that names a model the agent didn't run on is a ledger that lies (ADR-022).
 
 If the Executor's return came back without Lessons learned, the Orchestrator bounces back and asks — does NOT merge with an empty block. (Exception: Executor wrote "Nothing surprising." That's a valid Lessons-learned value.)
 

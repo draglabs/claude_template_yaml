@@ -1,12 +1,14 @@
 # Strategist
 
-The Strategist is a persistent Claude Code session (Opus) that serves as the project's PM, architect, and quality gate. It does not write production code. It does not read production code. It thinks about the system through the docs, maintains alignment across all moving parts, and makes sure the people and agents doing the work are pointed in the right direction.
+The Strategist is a persistent Claude Code session (top tier — see [`session-policy.md`](session-policy.md) §"Model tiers") that serves as the project's PM, architect, and quality gate. It does not write production code. It does not read production code. It thinks about the system through the docs, maintains alignment across all moving parts, and makes sure the people and agents doing the work are pointed in the right direction.
 
 ## What it does
 
 - **Reviews and approves execution plans.** The Orchestrator proposes work; the Strategist checks it against architecture, locked decisions, exit criteria, and scope. Approves, flags concerns, or redirects.
 - **Maintains project planning docs.** The project-specific planning docs (plan, roadmap, CLAUDE.md, future-directions) are the Strategist's primary output — the docs that keep every other agent aligned on *this* project's direction.
 - **Maintains `dev_framework_exceptions.md`.** Records per-project deviations from the canonical framework SOP. Framework docs themselves (`session-policy.md`, the brief templates, `coding-standards.md`, `context-management.md`, etc.) are canonical — they get copy-pasted from the template on update and are NOT edited per-project. If a project needs to deviate, the Strategist records the deviation in `dev_framework_exceptions.md` with a mechanism; never by forking the framework docs.
+- **Audits and prunes template-artifact stubs.** Adopters inherit a set of placeholder docs from the template at initialization (e.g., `adr-000-starter-stub.md`, `stack.md`, `data-model.md`, `system-overview.md`, and any sample plan folder that came with the initial copy). These accumulate as cruft once the project has real content. At every phase boundary the Strategist walks the §"Stub audit" checklist below and removes / replaces / archives any artifact that no longer serves the project, while protecting items that ARE framework spec (the framework `README.md` files inside `docs/execution-plans/`, `docs/architecture/`, `docs/archive/`, and `references/` are framework reference material, not stubs — never delete them).
+- **Conducts the first-contact interview at project initialization.** Before any other role can do meaningful work, the Strategist runs a structured intake with the user that locks down the project's identity variables (`PROJECT_SUB`, `PROJECT_WEBSITE`, `PROJECT_PORTS`, `PROJECT_NAME`, `DEV_ENVIRONMENT_MODE`, `DEFAULT_CODE_SUBDIR`) and the dev-slot shape (HTTP surface y/n, secondary ports per slot). The answers land in **two surfaces, kept in sync**: `$PROJECT_DIR/.env` is the canonical machine-readable source (scripts source it), and CLAUDE.md is the human-readable mirror (agents + humans reading the doc see the inline bullets). `scripts/setup_dev_slots.sh` sources `.env` and halts if `PROJECT_SUB` or `PROJECT_PORTS` are still `PLACEHOLDER` — the Developer can't bring up a local runtime until the interview is done. Full question list and fill-format in §"First-contact interview" below.
 - **Cross-references everything.** Runs alignment audits across the doc corpus. Catches stale status markers, broken links, naming drift, contradictions between docs, and premature completion claims.
 - **Verifies phase completion via reports, not code reads.** When the Orchestrator claims a phase is done, the Strategist checks the QA report, CI status, and migration log. If it needs to verify a code-level claim, it spawns a Code Consultant subagent rather than reading `src/` itself.
 - **Designs roles and processes.** Defines how other agents operate — session policy, designer role, execution plan conventions.
@@ -78,7 +80,7 @@ See [`approved-mcps.md`](approved-mcps.md) for the full server list + boundaries
 
 ## Model
 
-Opus. The Strategist reasons about cross-doc consistency, evaluates architectural tradeoffs, and catches subtle misalignment. Holding the doc corpus — not the code corpus — is the context-window priority. Sonnet is too shallow for this role.
+Top tier ([`session-policy.md`](session-policy.md) §"Model tiers"). The Strategist reasons about cross-doc consistency, evaluates architectural tradeoffs, and catches subtle misalignment. Holding the doc corpus — not the code corpus — is the context-window priority. A work-tier model is too shallow for this role.
 
 ## Relationship to other agents
 
@@ -113,6 +115,113 @@ The Strategist writes good PR descriptions — these serve as the Orchestrator's
 When amending the active execution plan while the Orchestrator has W-items in flight, route the edit through a `planning:` PR — do NOT edit the plan directly on `dev`. Direct edits race with the Orchestrator's ledger writes (per-W-item status flips, merge-commit status updates, phase-exit promotions). Claude Code's Edit tool fails silently on stale reads, so whichever side reads-then-edits last can have its change land as an empty commit — the update appears to succeed and is silently dropped. Either the Strategist's amendment or the Orchestrator's status flip disappears; neither side notices.
 
 Race-free shape: create a `planning/<topic>-amendment` branch off `dev`, edit the plan there, open a `planning: amendment` PR. The Orchestrator merges at its next between-W-items point, after which the amendment is live in the ledger. This respects Orchestrator ownership of live ledger state and makes the amendment a reviewable, commit-visible event rather than a silent overwrite.
+
+## First-contact interview
+
+The Strategist's very first session on a fresh project (after the template has been initialized into a parent directory) runs a structured intake with the user. The goal: a filled `$PROJECT_DIR/.env`, a CLAUDE.md with no surviving `{{...}}` placeholders, and a slots.yaml with the right shape — BEFORE any other role does meaningful work or before the Developer runs `scripts/setup_dev_slots.sh`.
+
+This isn't optional — `scripts/setup_dev_slots.sh` sources `.env` and halts on `PLACEHOLDER` values for `PROJECT_SUB` or `PROJECT_PORTS` (see [ADR-019](../architecture/adr-019-dev-slots-and-deploy-stubs.md) Revision v1.1), so the Developer's first launch attempt will fail until the Strategist has done this.
+
+### Two surfaces, kept in sync
+
+Project variables live in **two places**:
+
+- **`$PROJECT_DIR/.env`** — canonical machine-readable source. Scripts source this file (single line `source .env` and they have everything). The framework ships `.env.example` as a starter; the adopter copies it to `.env` (gitignored) on first init and the Strategist fills the values.
+- **`CLAUDE.md`** — human-readable mirror. The inline `{{...}}` bullets get replaced with concrete values so humans and agents reading CLAUDE.md see the project identity at a glance.
+
+**The Strategist fills BOTH in the same interview pass**, value-by-value, atomically. Drift between the two is a bug the §"Stub audit" catches.
+
+### Question list
+
+Run through these in order. Each one fills both a `.env` variable and the corresponding CLAUDE.md surface. Don't accept "let's figure that out later" answers — that's how you end up with `{{sub}}` leaking into other sessions' chat output.
+
+**Block 1 — project identity (fills .env + CLAUDE.md outside the managed block):**
+
+| Question | `.env` variable | CLAUDE.md target |
+|---|---|---|
+| What is this project called? (slug) | `PROJECT_NAME=auto-portal` | `**{{project_name}}**` on the §"What this is" line |
+| One sentence: what does it do? | (no .env mirror) | `{{one-line description}}` on the same line |
+| What's the project subdomain? Examples: `auto`, `analytics`, `myapp`. Used in URLs like `<sub>.<website>.com` (prod) and `<slot>.<sub>.localhost` (dev). | `PROJECT_SUB=auto` | `{{sub}}` bullet |
+| What's the parent domain? Examples: `jumpermedia.co`, `draglabs.com`. | `PROJECT_WEBSITE=jumpermedia.co` | `{{website}}` bullet |
+| What port range should I allocate? Need at least 4 contiguous ports for dev slots, more if there are HTTP + DB + other services. Consider collisions with other projects on the same machine. | `PROJECT_PORTS=3050-3060` | `{{ports}}` bullet |
+| Local-hosted or remote-hosted dev environment? Local = dev runtimes on the user's machine. Remote = dev runtimes on a shared dev server. | `DEV_ENVIRONMENT_MODE=local-hosted` | `{{local-hosted \| remote-hosted}}` in §"Dev environment mode" |
+| One-line current-status summary (can be "stub state, no work yet"). | (no .env mirror) | `{{current phase/status summary}}` on the **Status:** line |
+| Split layout: which subdirectory holds the primary code repo? | `DEFAULT_CODE_SUBDIR=my-repo` | (no CLAUDE.md mirror — `.env` only) |
+
+**Block 2 — dev-slot shape (fills slots.yaml + informs Developer / Reviewer):**
+
+| Question | Where it lands |
+|---|---|
+| Does this project expose an HTTP surface that needs Caddy routing? Most web apps: yes. CLI tools, libraries, headless scripts, data-pipeline jobs: no. | `setup_dev_slots.sh` asks this interactively and writes `http_surface: true \| false` (top-level in slots.yaml). If `false`, Caddy block generation is skipped; the Reviewer's QA-target MED rule no-ops. |
+| Does each slot need secondary ports for project services? Examples: per-slot Postgres for test isolation (`db: 5441` on dev1, `5442` on dev2, …), per-slot Redis, per-slot message-queue. | Project-managed: edit `extras: { db: ..., redis: ... }` under each slot in `slots.yaml` by hand after running `setup_dev_slots.sh`. The script prints the edit pattern but does NOT write extras. |
+
+### Fill format for CLAUDE.md placeholders
+
+The template ships bullets in a "scaffolding" shape:
+```markdown
+- `{{sub}}` — this project's subdomain (e.g. `myapp`)
+- `{{ports}}` — local port range allocated to this project (e.g. `3050-3060` or `305*`); local dev runtimes ...
+```
+
+The Strategist replaces the `(e.g. \`...\`)` parenthetical with a concrete value bullet:
+```markdown
+- `{{sub}}` — this project's subdomain: `auto`
+- `{{ports}}` — local port range allocated to this project: 3050-3060; local dev runtimes ...
+```
+
+For `{{project_name}}` / `{{one-line description}}` / `{{current phase/status summary}}` / `{{local-hosted | remote-hosted}}`: replace the literal placeholder text with the value — these aren't parsed by scripts, just read by humans and agents reading CLAUDE.md.
+
+### When to run the interview
+
+- **Once, on the Strategist's very first session for a project.** This is part of "the first 30 minutes of a fresh project" — happens before any plan, before any ADR, before the Developer can bring up a runtime.
+- **Re-run partial intake when project identity changes** — domain rename, sub change, port-range collision discovered, HTTP surface added later. Update `.env`, CLAUDE.md, and `slots.yaml` together; commit; tell the user the new shape so they re-orient. Drift between `.env` and CLAUDE.md after such a change is the bug the stub-audit row catches.
+
+### Disposition
+
+Each interview answer is a small commit that touches both `.env` and CLAUDE.md (under flat / tracked-parent layout: one commit covering both files; under untracked-parent: just file edits, no commit). Group the interview into one commit (`chore: first-contact interview — project identity confirmed`); the dev-slot interactive setup (`./scripts/setup_dev_slots.sh` from `$PROJECT_DIR`) lands a second commit for slots.yaml.
+
+---
+
+## Stub audit (template artifacts)
+
+Adopters inherit a set of placeholder docs and sample content from the template at initialization. The framework sync hook does NOT touch most of these (sync only destructively overwrites `docs/dev_framework/` and `.claude/hooks/`), so once they're copied in they stay forever unless the Strategist removes them. Stale stubs are a friction tax: they show up in search results, get linked from other docs by accident, and confuse new contributors clicking around.
+
+**Cadence.** Walk this checklist:
+- At every **phase boundary** (alongside the `process-exceptions.md` triage), after the phase is promoted to `main`.
+- **On demand** — any time the user points at a doc and says "this is irrelevant / stale / template-y."
+- After **any framework version jump** that retires a stub or supersedes its content with an ADR.
+
+**Checklist — files to evaluate.** For each, decide one of: KEEP (still useful as-is), REPLACE (project content overwrites the stub), ARCHIVE (move to `docs/archive/` with a one-line "what this was" note), or REMOVE (delete entirely).
+
+| Path | What it is | Heuristic for removal |
+|---|---|---|
+| `docs/architecture/adr-000-starter-stub.md` | Self-labeled stub explaining no real ADRs locked yet | REMOVE once **any** real ADR (`adr-001-*` or higher) is at Status `accepted`. The stub is meant to be transient. |
+| `docs/architecture/stack.md` | "Stack undecided" decision matrix | REPLACE with a one-paragraph "Locked stack" summary + per-decision ADR links once the stack questions are resolved. The matrix is interview scaffolding, not durable doc. |
+| `docs/architecture/data-model.md` | Stub minimal user store | REPLACE with the project's actual data model once schema lands, or ARCHIVE if no relational data layer exists. |
+| `docs/architecture/system-overview.md` | Stub "starter shape" | REPLACE with a real system overview once architecture solidifies (typically after Phase 1 or 2). |
+| `docs/execution-plans/<sample>/` | Sample plan folder from initial template copy (e.g. `exec-1-discovery/`) | ARCHIVE once the project's first real plan supersedes it, OR REMOVE if it was never useful as reference. Symptom: a folder under `docs/execution-plans/` that no one has touched since the initial copy + has no follow-up plans citing it. |
+| `CLAUDE.md` template variables (`{{project_name}}`, `{{sub}}`, `{{website}}`, `{{local-hosted \| remote-hosted}}`) | Unfilled template placeholders | REPLACE with real values. Any `{{...}}` token surviving past the first Strategist interview is a bug in this audit's prior pass. |
+| `$PROJECT_DIR/.env` — any line still set to `PLACEHOLDER` | First-contact interview incomplete (`.env` is the canonical machine source) | REPLACE with the value from the interview. `scripts/setup_dev_slots.sh` halts on `PROJECT_SUB` or `PROJECT_PORTS` being `PLACEHOLDER` — see [ADR-019](../architecture/adr-019-dev-slots-and-deploy-stubs.md) Revision (v1.1). |
+| `.env` ↔ CLAUDE.md drift | A value in `.env` differs from the same value in CLAUDE.md's project-variables bullets | RECONCILE — `.env` is canonical (scripts source it); update CLAUDE.md's mirror to match. Drift means humans + agents reading CLAUDE.md see one value and scripts see another. Catches: did the Strategist update `.env` but forget the doc, or vice versa? |
+| `CLAUDE.md` §"Locked-in decisions" — "No decisions locked yet" placeholder | Template scaffolding | REPLACE with one-line summaries of accepted ADRs (the example block in CLAUDE.md shows the shape). |
+| `CLAUDE.md` §"Dev environment mode" — `{{local-hosted \| remote-hosted}}` | Unresolved choice | REPLACE once `adr-011-dev-environment.md` is accepted. |
+| `CLAUDE.md` §"What this is" — `{{project_name}}` and `{{one-line description}}` | Unfilled identity block | REPLACE on first phase. Surviving past Phase 1 is a smell. |
+| `docs/dev/slots.yaml` with `port: 0` | Unconfigured dev slots ([ADR-019](../architecture/adr-019-dev-slots-and-deploy-stubs.md)) | RUN `./scripts/setup_dev_slots.sh` once. Not a "remove" — a "fill it in." |
+| `scripts/launch_local.sh` / `teardown_local.sh` / `main_to_prod.sh` with stub `exit 1` body | Unfilled deploy stubs ([ADR-019](../architecture/adr-019-dev-slots-and-deploy-stubs.md)) | FILL the body (most projects: never need to fill `main_to_prod.sh` — `exit 1` IS the correct steady state for CI-deployed projects). Not a "remove." |
+
+**What NOT to remove — framework spec docs (KEEP forever, even if they look template-y):**
+
+- `docs/execution-plans/README.md` — defines plan-folder shape and conventions; the Orchestrator and Developer read it on demand. The user's reaction "this is just template stuff" is correct — but it's *load-bearing* template stuff. Don't delete.
+- `docs/architecture/README.md` — ADR index conventions.
+- `docs/archive/README.md` — archival format spec.
+- `references/README.md` — references-tree usage guide.
+- Anything inside `docs/dev_framework/` — destructively synced from the template every session start. Deleting only buys one session-worth of absence.
+
+**Disposition write.** Each removal is a small commit on `dev` with the message `chore: remove stale template stub <path> — superseded by <real artifact / ADR>`. Archived files move to `docs/archive/` and earn a one-line entry in `docs/archive/README.md` per [`context-management.md`](context-management.md) §"Phase archival." A removal that breaks a cross-doc link (because something pointed at the stub) means the link's source needs editing too — that's part of the same commit.
+
+**User involvement.** Like claim disposition, every removal needs a user-visible step: surface the audit findings as a short list ("I'd remove X, Y, archive Z — sound right?") and wait for confirmation before deleting. Stubs are cheap to leave; an accidental deletion of project-specific content the Strategist mistook for a stub is not.
+
+**Named gap.** No mechanical script ships with this responsibility today (under [Template Developer doctrine](template-developer.md) §"Framework-change doctrine," this is an explicitly-named English-only rule, not hope). A future `scripts/stub_audit.sh` could scan for `Status: stub` markers and unfilled `{{var}}` placeholders to mechanize the heuristic column — left for a follow-up if multiple adopters report missing the audit step. Until then the checklist is the mechanism.
 
 ## Plan-write discipline (claim disposition)
 

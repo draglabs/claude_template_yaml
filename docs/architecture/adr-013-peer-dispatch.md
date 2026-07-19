@@ -1,8 +1,10 @@
 # ADR-013: Peer dispatch (supersedes the A2 nested-spawn model)
 
-**Status:** accepted
+**Status:** accepted; superseded in part by [ADR-022](adr-022-runtime-recalibration.md) (2026-07-19) — the retry mechanism only. The peer-dispatch topology (no nested subagent spawns; Executor/Reviewer/QA as peers under the Orchestrator) remains in force and was re-verified against the current runtime.
 **Date:** 2026-04-23
 **Deciders:** David (template author), Strategist session
+
+> **Addendum 2026-07-19 (ADR-022).** The SendMessage-unavailability premise below (Context, final paragraph; Alternatives §2) no longer holds — the current Claude Code runtime provides SendMessage for continuing a prior agent. Retries now default to continuation of the same Executor, with fresh dispatch retained for approach-level blocks. See ADR-022 and `session-policy.md` §"Orchestrator-owned retry mechanics". The rest of this ADR — including the nested-spawn prohibition, which was re-confirmed — stands unchanged. Model names in this ADR (Sonnet/Opus) reflect the ladder at decision time; current docs use role-relative tiers per ADR-022.
 
 ## Context
 

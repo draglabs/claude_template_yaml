@@ -298,11 +298,11 @@ STEP 2 — Report back with:
        - medium → name what's unclear.
        - low → name what's blocking confidence.
   e. The gate parameters you'll run:
-       - Sequential mode: Reviewer: Opus (always required). QA required:
-         yes/no (yes for L/XL or markers 🧪 / ⚠️). Retry cap: 2 (XS/S/M)
-         / 3 (L/XL/⚠️).
-       - Batch mode: single Integrator-QA (Opus 1M) call at end of
-         batch, no per-task Reviewer/QA retry loop. See STEP 3B.
+       - Sequential mode: Reviewer: top tier (always required). QA
+         required: yes/no (yes for L/XL or markers 🧪 / ⚠️). Retry cap:
+         2 (XS/S/M) / 3 (L/XL/⚠️).
+       - Batch mode: single Integrator-QA (top tier, long-context) call
+         at end of batch, no per-task Reviewer/QA retry loop. See STEP 3B.
   f. Locked decisions from CLAUDE.md that constrain the work (to include
      in the Executor brief and any relevant Reviewer / QA / Integrator-QA
      brief).
@@ -364,7 +364,10 @@ STEP 3 — Dispatch the Executor.
 
   SPAWN the Executor via the Agent tool with these parameters:
     - subagent_type: "general-purpose"  (only documented option)
-    - model: "sonnet"
+    - model: <the work-tier model — resolve per session-policy §"Model
+      tiers" (ADR-022) and set EXPLICITLY; subagents inherit the session
+      model by default, and an unset model on a top-tier session burns
+      top-tier tokens on writer work>
     - prompt: <filled-in executor-brief.md>
     - DO NOT set isolation — you already created the worktree explicitly.
       The brief passes the worktree path to the Executor as a literal arg.
@@ -387,7 +390,10 @@ STEP 4 — Run the peer gates.
 
     Spawn the Reviewer via the Agent tool with these parameters:
       - subagent_type: "general-purpose"
-      - model: "opus"                (the Reviewer is always Opus)
+      - model: <the top-tier model — inherit the session model when this
+        session itself runs top tier (omit the param), else set the
+        top-tier model explicitly. Invariant: the review gate runs at a
+        tier ≥ the tier that wrote the code (ADR-022)>
       - isolation: omit              (Reviewers don't need worktrees —
                                       they read the Executor's worktree
                                       path passed in the brief)
@@ -410,7 +416,8 @@ STEP 4 — Run the peer gates.
 
     Spawn the QA via the Agent tool with these parameters:
       - subagent_type: "general-purpose"
-      - model: "sonnet"
+      - model: <the work-tier model — set explicitly, as with the
+        Executor>
       - isolation: omit              (QA reads the Executor's worktree
                                       path passed in the brief; does not
                                       need its own worktree)
@@ -470,27 +477,47 @@ STEP 4 — Run the peer gates.
         unresolved concern verbatim in the Notes line.
 
     IF retries_used <= retry_cap:
-      Re-dispatch the Executor with sharpened context.
+      Run one Executor fix cycle. Two mechanisms — route mechanically
+      per session-policy §"Orchestrator-owned retry mechanics" (ADR-022):
 
-      - The worktree and feature branch already exist — DO NOT pre-create
-        again. Do NOT update the plan ledger (W-item stays in_progress
-        across retries; retry count is Orchestrator-internal).
-      - Fill in a new Executor brief with:
-          * Retry cycle: yes
-          * Prior concerns: the full verbatim text from the Reviewer (or
-            QA) that caused the block. Name which gate flagged.
-          * Same worktree path and branch name.
-          * "What you're building", Acceptance criteria, Files you will
-            touch, References, and Locked decisions: unchanged from the
-            initial dispatch. The Executor is not reopening scope — just
-            fixing what was flagged.
-      - Spawn the Executor via the Agent tool (same parameters as the
-        initial STEP 3 dispatch: subagent_type "general-purpose", model
-        "sonnet", no isolation).
-      - On Executor return (PASS or STUMPED): go to STEP 4a again (the
-        Reviewer must re-review after any code change — including fixes
-        that were prompted by a prior QA failure, because the code has
-        changed since the Reviewer last shipped it).
+      CONTINUATION (default). Use when ALL of:
+        - the blocking concern is execution-level (Reviewer verdict
+          carried `Block class: execution`, or the block came from a
+          QA fail with no approach-level note), AND
+        - this concern has NOT already survived a continuation attempt
+          (one continuation per concern, then fresh eyes), AND
+        - the prior Executor agent is still reachable.
+      Mechanics:
+        - Send the same Executor, via SendMessage: the full verbatim
+          concerns (name which gate flagged) + "address these concerns;
+          do not reopen the original scope."
+        - The worktree, branch, and the Executor's context are intact —
+          nothing is rebuilt.
+
+      FRESH DISPATCH. Mandatory when `Block class: approach`, when the
+      same concern survived a continuation attempt, or when the prior
+      Executor is unreachable.
+        - The worktree and feature branch already exist — DO NOT
+          pre-create again.
+        - Fill in a new Executor brief with:
+            * Retry cycle: yes
+            * Prior concerns: the full verbatim text from the Reviewer
+              (or QA) that caused the block. Name which gate flagged.
+            * Same worktree path and branch name.
+            * "What you're building", Acceptance criteria, Files you
+              will touch, References, and Locked decisions: unchanged
+              from the initial dispatch. The Executor is not reopening
+              scope — just fixing what was flagged.
+        - Spawn the Executor via the Agent tool (same parameters as the
+          initial STEP 3 dispatch: subagent_type "general-purpose",
+          work-tier model set explicitly, no isolation).
+
+      Either mechanism: do NOT update the plan ledger (W-item stays
+      in_progress across retries; retry count is Orchestrator-internal).
+      On Executor return (PASS or STUMPED): go to STEP 4a again (the
+      Reviewer must re-review after any code change — including fixes
+      that were prompted by a prior QA failure, because the code has
+      changed since the Reviewer last shipped it).
 
     Retry counter recovery on crash: the counter lives in your session
     memory, not in the plan. If the Orchestrator crashes mid-retries
@@ -523,18 +550,22 @@ STEP 5 — Merge + push + ledger update + auto-advance.
 
        <Diff 1-line summary from Executor's final PASS return>
 
-       Executor: Claude Sonnet (worktree-isolated)
-       Reviewer: Claude Opus, <verdict>
-       QA: Claude Sonnet, <pass | n/a>
+       Executor: <model resolved at spawn> (worktree-isolated)
+       Reviewer: <model resolved at spawn>, <verdict>
+       QA: <model resolved at spawn>, <pass | n/a>
        Retries used: <n>/<retry_cap>
 
        Lessons learned:
          - <paste verbatim from Executor's final PASS shape>
          - <bullet>
 
-       Co-Authored-By: Claude Sonnet <noreply@anthropic.com>
-       Co-Authored-By: Claude Opus <noreply@anthropic.com>
+       Co-Authored-By: Claude <executor model> <noreply@anthropic.com>
+       Co-Authored-By: Claude <reviewer model> <noreply@anthropic.com>
        ```
+
+       Model lines record the ACTUAL models you resolved at spawn time
+       (ADR-022) — never template names. A trailer naming a model the
+       agent didn't run on is a ledger that lies.
 
        Lessons learned is REQUIRED. If the Executor didn't include them
        (or included only "Nothing surprising."), that's acceptable — but
@@ -615,7 +646,7 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
     Make N Agent-tool calls in a single message (independent calls,
     parallel execution). For each:
       - subagent_type: "general-purpose"
-      - model: "sonnet"
+      - model: <the work-tier model — set explicitly, per STEP 3>
       - prompt: <filled-in executor-brief.md for this W-id — tier,
                 branch, worktree path, What/Acceptance/Touches/References/
                 Locked decisions, Retry cycle: no, empty Prior concerns>
@@ -637,7 +668,8 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
 
     Spawn via Agent tool with:
       - subagent_type: "general-purpose"
-      - model: "opus"
+      - model: <the top-tier model, long-context variant if the harness
+        offers one — resolve per session-policy §"Model tiers">
       - isolation: omit (Integrator reads the pre-created worktrees)
       - prompt: <filled-in integrator-qa-brief.md with:
                   * Batch ID,

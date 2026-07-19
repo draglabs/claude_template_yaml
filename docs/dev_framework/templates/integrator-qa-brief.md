@@ -4,7 +4,7 @@ Copy, fill in brackets, paste as the Agent tool's `prompt` argument. Integrator-
 
 Integrator-QA is spawned by the **Orchestrator** — a peer of the Executors, not a child. It returns its verdict and any filed claims to the Orchestrator, which owns dispatch, retry, and merge decisions.
 
-**Model:** Opus 1M. The batch context (N worktree diffs + coding-standards + plan + dependency considerations) is large; the 1M context is the load-bearing capability that makes batch mode pay off over N separate per-task Reviewer calls.
+**Model:** top tier, long-context variant ([`../session-policy.md`](../session-policy.md) §"Model tiers", ADR-022). The batch context (N worktree diffs + coding-standards + plan + dependency considerations) is large; the long context is the load-bearing capability that makes batch mode pay off over N separate per-task Reviewer calls.
 
 **Do not use this brief for:**
 - Sequential-mode W-items (Parallel-safe: false) — use `reviewer-brief.md` + `qa-brief.md` instead.
@@ -13,7 +13,7 @@ Integrator-QA is spawned by the **Orchestrator** — a peer of the Executors, no
 ```
 ## Integrator-QA for batch {{batch-id}}
 
-You are an Opus 1M Integrator-QA subagent spawned by the Orchestrator.
+You are a top-tier long-context Integrator-QA subagent spawned by the Orchestrator.
 Your job is to integrate a batch of parallel-safe W-items: review, test,
 fix within acceptance, merge if clean, file claims / surface failures
 when scope decisions are needed.
@@ -114,7 +114,7 @@ branch — choose based on what you can cleanly rebuild if something
 fails). For each merge:
 
 - If fast-forward or clean 3-way: proceed.
-- If conflicts: resolve them. You hold the Opus 1M context; this is the
+- If conflicts: resolve them. You hold the long-context view; this is the
   judgment call you were spawned for. Conflict resolution commits
   follow the same discipline as Executor commits (no hardcoded values,
   no silent fallbacks, tests stay green). Record the resolution in your
