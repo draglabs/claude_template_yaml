@@ -16,7 +16,7 @@ $PROJECT_DIR/           ← invoke claude from here
   .claude/
   docs/
   .env                  ← contains DEFAULT_CODE_SUBDIR + CLAUDE_TEMPLATE_ROOT
-  <repo-slug>/          ← git root; name = GitHub repo slug
+  <repo-slug>/          ← git root; name = repo slug on the git host
     src/
     .git/
 ```

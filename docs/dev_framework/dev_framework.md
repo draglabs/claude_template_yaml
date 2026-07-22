@@ -87,7 +87,7 @@ Subagent briefs (load on spawn, not at session start):
 | Execution policy (tiers, retries, escalation) | [`session-policy.md`](session-policy.md) | Orchestrator |
 | Coding standards (TDD, no hardcoded values, fail loudly) | [`coding-standards.md`](coding-standards.md) | Executor + Reviewer (never Orchestrator or Strategist) |
 | Context budget (what each role loads) | [`context-management.md`](context-management.md) | Reference — loaded on demand |
-| Approved MCPs (tools each role uses) | [`approved-mcps.md`](approved-mcps.md) | Reference — loaded when adding or evaluating an MCP |
+| Approved MCPs (tools each role uses; config + health owned by Strategist) | [`approved-mcps.md`](approved-mcps.md) | Reference — loaded when adding or evaluating an MCP; Strategist runs the session-start health check per [`strategist.md`](strategist.md) §"MCP health check" |
 | Dev environment (local vs remote `{{sub}}.dev.{{website}}.com`) | [`dev-environment.md`](dev-environment.md) | Orchestrator on first-time setup; loaded on demand otherwise |
 | Process exceptions (raw field reports from agents) | [`process-exceptions.md`](../framework_exceptions/process-exceptions.md) | Appended to by any agent that hits process friction; read by Strategist at phase boundaries |
 | Process incidents (analyzed: root cause + fix) | [`execution-incidents.md`](../framework_exceptions/execution-incidents.md) | Promoted from process-exceptions by Strategist when an entry warrants full post-mortem |
@@ -98,9 +98,19 @@ Subagent briefs (load on spawn, not at session start):
 |---|---|
 | Strategist | Opens `planning:` PRs with feature specs and roadmap changes |
 | Designer | Opens `design:` PRs with mockup concepts (user approves before actionable) |
-| Orchestrator | Reads `planning:` and `design:` PRs via `gh pr list --label`, merges to acknowledge, then dispatches Executors on `w-<id>/<slug>` branches |
+| Orchestrator | Reads `planning:` and `design:` PRs via the host CLI (`gh pr list --label` / `glab mr list --label`), merges to acknowledge, then dispatches Executors on `w-<id>/<slug>` branches |
 
 This is async-safe: each instance operates on its own surface, signals work via PR labels, and never blocks the others.
+
+### Git-host neutrality
+
+The framework's git policy is **host-neutral**. GitHub and GitLab (including self-hosted) are both first-class; nothing in the branch model, the PR-based handoff, or the merge gates assumes one host. Concretely:
+
+- **"PR" is generic.** Wherever framework docs say "PR", read pull request (GitHub) or merge request (GitLab) — same object, same role in the workflow. Labels, descriptions-as-briefs, and merge-to-acknowledge all work identically on both.
+- **`GIT_HOST` in `$PROJECT_DIR/.env` names the project's host** (`github` | `gitlab` | `other`; plus `GIT_HOST_URL` for self-hosted). It is set by the Strategist's first-contact interview — asked, never assumed, because a user may run different hosts for different projects and a repo created on the wrong host is expensive to unwind.
+- **Host commands are qualified, not defaulted.** Before reaching for a host CLI (`gh` / `glab`) or host MCP (github / a GitLab server), check `GIT_HOST`. Framework docs that show `gh ...` examples are showing the GitHub instantiation of a host-neutral step; substitute the `glab` equivalent when `GIT_HOST=gitlab`.
+- **Policy is stated in git terms.** Branches, merges, tags, remotes, labels — not "GitHub" terms. A doc or plan that says "GitHub" where it means "the project's git host" is naming drift; the Strategist's alignment audit catches it.
+- **`GIT_HOST=other`** means the workflow needs a documented mechanism: record how PRs/MRs (or their equivalent) work in `dev_framework_exceptions.md`.
 
 ## Branch model
 

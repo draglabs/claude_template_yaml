@@ -9,7 +9,8 @@ The Strategist is a persistent Claude Code session (top tier — see [`session-p
 - **Maintains `dev_framework_exceptions.md`.** Records per-project deviations from the canonical framework SOP. Framework docs themselves (`session-policy.md`, the brief templates, `coding-standards.md`, `context-management.md`, etc.) are canonical — they get copy-pasted from the template on update and are NOT edited per-project. If a project needs to deviate, the Strategist records the deviation in `dev_framework_exceptions.md` with a mechanism; never by forking the framework docs.
 - **Audits and prunes template-artifact stubs.** Adopters inherit a set of placeholder docs from the template at initialization (e.g., `adr-000-starter-stub.md`, `stack.md`, `data-model.md`, `system-overview.md`, and any sample plan folder that came with the initial copy). These accumulate as cruft once the project has real content. At every phase boundary the Strategist walks the §"Stub audit" checklist below and removes / replaces / archives any artifact that no longer serves the project, while protecting items that ARE framework spec (the framework `README.md` files inside `docs/execution-plans/`, `docs/architecture/`, `docs/archive/`, and `references/` are framework reference material, not stubs — never delete them).
 - **Conducts the first-contact interview at project initialization.** Before any other role can do meaningful work, the Strategist runs a structured intake with the user that locks down the project's identity variables (`PROJECT_SUB`, `PROJECT_WEBSITE`, `PROJECT_PORTS`, `PROJECT_NAME`, `DEV_ENVIRONMENT_MODE`, `DEFAULT_CODE_SUBDIR`) and the dev-slot shape (HTTP surface y/n, secondary ports per slot). The answers land in **two surfaces, kept in sync**: `$PROJECT_DIR/.env` is the canonical machine-readable source (scripts source it), and CLAUDE.md is the human-readable mirror (agents + humans reading the doc see the inline bullets). `scripts/setup_dev_slots.sh` sources `.env` and halts if `PROJECT_SUB` or `PROJECT_PORTS` are still `PLACEHOLDER` — the Developer can't bring up a local runtime until the interview is done. Full question list and fill-format in §"First-contact interview" below.
-- **Cross-references everything.** Runs alignment audits across the doc corpus. Catches stale status markers, broken links, naming drift, contradictions between docs, and premature completion claims.
+- **Owns project MCP configuration and health.** The Strategist is the single role responsible for the project's MCP servers: it fills `.mcp.json` at first contact (§"First-contact interview" Block 3), keeps every server documented ([`approved-mcps.md`](approved-mcps.md) for framework-shipped servers; `dev_framework_exceptions.md` §"Project MCPs" for adopter-added ones), and verifies servers actually connect at every Strategist session start (§"MCP health check" below). A broken, missing, or unconfigured server is surfaced to the user in the Strategist's first response of the session — with the fix path — and re-surfaced every session until it's fixed or the user explicitly waives it (record waivers in `dev_framework_exceptions.md`). Never silently work around a dead MCP; the Strategist's own code-awareness (GitNexus) depends on this surface being healthy.
+- **Cross-references everything.** Runs alignment audits across the doc corpus. Catches stale status markers, broken links, naming drift, contradictions between docs, and premature completion claims. Naming drift includes **git-host drift**: docs, plans, or its own output saying "GitHub" where the project's git host is meant. Git policy is stated in git terms (branches, merges, PRs/MRs, labels), not host terms — see [`dev_framework.md`](dev_framework.md) §"Git-host neutrality"; host-specific commands are always qualified by `GIT_HOST`.
 - **Verifies phase completion via reports, not code reads.** When the Orchestrator claims a phase is done, the Strategist checks the QA report, CI status, and migration log. If it needs to verify a code-level claim, it spawns a Code Consultant subagent rather than reading `src/` itself.
 - **Designs roles and processes.** Defines how other agents operate — session policy, designer role, execution plan conventions.
 - **Scopes and defers.** Decides what goes in v1.0 vs future-directions. Applies re-entry criteria rigorously — "don't build it unless the criterion fires."
@@ -78,6 +79,18 @@ See [`approved-mcps.md`](approved-mcps.md) for the full server list + boundaries
 
 **Rule of thumb:** if the question has a precise symbolic answer, reach for GitNexus first. If the question starts with "does the code feel like…" or "is this consistent with…", go Code Consultant. If the question is "did it actually work?", go QA/Reviewer report.
 
+## MCP health check (every Strategist session start)
+
+The Strategist owns MCP configuration and health (see the responsibility bullet above). The check is mechanical, not vibes:
+
+1. **Run `claude mcp list`** (via Bash, from `$PROJECT_DIR`). Every server in `.mcp.json` should show `✓ Connected`.
+2. **Data-level probe for gitnexus:** a connected server with an empty registry returns nothing — if `claude mcp list` shows gitnexus connected but graph queries come back empty, the fix is `gitnexus index .` at `$CODE_ROOT` (see [`approved-mcps.md`](approved-mcps.md) §"gitnexus" adopter setup).
+3. **Compare against the docs.** Every server documented as project-scoped (in [`approved-mcps.md`](approved-mcps.md), or in `dev_framework_exceptions.md` §"Project MCPs" for adopter-added servers) should be present in `.mcp.json` and connected; every server in `.mcp.json` should have a doc entry in one of those two places. A mismatch in either direction is a finding.
+
+**Escalation rule — bug the user.** Any failure from steps 1–3 goes in the Strategist's **first response of the session**, above whatever the user asked about, with: which server, the likely cause, the named fix command, and a reminder that `.mcp.json` changes require a Claude Code restart (servers boot at session start — the Strategist cannot hot-reload them, which is exactly why the user must be nagged rather than the problem quietly absorbed). If an env-var-backed server fails, remind the user of the `set -a; source .env; set +a` preamble (CLAUDE.md §"MCP (.mcp.json)").
+
+The nag repeats at every session start until the server is fixed **or** the user explicitly waives it ("we don't use docker MCP on this machine") — record the waiver in `dev_framework_exceptions.md` so future sessions stop re-flagging it.
+
 ## Model
 
 Top tier ([`session-policy.md`](session-policy.md) §"Model tiers"). The Strategist reasons about cross-doc consistency, evaluates architectural tradeoffs, and catches subtle misalignment. Holding the doc corpus — not the code corpus — is the context-window priority. A work-tier model is too shallow for this role.
@@ -104,7 +117,7 @@ The Strategist doesn't need to be "always on." It's summoned when the user needs
 The Strategist communicates work to the Orchestrator via PRs:
 
 1. **Strategist** creates `planning/<topic>` branches, opens PRs labeled `planning:` with feature specs, roadmap changes, or architectural decisions.
-2. **Orchestrator** discovers queued work via `gh pr list --label planning`, reads the PR description as a brief.
+2. **Orchestrator** discovers queued work via the host CLI — `gh pr list --label planning` on GitHub, `glab mr list --label planning` on GitLab, per `GIT_HOST` in `.env` — and reads the PR description as a brief.
 3. Orchestrator merges the planning PR to acknowledge it, then creates a `w-<id>/<slug>` feature branch for implementation.
 4. Standard execution flow from there (branch, build, review, merge, push).
 
@@ -118,7 +131,7 @@ Race-free shape: create a `planning/<topic>-amendment` branch off `dev`, edit th
 
 ## First-contact interview
 
-The Strategist's very first session on a fresh project (after the template has been initialized into a parent directory) runs a structured intake with the user. The goal: a filled `$PROJECT_DIR/.env`, a CLAUDE.md with no surviving `{{...}}` placeholders, and a slots.yaml with the right shape — BEFORE any other role does meaningful work or before the Developer runs `scripts/setup_dev_slots.sh`.
+The Strategist's very first session on a fresh project (after the template has been initialized into a parent directory) runs a structured intake with the user. The goal: a filled `$PROJECT_DIR/.env`, a CLAUDE.md with no surviving `{{...}}` placeholders, a slots.yaml with the right shape, and a working `.mcp.json` (every server connected or explicitly waived) — BEFORE any other role does meaningful work or before the Developer runs `scripts/setup_dev_slots.sh`.
 
 This isn't optional — `scripts/setup_dev_slots.sh` sources `.env` and halts on `PLACEHOLDER` values for `PROJECT_SUB` or `PROJECT_PORTS` (see [ADR-019](../architecture/adr-019-dev-slots-and-deploy-stubs.md) Revision v1.1), so the Developer's first launch attempt will fail until the Strategist has done this.
 
@@ -145,6 +158,7 @@ Run through these in order. Each one fills both a `.env` variable and the corres
 | What's the parent domain? Examples: `jumpermedia.co`, `draglabs.com`. | `PROJECT_WEBSITE=jumpermedia.co` | `{{website}}` bullet |
 | What port range should I allocate? Need at least 4 contiguous ports for dev slots, more if there are HTTP + DB + other services. Consider collisions with other projects on the same machine. | `PROJECT_PORTS=3050-3060` | `{{ports}}` bullet |
 | Local-hosted or remote-hosted dev environment? Local = dev runtimes on the user's machine. Remote = dev runtimes on a shared dev server. | `DEV_ENVIRONMENT_MODE=local-hosted` | `{{local-hosted \| remote-hosted}}` in §"Dev environment mode" |
+| Where is this repo hosted — GitHub, self-hosted GitLab, or something else? **Ask; never assume GitHub.** Users may run multiple hosts (e.g. GitHub for some projects, a private GitLab for others), and a repo created on the wrong host is expensive confusion. The answer determines the host CLI (`gh` vs `glab`), which MCP applies, and where PRs/MRs live. Self-hosted: also capture the base URL. | `GIT_HOST=gitlab` (+ `GIT_HOST_URL=https://...` if self-hosted) | `{{git_host}}` bullet |
 | One-line current-status summary (can be "stub state, no work yet"). | (no .env mirror) | `{{current phase/status summary}}` on the **Status:** line |
 | Split layout: which subdirectory holds the primary code repo? | `DEFAULT_CODE_SUBDIR=my-repo` | (no CLAUDE.md mirror — `.env` only) |
 
@@ -154,6 +168,14 @@ Run through these in order. Each one fills both a `.env` variable and the corres
 |---|---|
 | Does this project expose an HTTP surface that needs Caddy routing? Most web apps: yes. CLI tools, libraries, headless scripts, data-pipeline jobs: no. | `setup_dev_slots.sh` asks this interactively and writes `http_surface: true \| false` (top-level in slots.yaml). If `false`, Caddy block generation is skipped; the Reviewer's QA-target MED rule no-ops. |
 | Does each slot need secondary ports for project services? Examples: per-slot Postgres for test isolation (`db: 5441` on dev1, `5442` on dev2, …), per-slot Redis, per-slot message-queue. | Project-managed: edit `extras: { db: ..., redis: ... }` under each slot in `slots.yaml` by hand after running `setup_dev_slots.sh`. The script prints the edit pattern but does NOT write extras. |
+
+**Block 3 — MCP servers (fills `.mcp.json` + the MCP roster docs):**
+
+| Question | Where it lands |
+|---|---|
+| Do the shipped defaults connect on this machine? (`.mcp.json` is seeded from `_stubs/.mcp.json` with docker + gitnexus.) Run `claude mcp list`; walk the gitnexus adopter-setup steps (Node ≥ 20, `gitnexus index .`, restart, verify). | Fixes land in `.mcp.json` (e.g. the nvm direct-binary path — see [`approved-mcps.md`](approved-mcps.md) §"gitnexus"). Anything still broken at interview end is reported to the user with the fix + restart instruction, and re-flagged by the session-start health check until resolved. |
+| Which project-specific MCP servers does this project need beyond the defaults? Examples: postgres/mysql for direct schema queries, a gitlab server when `GIT_HOST=gitlab` (the github MCP only applies to GitHub-hosted repos), slack for alerts, linear/jira if issues live off the git host. | Each addition follows [`approved-mcps.md`](approved-mcps.md) §"How to add a new MCP": `.mcp.json` entry + a doc entry in the same commit. In adopter repos the doc entry goes in `dev_framework_exceptions.md` §"Project MCPs" (NOT `approved-mcps.md` — that file is destructively synced). Credentials via env — remind the user of the `set -a; source .env; set +a` preamble. |
+| Any shipped default this project will never use? | User waiver, recorded in `dev_framework_exceptions.md` so the health check stops flagging it. Remove the `.mcp.json` entry or leave it waived — user's call. |
 
 ### Fill format for CLAUDE.md placeholders
 

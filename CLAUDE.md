@@ -12,6 +12,7 @@ Project variables (fill these in, used across docs and QA briefs):
 - `{{sub}}` — this project's subdomain (e.g. `myapp`)
 - `{{website}}` — shared parent domain (e.g. `draglabs.com`)
 - `{{ports}}` — local port range allocated to this project (e.g. `3050-3060` or `305*`); local dev runtimes (Docker, native dev server, reverse proxy) bind within this range. See [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md) §"Port allocation (local-hosted)".
+- `{{git_host}}` — where this project's repo is hosted (e.g. `github`, or self-hosted `gitlab` at a base URL). Set by the Strategist's first-contact interview (`GIT_HOST` in `.env`) — asked, never assumed. Git policy in this framework is host-neutral: "PR" means PR/MR on whatever host this names. See [`docs/dev_framework/dev_framework.md`](docs/dev_framework/dev_framework.md) §"Git-host neutrality".
 
 <!-- BEGIN FRAMEWORK MANAGED -->
 <!--
@@ -103,6 +104,8 @@ set -a; source .env; set +a    # then run claude
 ```
 
 Docker MCP is local-only. Never point it at production. Treat MCP servers the same as any other runtime component — adding one counts as an architectural addition (see "Docs before code" above).
+
+**The Strategist owns MCP configuration and health.** It configures the project's servers during the first-contact interview (Block 3 in [`docs/dev_framework/strategist.md`](docs/dev_framework/strategist.md)), verifies they connect at every Strategist session start (`claude mcp list`), and surfaces any broken or unconfigured server to the user — repeatedly, until fixed or explicitly waived. See [`docs/dev_framework/approved-mcps.md`](docs/dev_framework/approved-mcps.md) §"Ownership and health".
 
 ## Live references
 

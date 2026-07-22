@@ -27,7 +27,7 @@ my-project/          ← Claude invoked from here (tracking tree)
   docs/
   references/
   .env               ← parent .env; see step 4
-  my-repo-slug/      ← git root; name matches GitHub repo slug
+  my-repo-slug/      ← git root; name matches the repo slug on the git host
     src/
     .git/
     .env             ← code-level secrets (optional; see step 4)
@@ -47,7 +47,7 @@ mv my-project my-project-parent/my-repo-slug
 cd my-project-parent
 ```
 
-Replace `my-repo-slug` with your GitHub repo's slug (the repository name, not the org).
+Replace `my-repo-slug` with your repo's slug on its git host (the repository name, not the org/group).
 
 ### 2. Move tracking material to the parent
 
@@ -71,7 +71,7 @@ Your code repo's `.gitignore` may have entries for `docs/` or `.claude/`. Since 
 Create `$PROJECT_DIR/.env` (at the parent level) with at minimum:
 
 ```bash
-# The name of the code subdirectory (matches GitHub repo slug)
+# The name of the code subdirectory (matches the repo slug on the git host)
 DEFAULT_CODE_SUBDIR=my-repo-slug
 
 # Optional: points to the canonical template repo for framework sync.
@@ -139,7 +139,10 @@ echo "<repo-slug>/" > .gitignore
 echo ".env" >> .gitignore        # parent .env often holds secrets
 git add CLAUDE.md .claude docs .mcp.json .gitignore
 git commit -m "Initial commit: tracking material"
-git remote add origin git@github.com:your-org/<project>-tracking.git
+# Remote on whatever GIT_HOST names — e.g.:
+#   git@github.com:your-org/<project>-tracking.git          (GIT_HOST=github)
+#   git@gitlab.example.com:your-group/<project>-tracking.git (self-hosted GitLab)
+git remote add origin <remote-url-on-your-git-host>
 git push -u origin main
 ```
 
@@ -172,7 +175,7 @@ The Orchestrator and Developer resolve `$CODE_ROOT = $PROJECT_DIR/$TARGET_REPO` 
 
 ## Checklist
 
-- [ ] Parent directory created; code repo is a subdirectory named after the GitHub slug
+- [ ] Parent directory created; code repo is a subdirectory named after the repo slug on the git host
 - [ ] CLAUDE.md, .claude/, docs/, .mcp.json, references/ are at parent level
 - [ ] `$PROJECT_DIR/.env` has `DEFAULT_CODE_SUBDIR` (and optionally `CLAUDE_TEMPLATE_ROOT`)
 - [ ] Claude Code is invoked from `$PROJECT_DIR`, not from inside the code repo

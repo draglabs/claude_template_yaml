@@ -40,6 +40,17 @@ Append new entries to the **Active** section below. Use this shape:
 
 When the underlying project reality changes, move the entry to **Retired** with a dated note on why. Don't delete. The history is worth keeping.
 
+## Project MCPs
+
+Adopter-added MCP servers and waivers of framework defaults live here — this file survives framework sync; `approved-mcps.md` does not (see [`approved-mcps.md`](../dev_framework/approved-mcps.md) §"How to add a new MCP" and §"Ownership and health"). One line per entry, exempt from the EX-NNN format:
+
+```markdown
+- `<server>` — added YYYY-MM-DD — purpose; who uses it; boundary.
+- `<server>` — WAIVED YYYY-MM-DD — reason. The Strategist's session-start health check skips this server.
+```
+
+(None yet.)
+
 ---
 
 ## Active

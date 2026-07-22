@@ -1,6 +1,14 @@
 # Approved MCPs
 
-The MCP servers this project uses, who uses each, and where the boundaries are. New MCPs are added by updating `.mcp.json` and this doc in the same PR.
+The MCP servers this project uses, who uses each, and where the boundaries are. New MCPs are added by updating `.mcp.json` and a doc entry in the same PR (see §"How to add a new MCP" for which doc).
+
+## Ownership and health
+
+**The Strategist owns this surface.** Configuring the project's MCP servers is part of the Strategist's first-contact interview (Block 3 in [`strategist.md`](strategist.md) §"First-contact interview"), and verifying they stay healthy is part of every Strategist session start ([`strategist.md`](strategist.md) §"MCP health check"): run `claude mcp list`, probe gitnexus for data (connected ≠ indexed), and reconcile `.mcp.json` against the documented roster.
+
+**Broken servers get escalated to the user, not worked around.** MCP servers boot at Claude Code session start — no agent can hot-reload a fixed `.mcp.json` mid-session, so the only path to a working server is the user restarting after the fix. The Strategist therefore reports any failing/missing/unconfigured server in its first response of the session, with the fix path, and repeats the report every session until the server connects or the user explicitly waives it (waivers recorded in `dev_framework_exceptions.md`).
+
+Other roles that notice a dead MCP mid-session (Developer's gitnexus call returns nothing, Executor's docker tools error out) don't own the fix — they note it to the user and, if the friction recurs, file it in `process-exceptions.md` for Strategist triage.
 
 ## Project MCPs (loaded from `.mcp.json`)
 
@@ -62,6 +70,7 @@ Available across all projects for this user. Listed here so the framework can re
 ### github
 
 **Purpose:** GitHub.com API — issues, PRs, commits, repo search, reviews.
+**Applies only when `GIT_HOST=github`.** This server talks to github.com — for GitLab-hosted projects (self-hosted or gitlab.com) it is the wrong surface; use the `glab` CLI or a GitLab MCP instead (see §"MCPs you might want to request"). Git policy itself is host-neutral — see [`dev_framework.md`](dev_framework.md) §"Git-host neutrality".
 **Who uses it:**
 - **Strategist:** creating `planning:` PRs, reading issues that back work items.
 - **Designer:** creating `design:` PRs with mockup concepts.
@@ -100,17 +109,19 @@ Not yet approved, but common enough to name here so the decision is explicit whe
 | MCP | Use case | Request path |
 |---|---|---|
 | **postgres** / **mysql** | Strategist direct DB schema queries (complements gitnexus for DB-side questions) | Add to `.mcp.json`, document here, credentials via env |
+| **gitlab** | PR/MR + issue surface for GitLab-hosted projects (`GIT_HOST=gitlab`) — the github server's counterpart | Add to `.mcp.json`, point at `GIT_HOST_URL` for self-hosted, token via env |
 | **slack** | Team coordination, alerts | Add to `.mcp.json`, document here, OAuth-gated |
-| **linear** / **jira** | If issue tracking moves off GitHub | Add to `.mcp.json`, replaces github's issue surface |
+| **linear** / **jira** | If issue tracking moves off the git host | Add to `.mcp.json`, replaces the git host's issue surface |
 | **filesystem** | Sandboxed access beyond project root (shared `references/` trees) | Add to `.mcp.json`, tighten path scope |
 
 ## How to add a new MCP
 
 1. Propose via a planning PR (Strategist) or directly to the user. Name the use case, who uses it, and where the boundary is.
 2. Add the server entry to `.mcp.json`.
-3. Update this doc with a section describing purpose, who uses it, boundary.
+3. Document it — purpose, who uses it, boundary. **In the canonical template repo:** add a section to this doc (Template Developer). **In an adopter repo:** add the entry to `dev_framework_exceptions.md` under a "Project MCPs" heading — this doc is destructively synced from the template and any adopter edit here is wiped on next session start. If the MCP is broadly useful, also open a PR against the template to land it here.
 4. Update role docs (`strategist.md`, `session-policy.md`, template briefs) only if the MCP changes the agent pattern — e.g. replacing a subagent call like GitNexus did with Code Consultant. Minor MCPs don't need role-doc changes.
 5. If the MCP has hooks (PreToolUse/PostToolUse): decide per-role scoping before enabling. Don't default-enable globally.
+6. Verify: `claude mcp list` after a restart shows the new server `✓ Connected`. The Strategist's session-start health check (§"Ownership and health") flags it from then on if it breaks.
 
 ## Boundaries that apply to every MCP
 
