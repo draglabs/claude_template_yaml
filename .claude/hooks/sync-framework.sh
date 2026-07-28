@@ -132,6 +132,45 @@ if [[ -d "$TEMPLATE_ROOT/.claude/hooks" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
+# 4b. Install the main-push guard into each code repo's .git/hooks/pre-push.
+#     Source of truth is .claude/hooks/git-guard-pre-push.sh (just synced in
+#     step 4). Idempotent: installs when missing, refreshes when the template
+#     copy changed, and NEVER overwrites an adopter-owned pre-push (a file
+#     without the FRAMEWORK-PUSH-GUARD marker) — warns instead.
+#     Covers flat layout ($PROJECT_DIR/.git) and split layout (every
+#     immediate subdir with .git/, which also covers multi-repo projects).
+#     See docs/architecture/adr-023-main-push-guard.md.
+# ---------------------------------------------------------------------------
+
+GUARD_SRC="$PROJECT_DIR/.claude/hooks/git-guard-pre-push.sh"
+GUARD_MARKER="FRAMEWORK-PUSH-GUARD"
+
+install_push_guard() {
+  local repo="$1"
+  [[ -d "$repo/.git" && -f "$GUARD_SRC" ]] || return 0
+  local dst="$repo/.git/hooks/pre-push"
+  if [[ -f "$dst" ]] && ! grep -q "$GUARD_MARKER" "$dst" 2>/dev/null; then
+    echo "[sync-framework] WARN: $dst exists and is not the framework push guard — main-push guard NOT installed for $(basename "$repo"). Merge the guard's main check into your hook manually (see ADR-023)."
+    return 0
+  fi
+  if ! cmp -s "$GUARD_SRC" "$dst" 2>/dev/null; then
+    mkdir -p "$repo/.git/hooks"
+    if cp "$GUARD_SRC" "$dst" 2>/dev/null && chmod +x "$dst" 2>/dev/null; then
+      echo "[sync-framework] main-push guard installed: $(basename "$repo")/.git/hooks/pre-push"
+    else
+      echo "[sync-framework] WARN: failed to install main-push guard into $repo"
+    fi
+  else
+    chmod +x "$dst" 2>/dev/null
+  fi
+}
+
+install_push_guard "$PROJECT_DIR"
+for subdir in "$PROJECT_DIR"/*/; do
+  [[ -d "$subdir/.git" ]] && install_push_guard "${subdir%/}"
+done
+
+# ---------------------------------------------------------------------------
 # 5. Initialize docs/framework_exceptions/ if missing.
 #    Idempotent: only creates files that don't exist. On repeat runs, leaves
 #    adopter's accumulated exceptions untouched.
@@ -203,6 +242,7 @@ DEV_SLOT_STUBS=(
   "scripts/main_to_prod.sh"
   "scripts/setup_dev_slots.sh"
   "scripts/check-touches.sh"
+  "scripts/promote_dev_to_main.sh"
   "docs/dev/slots.yaml"
   ".env.example"
 )

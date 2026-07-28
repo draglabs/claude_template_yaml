@@ -124,6 +124,8 @@ feature  ──▶  dev  ──(phase exit + user authorizes)──▶  main
 
 Feature branches merge to `dev` per W-item (Orchestrator decision). Dev promotes to `main` only at phase-exit, gated by QA against `{{sub}}.dev.{{website}}.com` and explicit user authorization. See [`session-policy.md`](session-policy.md) §"Branching and isolation" and §"Phase exit gate."
 
+Pushing `main` is mechanically blocked by a git pre-push guard installed on every SessionStart sync ([ADR-023](../architecture/adr-023-main-push-guard.md)); the only sanctioned push path is `scripts/promote_dev_to_main.sh` (default = phase-exit promotion, `--bypass` = emergency path).
+
 ## Two process rules (every session)
 
 1. **Docs before code.** Architectural additions get documented by the Strategist and merged before the Orchestrator dispatches implementation. Enforced at the merge boundary by the Reviewer (`block` if no matching doc) and at the phase boundary by the Strategist's alignment audit.

@@ -72,6 +72,8 @@ Bias-correction:
 
 Feature branches merge to **`dev`**, dev promotes to **`main`** at phase boundaries. Full flow in [`docs/dev_framework/session-policy.md`](docs/dev_framework/session-policy.md) §"Branching and isolation" and [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md).
 
+**Pushing `main` is mechanically blocked** by a git pre-push guard the framework sync installs into every code repo ([ADR-023](docs/architecture/adr-023-main-push-guard.md)). The only sanctioned push path is `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` (phase-exit promotion; `--bypass` for the emergency path). Never push `main` any other way; never set `FRAMEWORK_ALLOW_MAIN_PUSH` by hand or in `.env`.
+
 Code-level rules (TDD, no hardcoded lifecycle values, fail loudly) live in [`docs/dev_framework/coding-standards.md`](docs/dev_framework/coding-standards.md) and are enforced by the Executor (writing) and Reviewer (checking) subagent briefs. The Orchestrator and Strategist do NOT load that doc — they delegate enforcement to the subagent layer.
 
 ## Project layout
@@ -137,6 +139,8 @@ npm test                 # test suite (CI gate)
 ./scripts/teardown_local.sh <slot>       # release a slot
 
 # Production deploy (also from $PROJECT_DIR):
+./scripts/promote_dev_to_main.sh         # THE ONLY sanctioned way to push main (ADR-023);
+                                         # verifies the dev → main promotion-merge shape first
 ./scripts/main_to_prod.sh                # NAMED ESCAPE HATCH for user-approved direct-deploy
                                          # (most projects: keep as stub; CI-only is the default)
 ```

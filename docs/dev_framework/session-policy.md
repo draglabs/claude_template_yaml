@@ -283,6 +283,8 @@ Under peer dispatch the Orchestrator sees Reviewer and QA verdicts inline — pe
 
 This project uses a **dev branch** between feature branches and main. Features merge to dev; dev promotes to main at phase boundaries.
 
+**Pushing `main` is mechanically blocked** ([ADR-023](../architecture/adr-023-main-push-guard.md)): the framework sync installs a git pre-push guard into every code repo's `.git/hooks/pre-push` that rejects any push updating `refs/heads/main` unless `FRAMEWORK_ALLOW_MAIN_PUSH=1` — and the only sanctioned setter of that variable is `scripts/promote_dev_to_main.sh` (run from `$PROJECT_DIR`; default mode for phase-exit promotion, `--bypass` for the emergency path). Never set the variable by hand and never put it in `.env`. Host-side branch protection on `main` is recommended in addition where the git host supports it (Strategist first-contact interview).
+
 ```
 feature (w-<id>/<slug>)  ──Orchestrator merge──▶  dev  ──phase-exit promotion──▶  main
                                                    │                               │
@@ -348,7 +350,7 @@ If the Executor's return came back without Lessons learned, the Orchestrator bou
 
 ### Promotion commit (dev → main)
 
-At phase exit, after QA passes on the dev environment and the user authorizes, the Orchestrator merges `dev` → `main`. Use a single annotated merge commit:
+At phase exit, after QA passes on the dev environment and the user authorizes, the Orchestrator merges `dev` → `main`. Use a single annotated merge commit, then push via `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` — the pre-push guard (ADR-023) blocks a raw `git push origin main`, and the script verifies the promotion-merge shape before setting the one-shot bypass:
 
 ```
 Promote dev → main: <phase name> complete
@@ -374,7 +376,7 @@ All W-items done is necessary but not sufficient. Phase exit under the dev-branc
 4. Push `dev` to origin (if any unpushed commits). Wait for dev-branch CI to pass.
 5. **Orchestrator spawns a QA subagent against `{{sub}}.dev.{{website}}.com`** (this is the same peer-dispatch pattern as per-W-item QA; spawn context is "phase exit"). Record pass/fail per criterion.
 6. Report per-criterion results to the user. **Explicit user authorization required to proceed.** The user sees the QA verdict; the user says "promote" or "hold."
-7. On authorization: Orchestrator merges `dev` → `main` (annotated merge commit per §"Promotion commit"), pushes `main`. Production CI deploys.
+7. On authorization: Orchestrator merges `dev` → `main` (annotated merge commit per §"Promotion commit"), then pushes via `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` (ADR-023 — raw `git push origin main` is blocked by the pre-push guard). Production CI deploys.
 8. Optional post-promotion smoke test against production URL (`{{sub}}.{{website}}.com`). Strongly recommended for phases that touched critical paths (auth, billing, data migration). Not mandatory.
 
 ### Failure modes
@@ -423,6 +425,7 @@ Hooks are canonical to the template; projects that adopt the template inherit th
 - **Template-self detection:** if the current project's resolved path equals the template root's, the hook reports "no sync needed" and exits. This repo is safe from syncing onto itself.
 - **Destructive sync of `docs/dev_framework/`** via `rsync -a --delete` — any local edits are silently overwritten. Adopters who need framework changes open a PR against the template repo, not against their local copy.
 - **Destructive sync of `.claude/hooks/`** via the same pattern — hooks are part of the canonical machinery.
+- **Main-push guard installation** ([ADR-023](../architecture/adr-023-main-push-guard.md)) — the synced `git-guard-pre-push.sh` is installed into `.git/hooks/pre-push` of every code repo under the project (flat-layout root and every immediate subdir with `.git/`). Idempotent; never overwrites an adopter-owned pre-push hook (warns instead).
 - **Idempotent init of `docs/framework_exceptions/`** from pristine stubs at `$TEMPLATE_ROOT/docs/dev_framework/_stubs/framework_exceptions/`. Only files that don't exist get created; existing files are preserved.
 - **CLAUDE.md managed-block reconciliation.** The block between `<!-- BEGIN FRAMEWORK MANAGED -->` and `<!-- END FRAMEWORK MANAGED -->` in the local CLAUDE.md is replaced with the template's corresponding block. Content outside those markers is never touched.
 - **Failure posture:** every step warns and continues on error. Framework sync is value-add, never a blocker for session start.
@@ -443,7 +446,7 @@ Peer-dispatch discipline is for normal operations. When production is on fire an
 
 Under bypass:
 
-1. **Orchestrator writes directly to `main`.** Skip dev entirely — dev-branch discipline is about orderly integration, not fire suppression. Commit goes straight to main; CI deploys to production. This is the single explicit exception to "Orchestrator doesn't write code."
+1. **Orchestrator writes directly to `main`.** Skip dev entirely — dev-branch discipline is about orderly integration, not fire suppression. Commit goes straight to main and is pushed via `./scripts/promote_dev_to_main.sh --bypass` from `$PROJECT_DIR` — the pre-push guard (ADR-023) blocks a raw main push even during a fire, and `--bypass` is the sanctioned one-shot override. This is the single explicit exception to "Orchestrator doesn't write code." CI deploys to production.
 2. **Commit with a `[bypass]` tag** in the first line, plus a one-line reason:
    ```
    [bypass] Fix null-deref on /api/login — prod error rate spike
