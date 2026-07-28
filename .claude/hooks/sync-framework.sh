@@ -243,6 +243,7 @@ DEV_SLOT_STUBS=(
   "scripts/setup_dev_slots.sh"
   "scripts/check-touches.sh"
   "scripts/promote_dev_to_main.sh"
+  "scripts/check-researcher-scope.sh"
   "docs/dev/slots.yaml"
   ".env.example"
 )

@@ -556,3 +556,14 @@ Three writes touch claim state. Each is one commit:
 - **Standards violations** (hardcoded values, missing tests, silent fallbacks) within acceptance. Same — the Integrator writes a fix commit per `coding-standards.md`.
 - **Confidence <80%.** Surface to the user directly; W-item goes to `blocked`, not `held`. Don't hand the user a low-confidence proposal to chew on.
 - **Issues the Integrator caught in its first-pass high-profile scan.** Those are surfaced immediately as feature integration failures, not claims — the distinction is that the first-pass scan catches problems that should halt the batch before deep work, whereas claims emerge from deep work that revealed an acceptance ambiguity.
+
+## Server-work requests (`req-*`)
+
+**Filed by the Researcher role ([ADR-024](../architecture/adr-024-researcher-role.md)) when the project's API works as designed but the design is insufficient for what a hunt needs.** The request states a desired *outcome*, never a design — deciding how (or whether) to build it is the Strategist's.
+
+- **File:** `req-YYYY-MM-DD-<slug>.md`, in the active plan's folder when one clearly fits, otherwise in `docs/execution-plans/inbox/` (the Researcher creates the inbox if missing — deciding the "relevant phase" is Strategist judgment, so when in doubt the request goes to the inbox).
+- **Shape:** YAML frontmatter (`type: server-work-request`, `from`, `date`, `status: open`, optional `target-repo`) + three body sections: what the hunt was doing, where the API fell short (evidence), desired capability. Full spec in [`researcher.md`](../dev_framework/researcher.md) §"Server-work requests".
+- **Triage:** the Strategist scans both locations at every session start and at phase boundaries. Dispositions land on the request's `status:` line — `accepted (W-<id>)` (folded into a plan as a W-item; inbox files move into that plan's folder), `declined` (with a one-line reason), or `deferred` (with a re-entry criterion). Accepting is a scope decision — user involvement required, same rule as claims.
+- Requests are never deleted; a declined request is memory that stops the same hunt from re-raising the same ask.
+
+The format is generic — any role could in principle file one — but today only the Researcher emits and only the Strategist consumes.
