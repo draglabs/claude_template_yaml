@@ -24,7 +24,7 @@ case "$source_value" in
 Before substantive action:
   1. Confirm which role you are operating as. See CLAUDE.md §Roles. If the
      user has not declared a role ("you are a strategist" / "you are the
-     orchestrator" / "you are a designer" / "you are the developer" / "you are the parallel developer" / "you are the researcher" / "you are the template developer"),
+     orchestrator" / "you are a designer" / "you are the developer" / "you are the parallel developer" / "you are the researcher" / "you are the curator" / "you are the template developer"),
      ask. Note: "template developer" is only meaningful in the canonical
      claude_template_yaml repo.
   2. After the role is confirmed, load your role's Layer 1 docs per
@@ -40,7 +40,7 @@ EOF
 
 Before continuing:
   1. Re-confirm your role and re-read your role doc
-     (docs/dev_framework/{strategist,designer,session-policy,developer,researcher,template-developer}.md).
+     (docs/dev_framework/{strategist,designer,session-policy,developer,researcher,curator,template-developer}.md).
   2. Re-read CLAUDE.md §"Locked-in decisions" and
      docs/framework_exceptions/dev_framework_exceptions.md.
   3. If Orchestrator: reconcile the status ledger per
@@ -55,7 +55,7 @@ EOF
 dropped. Re-orient before your next substantive action:
 
   1. Re-read your role doc
-     (docs/dev_framework/{strategist,designer,session-policy,developer,researcher,template-developer}.md)
+     (docs/dev_framework/{strategist,designer,session-policy,developer,researcher,curator,template-developer}.md)
      depending on which role you are currently operating as.
   2. Re-read CLAUDE.md §"Locked-in decisions" and
      docs/framework_exceptions/dev_framework_exceptions.md for project deviations.
@@ -76,11 +76,11 @@ EOF
 
 Before acting:
   1. If the user has not declared a role ("you are a strategist" / "you are
-     the orchestrator" / "you are a designer" / "you are the developer" / "you are the parallel developer" / "you are the researcher" / "you are the template developer"),
+     the orchestrator" / "you are a designer" / "you are the developer" / "you are the parallel developer" / "you are the researcher" / "you are the curator" / "you are the template developer"),
      ask. "Template developer" is only meaningful in the canonical claude_template_yaml
      repo. If the user is changing role from before, state the new role explicitly.
   2. After the role is confirmed: load your role doc
-     (docs/dev_framework/{strategist,designer,session-policy,developer,researcher,template-developer}.md),
+     (docs/dev_framework/{strategist,designer,session-policy,developer,researcher,curator,template-developer}.md),
      CLAUDE.md §"Locked-in decisions", and
      docs/framework_exceptions/dev_framework_exceptions.md.
   3. If Orchestrator: reconcile the status ledger per
@@ -111,4 +111,27 @@ cat <<'EOF'
   - Crawling up the filetree or reading outside directories is opt-in — do it
     only when the user explicitly asks. (Harness CLAUDE.md auto-discovery is a
     separate mechanism and is unaffected; this governs your own actions.)
+EOF
+
+# Named-deliverable re-anchor — emitted for EVERY session-start source.
+# A context reset reloads role doctrine at full strength while the user's actual
+# request may be gone; the doctrine then wins and the agent writes the nearest
+# artifact its role already owns. Phrased so a lost request produces a QUESTION,
+# not a silent substitution. See ADR-025 and strategist.md §"Named deliverables".
+cat <<'EOF'
+
+[session-reorient] Named deliverables — write what was asked for.
+  - Before your next write, name the artifact the user asked for and where it
+    goes. If you cannot name both from current context, ASK — do not infer it
+    from the plan, the ledger, or open work items.
+  - If the user named an artifact, a document type, or a location, that named
+    artifact IS the deliverable. Producing an adjacent one instead — a W-item,
+    a plan edit, a note on an existing doc — is a substitution, and substitution
+    needs the user's agreement BEFORE it happens, not a report afterward.
+  - Doctrine you just re-read is context, not a task list. Re-reading your role
+    doc does not convert pending work items into the current request.
+  - Missing a value the deliverable needs? A missing ADR or plan entry is a
+    QUESTION FOR THE USER, not work to create. Ask for the value; do not file
+    tickets to define it first. Pausing a requested deliverable to do upstream
+    work needs the user's explicit agreement — it turns one doc into a phase.
 EOF

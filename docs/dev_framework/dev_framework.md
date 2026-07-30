@@ -8,12 +8,16 @@ Linked from `CLAUDE.md`; every session reads CLAUDE.md at start, then loads what
 
 A multi-instance model where four **product-side** persistent Claude Code sessions coordinate via git (PRs and branches), each with a narrow context budget:
 
-- **Strategist** — the architect. Owns planning docs. Doesn't read code.
+- **Strategist** — the architect. Owns planning docs and operational docs (runbooks, SOPs, checklists). Doesn't read code. Writes the artifact the user named, at the path they named; a missing ADR is a question for the user, not work to create ([ADR-025](../architecture/adr-025-named-deliverables.md)).
 - **Designer** — owns UI mockups. Writes only to `mockups/`.
 - **Orchestrator** — dispatches implementation work and coordinates peer review gates. Doesn't write code (except emergency bypass — see [`session-policy.md`](session-policy.md) §"When to suspend this policy").
 - **Developer** — user-invoked persistent session for hands-on coding work; user-mediated QA loop + spawned Reviewer subagent for the code-review gate ([ADR-018](../architecture/adr-018-developer-role.md)). Two named invocations: **Default** (`"you are the Developer"`, works in main checkout on a feature branch) and **Parallel** (`"you are the parallel developer"`, works in a worktree, runs alongside Default on a non-competing item). Parallel mode to Orchestrator dispatch; mixed-mode phases allowed (per-item mode locking via Status path).
 
-An optional fifth product-side session exists for projects that configure it:
+A fifth product-side session audits the corpus the other four produce:
+
+- **Curator** ([ADR-026](../architecture/adr-026-curator-role.md)) — episodic doc-cleanup session that identifies over-churned ADRs (high commit-churn = the project is *fighting* a decision, not following it), dead ADRs nothing references, closed plans and `done` tickets to archive, and exceptions past their retire-when criterion. It exists because the **Strategist authored the corpus** and its disposition ("treats docs as load-bearing," "protective of scope") biases toward conservation; the Curator holds the opposite incentive by design. **Proposes, never disposes** — per-item user confirmation. Fenced out of `docs/dev_framework/*` (mechanically, via `scripts/check-curator-scope.sh`) because those files are destructively re-synced; framework findings become `fwreq-*` requests routed to the Template Developer. See [`curator.md`](curator.md).
+
+An optional sixth product-side session exists for projects that configure it:
 
 - **Researcher** ([ADR-024](../architecture/adr-024-researcher-role.md)) — finds and acquires content/data missing from the project's corpus and delivers it through the project's sanctioned intake. **Finder, not a builder**: write scope is one named directory (mechanical pre-merge check via `scripts/check-researcher-scope.sh`), the server API is an opaque contract (capability gaps become `req-*` server-work requests the Strategist triages, never server-side edits), merges to `dev` only. Refuses to bootstrap unless the project has set its parameters. See [`researcher.md`](researcher.md).
 
@@ -71,6 +75,7 @@ The stack above shows sequential (per-task) Orchestrator dispatch. For W-items m
 | Orchestrator | [`session-policy.md`](session-policy.md) | session-policy.md + active execution plan |
 | Developer (Default and Parallel) | [`developer.md`](developer.md) | developer.md + coding-standards.md + active plan's plan.md. Two invocations sharing one doc: Default in main checkout, Parallel in a worktree |
 | Researcher (optional, per-project) | [`researcher.md`](researcher.md) | researcher.md + the project's Researcher parameters entry in `dev_framework_exceptions.md` + the acquisition reading list it names. Refuses to bootstrap unconfigured. No coding-standards.md, no app/api source |
+| Curator | [`curator.md`](curator.md) | curator.md + `dev_framework_exceptions.md`, then runs `./scripts/doc_churn_audit.sh`. Episodic — summoned at phase boundaries. Does NOT preload `docs/architecture/` or `docs/execution-plans/`; the script names the few docs worth opening |
 | Template Developer | [`template-developer.md`](template-developer.md) | template-developer.md + dev_framework.md (template repo only; no-op in adopter repos) |
 
 Subagent briefs (load on spawn, not at session start):
@@ -83,6 +88,7 @@ Subagent briefs (load on spawn, not at session start):
 | Integrator-QA | [`templates/integrator-qa-brief.md`](templates/integrator-qa-brief.md) | Orchestrator — **batch mode only**, end of parallel batch; absorbs per-task Reviewer + pre-merge QA |
 | Doc Consultant | [`templates/doc-consultant-brief.md`](templates/doc-consultant-brief.md) | Any role |
 | Code Consultant | [`templates/code-consultant-brief.md`](templates/code-consultant-brief.md) | Primarily Strategist |
+| Strategist (bounded doc work) | [`templates/strategist-brief.md`](templates/strategist-brief.md) | Developer or Orchestrator — the only sanctioned **write-capable** doc subagent. Does NOT read `strategist.md`; may return a question instead of completed work ([ADR-025](../architecture/adr-025-named-deliverables.md)) |
 | Orchestrator bootstrap | [`templates/orchestrator-bootstrap.md`](templates/orchestrator-bootstrap.md) | User, in a fresh session |
 
 ## Enforced practices

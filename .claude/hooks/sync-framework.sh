@@ -244,6 +244,8 @@ DEV_SLOT_STUBS=(
   "scripts/check-touches.sh"
   "scripts/promote_dev_to_main.sh"
   "scripts/check-researcher-scope.sh"
+  "scripts/doc_churn_audit.sh"
+  "scripts/check-curator-scope.sh"
   "docs/dev/slots.yaml"
   ".env.example"
 )

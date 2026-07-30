@@ -48,6 +48,18 @@ System design docs. Owned by the Strategist. Referenced by the Orchestrator when
 
 Lock the decision by adding a one-line summary under `## Locked-in decisions` in `CLAUDE.md` with a link back to the ADR.
 
+### Revision sections — record the decider
+
+When a revision *is* the right disposition (see §"Staleness rule" — usually it is not), head it and name who decided:
+
+```markdown
+## Revision (vN.N, YYYY-MM-DD) — <what changed, stated as the direction>
+
+**Decided by:** user | Strategist | Template Developer
+```
+
+**`Decided by:` is load-bearing, not bookkeeping.** `scripts/doc_churn_audit.sh` extracts revisions newest-first with their decider, because a run of **user**-decided revisions that consistently *relax* something — drop a cap, soften a MUST, remove a gate — means the document is more restrictive than the user wants and keeps drifting back. That is a fight, and it is only legible if the decider is recorded. Without it the audit prints `(no decider recorded)` and the strongest available signal is lost. Title the revision by its **direction** ("rewind retired", "no force-push of feature"), not by its topic — the extractor surfaces that title as the direction cue.
+
 ## Who reads this
 
 - **Strategist:** reads the full tree. ADRs + diagrams are primary material for architectural judgment.
@@ -58,3 +70,7 @@ Lock the decision by adding a one-line summary under `## Locked-in decisions` in
 ## Staleness rule
 
 Architecture docs that no longer match the code are worse than missing docs — they produce confident wrong answers. The Strategist's phase-boundary alignment audit checks every ADR and diagram against current code state (via GitNexus queries or Code Consultant spawns). Stale docs get either updated or marked `superseded` / `deprecated` — never silently wrong.
+
+**Marking `superseded` is not the whole move — the file leaves this directory.** A superseded ADR goes to `docs/archive/` in the same commit as its successor (steps in [`../archive/README.md`](../archive/README.md) §"Superseded ADRs"). An ADR marked superseded but left here is still grepped, loaded, and read past by every future session; the directory would otherwise only ever grow.
+
+**Prefer fixing over superseding.** Supersession is for decisions that genuinely *changed*. When the decision still stands and only its wording was over-broad, or its binding force too strong, the right move is to **rewrite or detune the ADR in place** — a doc amended many times is usually one that was never articulated right, and superseding it just yields a successor that gets amended too. Stacking `Revision` sections onto an ADR is the most common and least useful option: it preserves history at the cost of a document nobody can read top-to-bottom and know what is true. Full disposition set in [`../dev_framework/curator.md`](../dev_framework/curator.md) §"Dispositions".
