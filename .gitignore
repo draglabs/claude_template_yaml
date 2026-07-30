@@ -7,3 +7,29 @@ mockups/dist/
 .DS_Store
 .claude/settings.local.json
 .local/
+
+# --- Product repo mount points (split layout, ADR-021) ----------------------
+# This framework directory is the TRACKED PARENT: it holds CLAUDE.md, docs/,
+# .claude/ and the planning corpus. Each product lives in its OWN git repo,
+# cloned into one of the mount points below. $CODE_ROOT = <parent>/<mount>.
+#
+#   majorrepo/    primary product repo   (DEFAULT_CODE_SUBDIR in .env)
+#   minorrepo/    secondary service/tool (W-item `target-repo:` per ADR-020)
+#   mkt_website/  marketing site         (separate deploy cadence from product)
+#
+# The parent must never track their contents — a nested repo would otherwise be
+# recorded as a stray gitlink, and every product commit would dirty the parent.
+#
+# These are ignored OUTRIGHT rather than preserved with a committed .gitkeep,
+# deliberately: `git clone <url> majorrepo` REFUSES a non-empty destination
+# ("destination path already exists and is not an empty directory" — verified
+# 2026-07-29), so a tracked placeholder would block the exact workflow the
+# mount points exist for. Consequence: a fresh clone of this parent will NOT
+# contain them. Recreate with:
+#
+#   mkdir -p majorrepo minorrepo mkt_website
+#
+# Rename freely per project — update DEFAULT_CODE_SUBDIR in .env to match.
+majorrepo/
+minorrepo/
+mkt_website/
