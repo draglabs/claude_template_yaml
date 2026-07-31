@@ -111,7 +111,24 @@ Reviewer judgment call.)
 1. **Acceptance match:** does the implementation satisfy each acceptance
    bullet verbatim? Flag any silently-skipped bullets.
 2. **Canonical alignment:** does the code match the plan + architecture
-   docs? Call out any divergence, even if it looks reasonable.
+   docs? Call out any divergence.
+   **Before classifying a divergence, check the W-item file for a
+   `## User-directed deviation` section.** You cannot see the user's
+   conversation — that section is the only place a deliberate,
+   user-ordered departure from an ADR is visible to you.
+   - **Section present, and it names this divergence** → this is NOT a
+     `block`. Report it as **`doc-conflict`** (see Return format): the
+     code is doing what the user asked and the ADR is the thing out of
+     date. Say which ADR and which section is stale. Do not propose
+     re-coding to match the ADR — that would reverse the user's
+     instruction, which is not yours to do.
+   - **Section absent** → normal handling. An undocumented divergence
+     from an ADR is a real finding; `block` as usual.
+   - **Section present but vague, or the deviation is wider than what
+     it names** → `block`, and say exactly which part exceeded it.
+   An accepted ADR is the best current record of a decision, not a
+   constraint that outranks a live instruction from the user. See
+   [ADR-027](../../architecture/adr-027-living-architecture.md).
 3. **Coding standards (cite specific violations):** TDD followed — is
    there a test committed alongside each new code path? No hardcoded
    lifecycle values — any domain/version/path literal that duplicates a
@@ -180,6 +197,14 @@ Reviewer judgment call.)
 ## Return format (to the Orchestrator)
 
 1. Verdict: `ship` / `ship-with-concerns` / `block`.
+   Plus, when question 2 found a user-directed deviation: a
+   **`doc-conflict`** list — one entry per stale ADR, naming the ADR,
+   the section, and what it now contradicts. `doc-conflict` is
+   **orthogonal to the verdict**: code that is otherwise clean is
+   `ship` + `doc-conflict`, not `block`. It routes to ADR
+   reconciliation (the Developer rewrites the ADR or asks the user —
+   [ADR-027](../../architecture/adr-027-living-architecture.md)), never
+   to an Executor re-code.
    On `block`, additionally classify: **Block class: `execution` or
    `approach`** (ADR-022). `execution` = the approach is sound but the
    implementation is incomplete or wrong (the same Executor can fix it

@@ -139,7 +139,7 @@ Pushing `main` is mechanically blocked by a git pre-push guard installed on ever
 
 ## Two process rules (every session)
 
-1. **Docs before code.** Architectural additions get documented by the Strategist and merged before the Orchestrator dispatches implementation. Enforced at the merge boundary by the Reviewer (`block` if no matching doc) and at the phase boundary by the Strategist's alignment audit.
+1. **Docs before code — for *additions*.** Architectural additions get documented by the Strategist and merged before the Orchestrator dispatches implementation. Enforced at the merge boundary by the Reviewer (`block` if no matching doc) and at the phase boundary by the Strategist's alignment audit. **This does NOT make an existing ADR outrank a live instruction from you.** When your instruction conflicts with an accepted ADR, the resolution is *doc-follows-instruction*: the deviation is recorded on the W-item, the review gate reports `doc-conflict` rather than blocking, and the ADR is **rewritten** (never appended to) to state the decision that now holds — or escalated to you if your intent isn't clear. The ADR log is living architecture, not doctrine ([ADR-027](../architecture/adr-027-living-architecture.md)).
 2. **CI-only deploys to production.** Production changes land via `git push origin main` → CI. Never from a laptop. Never via `docker exec`. Dev environment behavior depends on mode — see [`dev-environment.md`](dev-environment.md).
 
 Code-level rules (TDD, no hardcoded lifecycle values, fail loudly) live in [`coding-standards.md`](coding-standards.md) and are enforced by the Executor (writing) and Reviewer (checking) subagent briefs. The Orchestrator and Strategist do NOT load that doc — they delegate enforcement to the subagent layer.

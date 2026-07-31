@@ -67,6 +67,14 @@ When a revision *is* the right disposition (see §"Staleness rule" — usually i
 - **Executor:** reads only the ADR(s) named in their brief, if any. Most W-items don't need architecture context.
 - **Reviewer:** reads an ADR when the Executor claims the work follows it, to verify alignment. Cites ADR numbers in concerns.
 
+## Living architecture, not doctrine
+
+**An ADR is the best current record of a decision. It is not a constraint that outranks a live instruction from the user.** See [ADR-027](adr-027-living-architecture.md).
+
+When a user instruction conflicts with an accepted ADR, the ADR is what changes — rewritten to state the decision that now holds, or escalated to the user when their intent isn't clear. What must never happen is the silent inverse: code built to the user's order, blocked at a review gate for "canonical misalignment," and quietly re-coded back to the stale ADR. Review gates are fresh subagents that cannot see the conversation, so they need the deviation recorded on the W-item (`## User-directed deviation` — [`../execution-plans/README.md`](../execution-plans/README.md)) to tell an ordered departure from a careless one.
+
+This does not weaken §"Docs before code": an *undocumented* architectural addition is still a `block`. The distinction is between code that has no decision behind it, and code that has a *newer* decision behind it than the file does.
+
 ## Staleness rule
 
 Architecture docs that no longer match the code are worse than missing docs — they produce confident wrong answers. The Strategist's phase-boundary alignment audit checks every ADR and diagram against current code state (via GitNexus queries or Code Consultant spawns). Stale docs get either updated or marked `superseded` / `deprecated` — never silently wrong.

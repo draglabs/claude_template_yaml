@@ -130,6 +130,17 @@ pre-merge worktree state — the integrated state is what would ship):
 - Acceptance match — does the implementation satisfy each acceptance
   bullet verbatim?
 - Canonical alignment — does the code match the plan + architecture docs?
+  **Check each W-item file for a `## User-directed deviation` section
+  first.** You cannot see the user's conversation; that section is the only
+  visible evidence that a departure from an ADR was ordered rather than
+  careless. When present and it names the divergence, report
+  **`doc-conflict`** (name the stale ADR + section) instead of treating it
+  as misalignment — the code is right and the ADR is out of date. Do not
+  write a fix commit that reverts the code to match the ADR, and do not
+  file an integration claim against it; `doc-conflict` routes to ADR
+  reconciliation with the user, not to re-coding. Absent or vaguer than the
+  actual deviation → handle as normal misalignment. See
+  [ADR-027](../../architecture/adr-027-living-architecture.md).
 - Coding standards — TDD, no hardcoded lifecycle values, no silent
   fallbacks, canonical-value drift. Cite file:line for any violation.
 - Hidden assumptions — undocumented invariants?

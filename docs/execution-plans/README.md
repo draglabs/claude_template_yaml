@@ -242,6 +242,7 @@ The Implementation log is the one section that gets appended after draft, at the
 | **parallel-safe** | Frontmatter | `true` = eligible for **Orchestrator batch-mode dispatch** (ADR-016). `false` = per-task peer chain (ADR-013). Owned by the Strategist; set at plan time. Default: `false`. **Does not gate Parallel Developer** (ADR-018) — Parallel Dev relies on the stream-letter convention on the index instead. See §"Parallel-safe field" below. |
 | **parallel-safe-considered** | Frontmatter | Required when `parallel-safe: true`; list of shared-surface factors the Strategist evaluated (e.g., `package.json bumps`, `shared route registry`, `migration ordering`, `test fixtures`, `refactor-of-a-callee`). Forces the judgment to be recorded rather than mechanized. Omit the field when `parallel-safe: false`. |
 | **touches** | Frontmatter | List of file paths the item will modify. Executor uses this as the scope boundary; Reviewer runs `scripts/check-touches.sh` against this list to mechanically verify the diff stayed in scope (ADR-020). |
+| **user-directed-deviation** | Body section | **Present only when the user's instruction knowingly conflicts with an existing ADR** ([ADR-027](../architecture/adr-027-living-architecture.md)). Names the ADR, quotes the instruction, dates it. Load-bearing: the Reviewer and Integrator-QA are fresh subagents that **cannot see the conversation**, so without this field a user-ordered deviation is indistinguishable from an accidental one and gets blocked as "canonical misalignment" — reversing the user's order. See §"User-directed deviations" below. |
 | **references** | Frontmatter | Optional list of read-only orientation entries. Each: `path` (required), `lines` (optional, e.g. `"120-280"`), `purpose` (optional, short string). Intended for port / migration / refactor work where pre-existing structure must be understood. Modifying a References file is scope creep. |
 | **What** | Body §High level | One sentence — what artifact does this item produce? |
 | **Acceptance** | Body §High level | Checkboxes. All must be green before the item is `done`. |
@@ -253,6 +254,24 @@ The Implementation log is the one section that gets appended after draft, at the
 Each Developer-claimed W-item gets its own working log file in the plan folder, `w-<id-lowercase>.log.md`. Freeform chronological scratchpad the Developer appends to throughout `in_progress` (build + user-mediated QA). Survives `/compact` so a post-compact session can re-establish working context cheaply by reading the log instead of re-deriving it from session memory that was just summarized away.
 
 Introduced by [ADR-018](../architecture/adr-018-developer-role.md) Revision v3.3. Developer mode only — Orchestrator-mode dispatch does not produce working logs (Executor subagents are stateless and per-task; their working memory dies with the dispatch).
+
+### User-directed deviations
+
+When the user instructs something that conflicts with an accepted ADR, the deviation is **recorded on the W-item, not argued with**. Add this section to the W-item file body before the work is reviewed:
+
+```markdown
+## User-directed deviation
+
+- **Conflicts with:** ADR-014 §"Resolution chain"
+- **Instruction:** "just resolve it from .env, forget the sibling lookup" — user, 2026-07-31
+- **Status:** ADR reconciliation pending | ADR rewritten (see commit <sha>)
+```
+
+**Why this exists.** The Reviewer and Integrator-QA are fresh subagents. They read the diff, the W-item file, and `coding-standards.md` — **never the conversation**. A user-ordered deviation and a careless one look identical to them, so without this field the gate can only resolve it as canonical misalignment and `block`, which loops back through the Developer and quietly reverses the user's order. That is the failure [ADR-027](../architecture/adr-027-living-architecture.md) fixes, and this field is the mechanism.
+
+**Who writes it.** Whoever is holding the user's instruction at the time — the Developer in Developer mode, the Strategist when amending a plan. Write it **when the instruction is given**, not after a gate blocks.
+
+**It is not a permission slip.** The section records that a conflict exists and is intentional; it does not settle it. The ADR still gets reconciled — rewritten to match, or escalated to the user — per [`developer.md`](../dev_framework/developer.md) §"ADR conflict: reconcile, don't revert". `Status:` on the section is how a reader knows which.
 
 ### Lifecycle
 
