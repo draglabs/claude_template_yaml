@@ -1,4 +1,4 @@
-# ADR-018: Developer role (hands-on, user-in-loop coding)
+# FWADR-018: Developer role (hands-on, user-in-loop coding)
 
 **Status:** accepted
 **Date:** 2026-04-25
@@ -35,7 +35,7 @@ Claim attribution lives in the plan's Notes section (`"W-A1 — claimed by Devel
 
 #### Revision (v2)
 
-ADR-018 originally specified per-phase mode-exclusivity enforced via the Mode field with refuse-on-mismatch. Field testing showed this was over-strict — it locked the Developer out of plans the Strategist had drafted with Orchestrator in mind, even when no W-item had been claimed and no collision was possible. The doctrine "rule + mechanism in the same PR" was satisfied, but the rule itself was wrong.
+FWADR-018 originally specified per-phase mode-exclusivity enforced via the Mode field with refuse-on-mismatch. Field testing showed this was over-strict — it locked the Developer out of plans the Strategist had drafted with Orchestrator in mind, even when no W-item had been claimed and no collision was possible. The doctrine "rule + mechanism in the same PR" was satisfied, but the rule itself was wrong.
 
 The correct read: per-W-item Status paths are the natural collision boundary. Per-plan exclusivity adds friction without reducing collision risk. v2 (current) walks back to: Mode field as advisory recommendation, prompt-on-explicit-mismatch instead of refuse, mixed-mode phases allowed, claim attribution in Notes for at-a-glance ownership.
 
@@ -43,11 +43,11 @@ A **per-W-item** `Mode` override field is also rejected — once items lock into
 
 #### Revision (v3): rewind retired
 
-ADR-018 v1 specified a **chat-rewind blind self-review** as the code-review gate: at the `in_progress → code_review` flip, the Developer would produce a structured rewind summary, recommend the user rewind chat to a pre-coding anchor and paste the summary, then read the resulting clean-context state and perform blind self-review on its own work. The novel value was "same persistent session, different context" — fresh-eyes review without spawning a separate process.
+FWADR-018 v1 specified a **chat-rewind blind self-review** as the code-review gate: at the `in_progress → code_review` flip, the Developer would produce a structured rewind summary, recommend the user rewind chat to a pre-coding anchor and paste the summary, then read the resulting clean-context state and perform blind self-review on its own work. The novel value was "same persistent session, different context" — fresh-eyes review without spawning a separate process.
 
 Field testing showed the ritual was **cumbersome in practice**: multi-step user UI gymnastics (rewind chat, paste summary, re-prompt) on every W-item, easy to skip under time pressure, and harness-coupled (depended on Claude Code's chat-rewind affordance). The user described it as "pretty cumbersome" after first encounter.
 
-v3 retires the rewind ritual and replaces it with: **`/compact` (recommended) for the persistent session's context budget + sync feature with `dev` (rebase) + spawned Reviewer subagent on the synced state for the actual code-review gate**. The Reviewer is a fresh process with its own context — same brief Orchestrator-mode sequential dispatch uses (ADR-013) — so it gets the fresh-eyes property by virtue of being a separate session, not via context manipulation in the same session. The Developer remains the persistent owner: it spawned the Reviewer, reads the verdict, decides the merge, writes the Implementation log.
+v3 retires the rewind ritual and replaces it with: **`/compact` (recommended) for the persistent session's context budget + sync feature with `dev` (rebase) + spawned Reviewer subagent on the synced state for the actual code-review gate**. The Reviewer is a fresh process with its own context — same brief Orchestrator-mode sequential dispatch uses (FWADR-013) — so it gets the fresh-eyes property by virtue of being a separate session, not via context manipulation in the same session. The Developer remains the persistent owner: it spawned the Reviewer, reads the verdict, decides the merge, writes the Implementation log.
 
 The sync step (rebase feature on `origin/dev` before review) means the Reviewer reads accurate codebase context (the synced state, not stale pre-rebase files) and the eventual merge is a clean fast-forward. Conflicts surface to the user before the Reviewer runs, so a "ship" verdict isn't undone by a subsequent merge conflict.
 
@@ -114,7 +114,7 @@ Adds a fourth section to the W-item file template — appended by the Developer 
 
 This is **Developer-mode-specific** in v1. `/compact` collapses the persistent session's journey at the QA-pass moment, and the spawned Reviewer subagent never saw the journey to begin with — the Implementation log persists it on the project as the only durable record. Other modes (Orchestrator-dispatched Executor) capture journey in commit messages and the plan's Notes section already; extending Implementation log to those modes is an option for the future, not v1.
 
-The Implementation log does NOT violate ADR-017's "static SOW" principle for the W-item file. The log is appended at done-flip and is then static for the lifetime of the project. ADR-017 was about preventing Status drift via mid-flight runtime mutations of the W-item file. A done-flip append is a different shape and does not reintroduce drift bait.
+The Implementation log does NOT violate FWADR-017's "static SOW" principle for the W-item file. The log is appended at done-flip and is then static for the lifetime of the project. FWADR-017 was about preventing Status drift via mid-flight runtime mutations of the W-item file. A done-flip append is a different shape and does not reintroduce drift bait.
 
 #### Revision (v3.3, 2026-05-02): live working log + phase discipline
 
@@ -156,7 +156,7 @@ The mechanism (template + role-doc split + hook update) and the rule (working-lo
 The Developer has two named invocations sharing one role doc, lifecycle, and discipline:
 
 - **Default Developer** (`"you are the Developer"`) — works in the user's main checkout on a feature branch (`w-<id>/<slug>`). Bootstrap proposes the top critical-path `pending` item. The session the user collaborates with most actively.
-- **Parallel Developer** (`"you are the parallel developer"`) — works in a worktree at `/tmp/worktrees/<project>/w-<id>-<slug>` (same path scheme as Orchestrator-mode Executors per ADR-013). Bootstrap does a **non-competing scan**: reads claimed items (Status `in_progress` or `code_review`, attributed in plan Notes), checks each `pending` item's `Touches` + Parallel-safe shared surfaces (per ADR-016 / `execution-plans/README.md` §"Parallel-safe field"), proposes the first non-conflicting item.
+- **Parallel Developer** (`"you are the parallel developer"`) — works in a worktree at `/tmp/worktrees/<project>/w-<id>-<slug>` (same path scheme as Orchestrator-mode Executors per FWADR-013). Bootstrap does a **non-competing scan**: reads claimed items (Status `in_progress` or `code_review`, attributed in plan Notes), checks each `pending` item's `Touches` + Parallel-safe shared surfaces (per FWADR-016 / `execution-plans/README.md` §"Parallel-safe field"), proposes the first non-conflicting item.
 
 Why two invocations instead of one role with conditional behavior: the working-directory model is fundamentally different (in-place vs worktree) and the bootstrap scan is fundamentally different (critical-path vs non-competing). Conditional behavior in one role would require the session to ask "am I parallel or not?" at boot — fragile. Two named triggers make the user's intent unambiguous and the session's behavior deterministic from session start.
 
@@ -168,16 +168,16 @@ Why two invocations instead of one role with conditional behavior: the working-d
 
 #### Revision (v3.2, 2026-05-01): non-competing scan reads the index alone
 
-The original scan procedure inlined above ("reads claimed items, checks each `pending` item's `Touches` + Parallel-safe shared surfaces, proposes the first non-conflicting item") forced the Parallel Developer to fan out and read multiple W-item files at boot to assemble the data needed for collision detection. That defeated the context-budget rationale ADR-017 established for the index/SOW split — and worse, the bulk content couldn't be selectively evicted from the persistent session via `/compact`.
+The original scan procedure inlined above ("reads claimed items, checks each `pending` item's `Touches` + Parallel-safe shared surfaces, proposes the first non-conflicting item") forced the Parallel Developer to fan out and read multiple W-item files at boot to assemble the data needed for collision detection. That defeated the context-budget rationale FWADR-017 established for the index/SOW split — and worse, the bulk content couldn't be selectively evicted from the persistent session via `/compact`.
 
-ADR-017 §Revision (v1.1) extends single-source doctrine to dependency data: a `Blocked by` column on the index replaces the W-item file's `Depends on` field, and the W-id stream-letter convention becomes load-bearing for non-competing detection (same letter = assumed code-path overlap; different letter = assumed non-competing).
+FWADR-017 §Revision (v1.1) extends single-source doctrine to dependency data: a `Blocked by` column on the index replaces the W-item file's `Depends on` field, and the W-id stream-letter convention becomes load-bearing for non-competing detection (same letter = assumed code-path overlap; different letter = assumed non-competing).
 
 Under v3.2, the Parallel Developer's scan reads the index alone:
 
 1. Note claimed items' stream letters (the letter in `W-<stream><number>`).
 2. For each `pending` item in critical-path order: skip if its stream letter matches a claimed item's; skip if any `Blocked by` entry on the index isn't `done`/`shipped`; otherwise propose.
 
-`Touches` and `Parallel-safe considered` are no longer scan inputs. `Parallel-safe` (the field) narrows to Orchestrator batch-mode dispatch (ADR-016) only — Parallel Developer does not gate on it. The asymmetry is intentional: batch mode is autonomous and benefits from explicit infra-collision curation; Parallel Dev is user-supervised and a rare cross-stream infra collision surfaces as a merge conflict the user catches in the loop.
+`Touches` and `Parallel-safe considered` are no longer scan inputs. `Parallel-safe` (the field) narrows to Orchestrator batch-mode dispatch (FWADR-016) only — Parallel Developer does not gate on it. The asymmetry is intentional: batch mode is autonomous and benefits from explicit infra-collision curation; Parallel Dev is user-supervised and a rare cross-stream infra collision surfaces as a merge conflict the user catches in the loop.
 
 Canonical procedure: `dev_framework/developer.md` §"Non-competing scan (Parallel Developer)". Canonical data-model spec: `execution-plans/README.md` §"Summary table" + §"Index fields". The inline description above (this section's third bullet, "reads claimed items, checks each `pending` item's `Touches`...") is superseded.
 
@@ -215,9 +215,9 @@ Plus the spec/doc updates:
 
 **What this does NOT do:**
 
-- **Does not change Orchestrator dispatch.** ADR-013 sequential mode and ADR-016 batch mode flow unchanged. The new state `code_review` does not appear in Orchestrator-mode lifecycles.
-- **Does not change claim semantics.** ADR-016's claim shape and ADR-017's claim location unchanged. Developer becomes a second filer (after Integrator-QA), but the protocol is identical.
-- **Does not deprecate the Reviewer subagent — extends its use.** Reviewer is spawned in Orchestrator sequential mode (ADR-013), absorbed by Integrator-QA in batch mode (ADR-016), AND now spawned by the Developer at `in_progress → code_review` (ADR-018 v3). Same brief, three invocation points.
+- **Does not change Orchestrator dispatch.** FWADR-013 sequential mode and FWADR-016 batch mode flow unchanged. The new state `code_review` does not appear in Orchestrator-mode lifecycles.
+- **Does not change claim semantics.** FWADR-016's claim shape and FWADR-017's claim location unchanged. Developer becomes a second filer (after Integrator-QA), but the protocol is identical.
+- **Does not deprecate the Reviewer subagent — extends its use.** Reviewer is spawned in Orchestrator sequential mode (FWADR-013), absorbed by Integrator-QA in batch mode (FWADR-016), AND now spawned by the Developer at `in_progress → code_review` (FWADR-018 v3). Same brief, three invocation points.
 - **Does not change phase exit gates.** Phase exit still requires QA against the dev environment + user authorization, regardless of mode. The Developer can run the phase-exit smoke pass itself or coordinate with the user to run it; the gate is not waived.
 
 ## Alternatives considered
@@ -225,7 +225,7 @@ Plus the spec/doc updates:
 1. **Developer as Orchestrator-dispatched Executor variant.** Rejected — subagents are stateless invocations; the user-mediated QA loop and the persistent Implementation-log discipline both require a session the user talks to directly across many turns. Developer must be a persistent role, not a dispatched subagent.
 2. **Per-W-item `Mode` field on plan.md.** Rejected — once items lock into a mode at claim time via Status path (Developer's `in_progress → code_review → done` versus Orchestrator's `in_progress → done`), an explicit per-item field would be redundant. Notes-section claim attribution (`"W-A1 — claimed by Developer YYYY-MM-DD"`) covers at-a-glance ownership for in-flight items.
 
-   **Per-plan binding Mode field with refuse-on-mismatch (original ADR-018 v1, walked back in v2).** Initially specified as the mechanism behind per-phase mode-exclusivity. Walked back after field testing showed it locked the Developer out of Strategist-drafted Orchestrator plans even when no W-item had been claimed. The actual collision boundary is per-W-item (enforced by Status paths), not per-plan. v2 reframes Mode as advisory with prompt-on-explicit-mismatch instead of refuse.
+   **Per-plan binding Mode field with refuse-on-mismatch (original FWADR-018 v1, walked back in v2).** Initially specified as the mechanism behind per-phase mode-exclusivity. Walked back after field testing showed it locked the Developer out of Strategist-drafted Orchestrator plans even when no W-item had been claimed. The actual collision boundary is per-W-item (enforced by Status paths), not per-plan. v2 reframes Mode as advisory with prompt-on-explicit-mismatch instead of refuse.
 3. **Code-review via chat-rewind + blind self-review (original v1, walked back in v3).** Rejected after field testing. The rewind ritual was novel — same persistent session, different context via Claude Code's chat-rewind affordance — but cumbersome in practice (multi-step user UI gymnastics: rewind chat, paste summary, re-prompt). Replaced in v3 by spawning a Reviewer subagent on the diff, which gets the same fresh-eyes property via separate process at lower workflow cost. The "lose project context" concern about Reviewer subagents (the original v1 rejection rationale) was overstated — the Reviewer brief reconstructs project context from the W-item file + diff, the same artifacts a rewound self would read. See §"Revision (v3): rewind retired" below.
 4. **Add a `qa` state.** Rejected — the user is the QA gate in real-time. State doesn't bounce between `qa` and `in_progress`; `in_progress` covers the whole loop until user confirmation. A separate `qa` state would never be observed long enough to matter.
 5. **Universal Implementation log (all modes).** Deferred — Developer-mode-specific in v1 because that's where `/compact` collapses the persistent session's journey and the spawned Reviewer never sees it; the log is the only durable journey record. Easy to extend to Orchestrator mode if usage shows benefit.

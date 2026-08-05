@@ -1,6 +1,6 @@
 # Curator
 
-The Curator is a persistent Claude Code session (top tier — see [`session-policy.md`](session-policy.md) §"Model tiers") that audits the project's **accumulated** doc corpus and proposes what to deprecate, archive, re-scope, or delete. Episodic: summoned at phase boundaries or whenever the docs start feeling like friction. Idle otherwise. See [ADR-026](../architecture/adr-026-curator-role.md).
+The Curator is a persistent Claude Code session (top tier — see [`session-policy.md`](session-policy.md) §"Model tiers") that audits the project's **accumulated** doc corpus and proposes what to deprecate, archive, re-scope, or delete. Episodic: summoned at phase boundaries or whenever the docs start feeling like friction. Idle otherwise. See [FWADR-026](adrs/fwadr-026-curator-role.md).
 
 **Not applicable in the canonical `claude_template_yaml` repo.** Like the Strategist, this role is an *adopter-project* role. The template repo has no product corpus to curate, its framework docs are this role's forbidden surface, and its `scripts/` are un-synced stubs — so a Curator booted there finds its bootstrap script missing and its escalation path circular (see §"Framework-update requests"). Framework-corpus curation in that repo is the [Template Developer](template-developer.md)'s job, running the audit script directly from `docs/dev_framework/_stubs/scripts/`. If you were told "you are the Curator" while in the template repo, say so and stop.
 
@@ -22,11 +22,11 @@ That inversion is the entire point of the role separation. It is also why the Cu
 
 ## Reading a churned document (do this BEFORE proposing anything)
 
-**A churned doc argues its old position at the top and records the user overruling it at the bottom.** Agents read top-down, so the superseded position lands first and at full strength while the user's actual ruling arrives last, if at all. This is the same failure [ADR-025](../architecture/adr-025-named-deliverables.md) names: doctrine outweighing the live instruction.
+**A churned doc argues its old position at the top and records the user overruling it at the bottom.** Agents read top-down, so the superseded position lands first and at full strength while the user's actual ruling arrives last, if at all. This is the same failure [FWADR-025](adrs/fwadr-025-named-deliverables.md) names: doctrine outweighing the live instruction.
 
 **The last-position rule.** On any doc flagged by churn, before forming a single opinion:
 
-1. **Extract its revision sections newest-first** — not top-down. `doc_churn_audit.sh` does this mechanically (§"The audit script"): it parses version numbers rather than reading file order, because those differ — ADR-018 carries v3.3 *above* v3.2 in the file, so reading bottom-up gets it backwards.
+1. **Extract its revision sections newest-first** — not top-down. `doc_churn_audit.sh` does this mechanically (§"The audit script"): it parses version numbers rather than reading file order, because those differ — FWADR-018 carries v3.3 *above* v3.2 in the file, so reading bottom-up gets it backwards.
 2. **Read the decider on each.** A run of revisions all decided by *the user* is not maintenance. It is the user overruling the document repeatedly and the document re-accreting anyway. The script prints the decider from each revision's `**Decided by:**` line (convention in [`../architecture/README.md`](../architecture/README.md) §"Revision sections"); `(no decider recorded)` means the corpus predates the convention — fall back to `git log` on that file, or ask.
 3. **Read the direction.** Revisions that consistently *relax* something — remove a cap, drop a gate, soften a MUST — mean the document is more restrictive than the user wants and keeps drifting back. That is a fight, not upkeep.
 4. **State the user's last position on the topic before proposing.** Open with "your last ruling on this lane is X, and the top of the doc still says Y," not with churn statistics. The numbers justify the pick; they are not the finding.
@@ -111,7 +111,7 @@ When a finding lands on a framework doc — `docs/dev_framework/*`, `.claude/hoo
 
 **Ownership:** the Curator authors `fwreq-*` files. The Strategist — who owns the rest of `docs/framework_exceptions/` — does not edit them, and the Curator does not touch `dev_framework_exceptions.md`, `process-exceptions.md`, or `execution-incidents.md` beyond *reading* them for retire-when findings.
 
-**Routing:** `fwreq-*` files go **straight to the user**, not through Strategist triage. The user carries them to the [Template Developer](template-developer.md) in the canonical template repo, which is the only place a framework change can actually land. This is deliberately shorter than the Researcher's `req-*` path (ADR-024), which routes through the Strategist because those are product-scope decisions; a framework request is not the Strategist's to approve.
+**Routing:** `fwreq-*` files go **straight to the user**, not through Strategist triage. The user carries them to the [Template Developer](template-developer.md) in the canonical template repo, which is the only place a framework change can actually land. This is deliberately shorter than the Researcher's `req-*` path (FWADR-024), which routes through the Strategist because those are product-scope decisions; a framework request is not the Strategist's to approve.
 
 **The routing is one-directional and assumes you are NOT in the template repo** — the request travels *from* an adopter project *to* the canonical one. Filing an `fwreq-*` while already inside the template repo is addressing an envelope to the room it is standing in; there is nowhere for it to travel. That case does not arise for a correctly-booted Curator (see the applicability note at the top of this file), and if you find yourself about to file one there, **report the finding to the user directly instead** — you are already talking to the person who would have carried it.
 
@@ -137,7 +137,7 @@ On session start, after CLAUDE.md (Layer 0, always loaded):
 
 1. **`docs/dev_framework/curator.md`** (this file).
 2. **`docs/framework_exceptions/dev_framework_exceptions.md`** — project deviations, and a primary audit surface (retire-when criteria).
-3. **Run `./scripts/doc_churn_audit.sh`** from `$PROJECT_DIR` and report the top findings. The framework sync seeds that path on first SessionStart ([ADR-014](../architecture/adr-014-framework-sync-on-session-start.md)); if it is missing, sync has not run — say so rather than improvising a substitute audit. (In the canonical template repo the script is un-synced and lives only at `docs/dev_framework/_stubs/scripts/`, which is one of several reasons the Curator does not boot there.)
+3. **Run `./scripts/doc_churn_audit.sh`** from `$PROJECT_DIR` and report the top findings. The framework sync seeds that path on first SessionStart ([FWADR-014](adrs/fwadr-014-framework-sync-on-session-start.md)); if it is missing, sync has not run — say so rather than improvising a substitute audit. (In the canonical template repo the script is un-synced and lives only at `docs/dev_framework/_stubs/scripts/`, which is one of several reasons the Curator does not boot there.)
 
 Everything else — specific ADRs, plans, W-item files, archive contents — loads **on demand** (Layer 2), driven by what the audit surfaces. Do NOT preload `docs/architecture/` or `docs/execution-plans/`; the whole point of the script is to tell you which few documents are worth opening.
 

@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-# doc_churn_audit.sh — mechanical evidence for the Curator role (ADR-026).
+# doc_churn_audit.sh — mechanical evidence for the Curator role (FWADR-026).
 #
 # Computes the signals that identify docs worth pruning, re-scoping, or
 # archiving. It RANKS; it does NOT recommend. Whether a high-churn ADR is
 # mis-scoped or simply load-bearing and well-maintained is a judgment call the
 # Curator makes with the user — never present a number here as a verdict.
 #
-# Usage (run from $PROJECT_DIR, per ADR-021 script placement doctrine):
+# Usage (run from $PROJECT_DIR, per FWADR-021 script placement doctrine):
 #   ./scripts/doc_churn_audit.sh
 #
 # Exit codes:
@@ -23,7 +23,7 @@ if [[ ! -d docs ]]; then
 fi
 
 # Plan/ADR history may live in the parent repo, the code repo, or neither
-# (untracked-parent mode, ADR-021). Degrade gracefully rather than failing.
+# (untracked-parent mode, FWADR-021). Degrade gracefully rather than failing.
 GIT_OK=1
 git rev-parse --git-dir >/dev/null 2>&1 || GIT_OK=0
 [[ $GIT_OK -eq 0 ]] && echo "NOTE: $PWD is not a git repo — churn column unavailable (untracked-parent mode)." >&2
@@ -59,7 +59,7 @@ if compgen -G "docs/architecture/adr-*.md" >/dev/null; then
     fi
     lines="$(wc -l < "$f" | tr -d ' ')"
     # Only when the Status VALUE leads with it. "accepted; superseded in part by
-    # ADR-022" is still in force — matching mid-line produces false positives that
+    # FWADR-022" is still in force — matching mid-line produces false positives that
     # get trusted past their evidence.
     dep=""
     grep -qiE '^\*\*Status:\*\*[[:space:]]*(superseded|deprecated)' "$f" && dep="ALREADY-DEPRECATED"
@@ -111,7 +111,7 @@ if compgen -G "docs/architecture/adr-*.md" >/dev/null; then
   # A churned doc argues its OLD position at the top and records the user
   # overruling it at the bottom. Agents read top-down and get the stale position
   # first. Emit revisions NEWEST-FIRST so the latest ruling is read first.
-  # File order is NOT version order (ADR-018 has v3.3 above v3.2), so sort by
+  # File order is NOT version order (FWADR-018 has v3.3 above v3.2), so sort by
   # parsed version rather than position.
   echo
   echo "=== Fight detection — revisions newest-first ==="

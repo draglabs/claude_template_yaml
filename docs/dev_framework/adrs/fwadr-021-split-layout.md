@@ -1,4 +1,4 @@
-# ADR-021 — Split project layout as canonical convention
+# FWADR-021 — Split project layout as canonical convention
 
 **Date:** 2026-05-21
 **Status:** Accepted
@@ -72,7 +72,7 @@ $PROJECT_DIR/
     …
 ```
 
-Each W-item carries an optional `target-repo: <subdir>` field in its YAML frontmatter (per [ADR-020](adr-020-yaml-frontmatter-w-items.md)). `$CODE_ROOT = $PROJECT_DIR/$TARGET_REPO` for that W-item, defaulting to `$PROJECT_DIR/$DEFAULT_CODE_SUBDIR` when unset.
+Each W-item carries an optional `target-repo: <subdir>` field in its YAML frontmatter (per [FWADR-020](fwadr-020-yaml-frontmatter-w-items.md)). `$CODE_ROOT = $PROJECT_DIR/$TARGET_REPO` for that W-item, defaulting to `$PROJECT_DIR/$DEFAULT_CODE_SUBDIR` when unset.
 
 ### Flat layout (legacy)
 
@@ -122,7 +122,7 @@ Adopters choose based on context: solo work on a single machine → untracked pa
 
 ## W-item field addition: `target-repo` (YAML frontmatter)
 
-For multi-repo projects, W-item files gain an optional frontmatter field that composes with the shape defined in [ADR-020](adr-020-yaml-frontmatter-w-items.md):
+For multi-repo projects, W-item files gain an optional frontmatter field that composes with the shape defined in [FWADR-020](fwadr-020-yaml-frontmatter-w-items.md):
 
 ```yaml
 ---
@@ -133,9 +133,9 @@ target-repo: api        # optional; defaults to DEFAULT_CODE_SUBDIR from $PROJEC
 ---
 ```
 
-The Orchestrator and Developer resolve `$CODE_ROOT` from this field before creating worktrees or running git commands. Single-repo projects omit the field; ADR-020's existing schema is unchanged for them.
+The Orchestrator and Developer resolve `$CODE_ROOT` from this field before creating worktrees or running git commands. Single-repo projects omit the field; FWADR-020's existing schema is unchanged for them.
 
-The Reviewer's `scripts/check-touches.sh` (mechanical scope check shipped under ADR-020) treats `target-repo` as a known-orthogonal field and ignores it — `touches` paths remain relative to `$CODE_ROOT`, so the script's `git diff --name-only` comparison still works in either layout.
+The Reviewer's `scripts/check-touches.sh` (mechanical scope check shipped under FWADR-020) treats `target-repo` as a known-orthogonal field and ignores it — `touches` paths remain relative to `$CODE_ROOT`, so the script's `git diff --name-only` comparison still works in either layout.
 
 ---
 
@@ -149,7 +149,7 @@ All sync targets in `sync-framework.sh` write to `$PROJECT_DIR` (the tracking tr
 | `.claude/hooks/` sync | `$PROJECT_DIR/.claude/hooks/` | ✓ already correct |
 | `docs/framework_exceptions/` init | `$PROJECT_DIR/docs/framework_exceptions/` | ✓ already correct |
 | `.mcp.json` seed | `$PROJECT_DIR/.mcp.json` | ✓ already correct |
-| Dev-slot + check-touches stubs ([ADR-019](adr-019-dev-slots-and-deploy-stubs.md), [ADR-020](adr-020-yaml-frontmatter-w-items.md)) | `$PROJECT_DIR/scripts/...`, `$PROJECT_DIR/docs/dev/slots.yaml` | ✓ already correct |
+| Dev-slot + check-touches stubs ([FWADR-019](fwadr-019-dev-slots-and-deploy-stubs.md), [FWADR-020](fwadr-020-yaml-frontmatter-w-items.md)) | `$PROJECT_DIR/scripts/...`, `$PROJECT_DIR/docs/dev/slots.yaml` | ✓ already correct |
 | `CLAUDE.md` managed-block refresh | `$PROJECT_DIR/CLAUDE.md` | ✓ already correct |
 
 Two logic changes are added:
@@ -172,11 +172,11 @@ Two categories of scripts, with different homes:
 
 **Agent-orchestration scripts → `$PROJECT_DIR/scripts/`** (the parent). These are framework infrastructure invoked by agent roles for framework reasons — they belong with the tracking tree, not the code repo.
 
-- `scripts/launch_local.sh` — dev-slot launch ([ADR-019](adr-019-dev-slots-and-deploy-stubs.md))
-- `scripts/teardown_local.sh` — dev-slot teardown ([ADR-019](adr-019-dev-slots-and-deploy-stubs.md))
-- `scripts/setup_dev_slots.sh` — one-time slot + Caddyfile setup ([ADR-019](adr-019-dev-slots-and-deploy-stubs.md))
-- `scripts/main_to_prod.sh` — named escape hatch for user-approved direct-to-prod deploy ([ADR-019](adr-019-dev-slots-and-deploy-stubs.md))
-- `scripts/check-touches.sh` — Reviewer-side mechanical scope check ([ADR-020](adr-020-yaml-frontmatter-w-items.md))
+- `scripts/launch_local.sh` — dev-slot launch ([FWADR-019](fwadr-019-dev-slots-and-deploy-stubs.md))
+- `scripts/teardown_local.sh` — dev-slot teardown ([FWADR-019](fwadr-019-dev-slots-and-deploy-stubs.md))
+- `scripts/setup_dev_slots.sh` — one-time slot + Caddyfile setup ([FWADR-019](fwadr-019-dev-slots-and-deploy-stubs.md))
+- `scripts/main_to_prod.sh` — named escape hatch for user-approved direct-to-prod deploy ([FWADR-019](fwadr-019-dev-slots-and-deploy-stubs.md))
+- `scripts/check-touches.sh` — Reviewer-side mechanical scope check ([FWADR-020](fwadr-020-yaml-frontmatter-w-items.md))
 - `docs/dev/slots.yaml` — slot registry (committed) and `.local/dev_slots/<slot>.yaml` — slot live state (gitignored)
 
 The sync hook seeds these under `$PROJECT_DIR/` — agents invoke them from the parent.
@@ -229,9 +229,9 @@ These files are not blockers for adopters working in split layout today — the 
 
 ## Related
 
-- [ADR-014](adr-014-framework-sync-on-session-start.md) — sync hook design
-- [ADR-015](adr-015-template-developer-role.md) — Template Developer role
-- [ADR-019](adr-019-dev-slots-and-deploy-stubs.md) — dev slots / deploy stubs (orthogonal; both ADRs ship stubs via the sync hook)
-- [ADR-020](adr-020-yaml-frontmatter-w-items.md) — YAML frontmatter on W-items (this ADR extends the schema with `target-repo`)
+- [FWADR-014](fwadr-014-framework-sync-on-session-start.md) — sync hook design
+- [FWADR-015](fwadr-015-template-developer-role.md) — Template Developer role
+- [FWADR-019](fwadr-019-dev-slots-and-deploy-stubs.md) — dev slots / deploy stubs (orthogonal; both ADRs ship stubs via the sync hook)
+- [FWADR-020](fwadr-020-yaml-frontmatter-w-items.md) — YAML frontmatter on W-items (this ADR extends the schema with `target-repo`)
 - `docs/dev_framework/migration-guide-split-layout.md` — migration playbook
 - `docs/dev_framework/context-management.md §Project layout` — runtime resolution rules

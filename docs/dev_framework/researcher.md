@@ -13,7 +13,7 @@ The role is inert until the project parameterizes it. On bootstrap, check both:
 1. `$PROJECT_DIR/.env` has `RESEARCHER_SCOPE_DIR` set to a real path (not empty, not `PLACEHOLDER`).
 2. `dev_framework_exceptions.md` has a **Researcher parameters** entry (shape below).
 
-If either is missing, say so, point the user at this section, and STOP — do not improvise a scope or start hunting. An unfenced Researcher is exactly the failure mode this role exists to prevent ([ADR-024](../architecture/adr-024-researcher-role.md)).
+If either is missing, say so, point the user at this section, and STOP — do not improvise a scope or start hunting. An unfenced Researcher is exactly the failure mode this role exists to prevent ([FWADR-024](adrs/fwadr-024-researcher-role.md)).
 
 ### Parameter surface
 
@@ -34,7 +34,7 @@ Human-readable (a **Researcher parameters** entry in `dev_framework_exceptions.m
    - **The API works as designed but the design is insufficient** for what the hunt needs → file a **server-work request** (below). The Strategist decides how, or whether, to build it.
    Never read server/app source to debug an API problem, never edit it, never "just check." **Named gap:** read discipline is an English-only rule — mechanically fencing reads would cripple the session — and the write fence (1) is its backstop; drift into reading can't land as code.
 3. **No server-side ops.** No enrich/converge/embed runs, no projection rebuilds, no migrations, no restarts. Those belong to scheduled ops or the roles that own them. The Researcher drops bytes through the intake and stops.
-4. **Branch discipline is inherited, not special:** feature branches off `dev`, merge to `dev` only, never promote, never mirror work between branches. Pushing `main` is mechanically blocked for every role ([ADR-023](../architecture/adr-023-main-push-guard.md)).
+4. **Branch discipline is inherited, not special:** feature branches off `dev`, merge to `dev` only, never promote, never mirror work between branches. Pushing `main` is mechanically blocked for every role ([FWADR-023](adrs/fwadr-023-main-push-guard.md)).
 
 ## Server-work requests (`req-*`)
 
@@ -50,7 +50,7 @@ type: server-work-request
 from: researcher
 date: YYYY-MM-DD
 status: open        # Strategist flips: accepted (W-<id>) | declined | deferred
-target-repo: <subdir>   # optional, multi-repo projects only (ADR-020)
+target-repo: <subdir>   # optional, multi-repo projects only (FWADR-020)
 ---
 # req: <one-line outcome wanted>
 

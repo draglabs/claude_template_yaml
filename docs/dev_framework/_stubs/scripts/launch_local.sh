@@ -35,7 +35,7 @@
 #   $HOSTNAME_VAL        Caddy-fronted hostname (e.g. dev1.myapp.localhost)
 #   $PORT                HTTP/Caddy-routed port — bind the app server here so
 #                        Caddy reverse-proxies $HOSTNAME_VAL → localhost:$PORT.
-#                        Canonical user-facing surface for QA (ADR-019 v1.1).
+#                        Canonical user-facing surface for QA (FWADR-019 v1.1).
 #   $CODE_PATH_RESOLVED  absolute path to the source directory the user just
 #                        confirmed — point docker/dev-server at this, NOT at
 #                        $PWD or $PROJECT_DIR/$DEFAULT_CODE_SUBDIR (worktree
@@ -58,7 +58,7 @@
 #
 # extras is project-managed — setup_dev_slots.sh does NOT touch it.
 #
-# Canonical doctrine: docs/architecture/adr-019-dev-slots-and-deploy-stubs.md
+# Canonical doctrine: docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md
 
 set -euo pipefail
 
@@ -108,7 +108,7 @@ if [[ -z "$SLOT" ]]; then
   exit 1
 fi
 
-# DEFAULT_CODE_SUBDIR is sourced from $PROJECT_DIR/.env per ADR-021
+# DEFAULT_CODE_SUBDIR is sourced from $PROJECT_DIR/.env per FWADR-021
 # (split-layout single-source rule). setup_dev_slots.sh enforces .env exists
 # before this script can run, so a hard error here is correct.
 ENV_FILE="$PROJECT_DIR/.env"
@@ -123,7 +123,7 @@ set -a
 set +a
 if [[ -z "${DEFAULT_CODE_SUBDIR:-}" || "$DEFAULT_CODE_SUBDIR" == "PLACEHOLDER" ]]; then
   echo "ERROR: DEFAULT_CODE_SUBDIR not set in $ENV_FILE" >&2
-  echo "  Strategist owns this value (per ADR-021). Fill it in then re-run." >&2
+  echo "  Strategist owns this value (per FWADR-021). Fill it in then re-run." >&2
   exit 1
 fi
 

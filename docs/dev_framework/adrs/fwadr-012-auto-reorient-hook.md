@@ -1,4 +1,4 @@
-# ADR-012: Automatic re-orientation on context resets
+# FWADR-012: Automatic re-orientation on context resets
 
 **Status:** accepted
 **Date:** 2026-04-23

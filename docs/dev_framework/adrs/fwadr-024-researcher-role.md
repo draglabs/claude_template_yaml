@@ -1,4 +1,4 @@
-# ADR-024: Researcher role (generalized from the "Localhost Researcher" requirements handoff)
+# FWADR-024: Researcher role (generalized from the "Localhost Researcher" requirements handoff)
 
 **Status:** accepted
 **Date:** 2026-07-28
@@ -15,7 +15,7 @@ records the hunt. Two live failure modes earned it:
 1. **Branch indiscipline** — the research session committed directly to
    `main` and mirrored work to `dev` as duplicate commits, producing merge
    conflicts at promotion. Resolved framework-wide by
-   [ADR-023](adr-023-main-push-guard.md); no longer role-specific.
+   [FWADR-023](fwadr-023-main-push-guard.md); no longer role-specific.
 2. **Debugging drift across a contract boundary** — the session's job is
    acquisition via API calls against the project's server, and it has its own
    small codebase of scrape/search/prioritize/upload tooling. But when an API
@@ -30,7 +30,7 @@ the role list, so any role must land in canon or nowhere.
 
 ## Decision
 
-Land a generalized **Researcher** role in canon ([`researcher.md`](../dev_framework/researcher.md)), renamed from "Localhost Researcher" — run-locality (residential egress from the user's machine) is a project property, not the role's function. The role is **optional and parameterized**; it is inert in projects that don't configure it.
+Land a generalized **Researcher** role in canon ([`researcher.md`](../researcher.md)), renamed from "Localhost Researcher" — run-locality (residential egress from the user's machine) is a project property, not the role's function. The role is **optional and parameterized**; it is inert in projects that don't configure it.
 
 Load-bearing pieces:
 
@@ -94,4 +94,4 @@ Load-bearing pieces:
 - Coexistence with Developer/Orchestrator streams is by construction: the
   Researcher's write scope is a directory no Developer stream owns, and its
   branch discipline is the standard model, now mechanically enforced at the
-  main boundary by ADR-023.
+  main boundary by FWADR-023.

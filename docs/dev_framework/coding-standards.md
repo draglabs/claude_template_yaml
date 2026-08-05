@@ -2,7 +2,7 @@
 
 > **Who loads this doc:** the Executor subagent at spawn (authoring), the Reviewer subagent at spawn (enforcing — sequential mode), and the Integrator-QA subagent at spawn (enforcing — batch mode, and authoring its own fix commits). The Orchestrator and Strategist do NOT carry this file in session-start context — code-level enforcement is delegated to the subagent layer. See [`context-management.md`](context-management.md) for the layering rules.
 >
-> **Fix commits follow the same rules as Executor commits, regardless of who writes them.** In batch mode ([ADR-016](../architecture/adr-016-batch-mode-integrator-qa.md)) the Integrator-QA may write fix commits within a W-item's existing acceptance. Those commits are subject to the full discipline below — TDD, no hardcoded lifecycle values, no silent fallbacks, canonical-value grep. Batch mode is NOT a quiet bypass of the standards; a clean Integrator-QA verdict on code that violates a rule here is an Integrator bug.
+> **Fix commits follow the same rules as Executor commits, regardless of who writes them.** In batch mode ([FWADR-016](adrs/fwadr-016-batch-mode-integrator-qa.md)) the Integrator-QA may write fix commits within a W-item's existing acceptance. Those commits are subject to the full discipline below — TDD, no hardcoded lifecycle values, no silent fallbacks, canonical-value grep. Batch mode is NOT a quiet bypass of the standards; a clean Integrator-QA verdict on code that violates a rule here is an Integrator bug.
 
 Enforced practices for all agents writing code in this repo. These aren't aspirational — they're the result of real incidents where shortcuts caused silent regressions, lost work, or wasted sessions.
 
@@ -114,7 +114,7 @@ The worst class of bug is one where the system appears to work but is silently w
 
 ## Code review via the Reviewer subagent
 
-Under peer dispatch, the Reviewer is spawned **by the Orchestrator** as a peer of the Executor (see `docs/dev_framework/session-policy.md` §"Dispatch flow" and ADR-013). The Executor writes and commits; the Orchestrator then spawns the Reviewer independently. The Reviewer returns its verdict directly to the Orchestrator, which runs the retry loop on `block` — an Executor fix cycle (continuation or fresh dispatch, per session-policy §"Orchestrator-owned retry mechanics") with the concerns as sharpened context.
+Under peer dispatch, the Reviewer is spawned **by the Orchestrator** as a peer of the Executor (see `docs/dev_framework/session-policy.md` §"Dispatch flow" and FWADR-013). The Executor writes and commits; the Orchestrator then spawns the Reviewer independently. The Reviewer returns its verdict directly to the Orchestrator, which runs the retry loop on `block` — an Executor fix cycle (continuation or fresh dispatch, per session-policy §"Orchestrator-owned retry mechanics") with the concerns as sharpened context.
 
 The Reviewer checks these questions (from reviewer-brief.md):
 
@@ -125,7 +125,7 @@ The Reviewer checks these questions (from reviewer-brief.md):
 5. **Edge cases** — what inputs/scenarios could break this?
 6. **Scope creep** — anything added that wasn't in scope?
 
-The Reviewer returns: `ship` / `ship-with-concerns` / `block` (with a Block class on `block` — ADR-022). A `block` causes the Orchestrator to run an Executor fix cycle with the concerns verbatim — continuing the same Executor or dispatching a fresh one per the Block class; either way the Executor adds fix-commits on top of the existing branch (no amend, no rebase — the Reviewer reads history). The Orchestrator re-spawns the Reviewer after each fix cycle. On exhausting the retry cap with an unresolved block, the Orchestrator escalates the W-item as stumped.
+The Reviewer returns: `ship` / `ship-with-concerns` / `block` (with a Block class on `block` — FWADR-022). A `block` causes the Orchestrator to run an Executor fix cycle with the concerns verbatim — continuing the same Executor or dispatching a fresh one per the Block class; either way the Executor adds fix-commits on top of the existing branch (no amend, no rebase — the Reviewer reads history). The Orchestrator re-spawns the Reviewer after each fix cycle. On exhausting the retry cap with an unresolved block, the Orchestrator escalates the W-item as stumped.
 
 ## Execution incidents
 

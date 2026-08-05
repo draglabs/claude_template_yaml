@@ -1,4 +1,4 @@
-# ADR-026: Curator role — an opposing incentive for doc pruning
+# FWADR-026: Curator role — an opposing incentive for doc pruning
 
 **Status:** accepted
 **Date:** 2026-07-29
@@ -15,7 +15,7 @@ fighting it."** And their read on why nobody fixes it: *"Strategist likes to
 protect his pile of cards."*
 
 That last observation is the load-bearing one. The Strategist **authored** the
-corpus, and [`strategist.md`](../dev_framework/strategist.md) states its disposition explicitly: "treats docs as
+corpus, and [`strategist.md`](../strategist.md) states its disposition explicitly: "treats docs as
 load-bearing," "doesn't let drift accumulate," "protective of scope." Every one
 of those biases toward *conservation*. Asking the author to prune its own work
 reliably under-prunes. The residue compounds — by mid-project the pile is
@@ -32,19 +32,19 @@ was designed rather than assumed. Run against this repo at design time:
 
 | Signal | Method | Result |
 |---|---|---|
-| Churn | `git log --follow` per ADR | ADR-018 at **10 commits vs a median of 2** |
-| Self-declared revisions | `^#{2,4} Revision \(?v[0-9]` headings | ADR-018 carries **5** (v2, v3, v3.1, v3.2, v3.3) |
-| Dead ADR | inbound reference count | ADR-015 at 2, ADR-000 at 3 |
+| Churn | `git log --follow` per ADR | FWADR-018 at **10 commits vs a median of 2** |
+| Self-declared revisions | `^#{2,4} Revision \(?v[0-9]` headings | FWADR-018 carries **5** (v2, v3, v3.1, v3.2, v3.3) |
+| Dead ADR | inbound reference count | FWADR-015 at 2, ADR-000 at 3 |
 | Bloat | line count vs Layer 1 budget | `developer.md` 448, `session-policy.md` 473, `strategist.md` 321 |
 
-ADR-018 (the Developer role) is simultaneously the highest-churn ADR, the most
+FWADR-018 (the Developer role) is simultaneously the highest-churn ADR, the most
 revision-annotated, and tied to the most bloated doc in the framework. The
 user's "updated 30 times" heuristic fired on real data, unprompted, on the
 first run. This is not a rule that needs hope — it needs a script.
 
 ## Decision
 
-Add a **Curator** role ([`curator.md`](../dev_framework/curator.md)): a persistent, episodic, top-tier session that audits the
+Add a **Curator** role ([`curator.md`](../curator.md)): a persistent, episodic, top-tier session that audits the
 accumulated doc corpus and proposes dispositions.
 
 1. **Its defining property is the inverted incentive.** Where the Strategist
@@ -61,21 +61,21 @@ accumulated doc corpus and proposes dispositions.
    is authoring `fwreq-*` request files, which change nothing.
 
 3. **Evidence is mechanical; disposition is judgment.**
-   [`doc_churn_audit.sh`](../dev_framework/_stubs/scripts/doc_churn_audit.sh) computes churn, revision counts, inbound
+   [`doc_churn_audit.sh`](../_stubs/scripts/doc_churn_audit.sh) computes churn, revision counts, inbound
    references, line budgets, and exception age. **The script ranks; it does not
    recommend.** Whether a high-churn ADR is mis-scoped or simply load-bearing
    and actively maintained is precisely the call a script cannot make, and a
    script emitting verdicts would be trusted past its evidence.
 
 4. **Fenced out of framework docs, mechanically.** `docs/dev_framework/*` and
-   `.claude/hooks/*` are destructively re-synced every SessionStart ([ADR-014](adr-014-framework-sync-on-session-start.md)),
+   `.claude/hooks/*` are destructively re-synced every SessionStart ([FWADR-014](fwadr-014-framework-sync-on-session-start.md)),
    so a Curator edit there buys one session and silently reverts.
-   [`check-curator-scope.sh`](../dev_framework/_stubs/scripts/check-curator-scope.sh) enforces this.
+   [`check-curator-scope.sh`](../_stubs/scripts/check-curator-scope.sh) enforces this.
 
    **It compares against the template, not against git**, and that choice is
    load-bearing. The first implementation used `git diff` — mirroring the
-   Researcher's fence ([ADR-024](adr-024-researcher-role.md)) — and was caught
-   in testing exiting `2` (usage error) under ADR-021's **default**
+   Researcher's fence ([FWADR-024](fwadr-024-researcher-role.md)) — and was caught
+   in testing exiting `2` (usage error) under FWADR-021's **default**
    untracked-parent layout, where `$PROJECT_DIR` is not a git repo and `docs/`
    is not tracked at all. A git-based fence is therefore silently inert in the
    most common configuration: precisely the "passes a reading, fails at
@@ -154,7 +154,7 @@ accumulated doc corpus and proposes dispositions.
      overruling the document repeatedly while it re-accretes. That is a fight,
      not maintenance, and it is legible from the corpus alone — chat logs are
      not needed. **This is the same defect as
-     [ADR-025](adr-025-named-deliverables.md)**: a churned doc argues its old
+     [FWADR-025](fwadr-025-named-deliverables.md)**: a churned doc argues its old
      position at the top and records the overruling at the bottom, agents read
      top-down, and stale doctrine outranks the user's live ruling. The Curator
      shipped reproducing the very failure this framework was fixing.
@@ -162,11 +162,11 @@ accumulated doc corpus and proposes dispositions.
      `doc_churn_audit.sh` gained a **fight-detection** pass that emits revision
      sections newest-first with their decider and direction-bearing title —
      parsing version numbers rather than file order, since those differ
-     (ADR-018 carries v3.3 *above* v3.2, so bottom-up reading inverts it). It
+     (FWADR-018 carries v3.3 *above* v3.2, so bottom-up reading inverts it). It
      also gained a **REACH** column (highest context layer citing the doc) and
      a worst-first shortlist that ranks Layer 0/1 reach above raw churn. The
      `**Decided by:**` revision convention ships with it in
-     [`README.md`](README.md) §"Revision sections" — the extractor is useless
+     [`README.md`](../../architecture/README.md) §"Revision sections" — the extractor is useless
      without a decider to extract, so rule and mechanism land together.
    - **Pacing: one conflict at a time, worst first.** The v1.0 bootstrap report
      ("ranked table + three or four findings") buried the single item that
@@ -198,22 +198,22 @@ still earns its place; naming that as a gap is more honest than a check that
 would rubber-stamp it.
 
 **Known gap — Layer 0/1 budget, third violation this session.**
-[`context-management.md`](../dev_framework/context-management.md) §"The rule"
+[`context-management.md`](../context-management.md) §"The rule"
 requires that any Layer 0/1 addition name what it replaces or demotes. This ADR
 adds a Roles-table row (CLAUDE.md 164 → 165, already 65% over its 100-line
 Layer 0 budget) and a new Layer 1 doc, and subtracts nothing. `curator.md` was
 at least written to budget (107). But the corpus now stands at **four docs over
 budget with no mechanical check**: `session-policy.md` 473, `developer.md` 448,
 `strategist.md` 321, CLAUDE.md 165. Doc mass outweighing a live instruction is
-a named contributing cause in [ADR-025](adr-025-named-deliverables.md), and
+a named contributing cause in [FWADR-025](fwadr-025-named-deliverables.md), and
 this session added to it three times. A `scripts/check-doc-budget.sh` plus a
 trim pass on the three worst offenders is now the highest-value outstanding
 framework work — the pattern, not the footnote.
 
 **Verification note.** The audit script's two judgment columns were both wrong
 on first run and were caught by live-running it against this repo: the revision
-pattern missed the actual `Revision (v3.1)` spelling (reporting 0 where ADR-018
-has 5), and the deprecation check matched mid-line, flagging ADR-013
+pattern missed the actual `Revision (v3.1)` spelling (reporting 0 where FWADR-018
+has 5), and the deprecation check matched mid-line, flagging FWADR-013
 ("accepted; superseded **in part**") and ADR-000 ("stub — superseded
 incrementally") as already-deprecated when both are in force. Both fixed. A
 signal script that ships wrong is worse than no script, because its output

@@ -1,4 +1,4 @@
-# ADR-023: Mechanical main-push guard + sanctioned promotion script
+# FWADR-023: Mechanical main-push guard + sanctioned promotion script
 
 **Status:** accepted
 **Date:** 2026-07-28
@@ -44,7 +44,7 @@ Ship the mechanism, framework-wide:
 
 3. **Sanctioned bypass = one named script.** The stub
    `scripts/promote_dev_to_main.sh` (seeded to adopters like the other
-   ADR-019 script stubs; generic, no fill-in needed) is the only place
+   FWADR-019 script stubs; generic, no fill-in needed) is the only place
    `FRAMEWORK_ALLOW_MAIN_PUSH=1` is ever set:
    - **Default mode** — phase-exit promotion. Verifies `main` is checked out
      and HEAD is a merge commit whose second parent is `dev`'s current head

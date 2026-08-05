@@ -1,14 +1,14 @@
-# ADR-022 — Runtime recalibration: role-relative model tiers, continuation retries, consultant middle rung
+# FWADR-022 — Runtime recalibration: role-relative model tiers, continuation retries, consultant middle rung
 
 **Status:** Accepted — 2026-07-19
 **Owner:** Template Developer
-**Supersedes in part:** [ADR-013](adr-013-peer-dispatch.md) (retry mechanism only; the peer-dispatch topology is unchanged)
+**Supersedes in part:** [FWADR-013](fwadr-013-peer-dispatch.md) (retry mechanism only; the peer-dispatch topology is unchanged)
 
 ## Context
 
 The framework was written against a specific runtime snapshot (early 2026) and encoded three facts from it as if they were permanent:
 
-1. **`SendMessage` is unavailable in the Claude Code CLI runtime** (verified 2026-04-23, recorded in ADR-013). Retries were therefore mandated as fresh Agent-tool dispatches — and the docs justified the design as a *platform constraint*, not a choice.
+1. **`SendMessage` is unavailable in the Claude Code CLI runtime** (verified 2026-04-23, recorded in FWADR-013). Retries were therefore mandated as fresh Agent-tool dispatches — and the docs justified the design as a *platform constraint*, not a choice.
 2. **A two-tier model ladder** — Sonnet as the cheap writer, Opus as the top-tier judge — was hardcoded as literal model names across role docs, subagent briefs, the tier table, and the merge-commit trailer template.
 3. **An `advisor` tool** ("sees full conversation context") was named as the middle rung of the Developer's 80/20 confidence ladder.
 
@@ -36,7 +36,7 @@ The Integrator-QA additionally requires the **long-context variant** available a
 The retry loop keeps its shape (Orchestrator-owned, counted against tier caps, new commits on top — no rebase/amend) but gains two mechanisms:
 
 - **Continuation (default).** The Orchestrator sends the blocking concerns to the *same* Executor via `SendMessage`. Context intact, cheapest path. Appropriate when the block is about incomplete or incorrect *execution* of a sound approach.
-- **Fresh dispatch.** A new Executor spawned from a rebuilt brief (branch name + verbatim concerns + no-scope-reopen instruction), exactly as under ADR-013. **Mandatory** when any of:
+- **Fresh dispatch.** A new Executor spawned from a rebuilt brief (branch name + verbatim concerns + no-scope-reopen instruction), exactly as under FWADR-013. **Mandatory** when any of:
   1. The Reviewer classifies the block as **approach-level** — the approach is wrong, not the execution. A continued Executor tends to rationalize its own prior choices; fresh eyes don't.
   2. The same concern (or its direct descendant) survives a continuation retry — one continuation attempt per concern, then fresh eyes.
   3. The prior Executor is no longer reachable.
@@ -64,7 +64,7 @@ Two further observations from the same runtime assessment are **deliberately def
 - The commit-trailer ledger records truth (actual models) instead of template fiction.
 - Retries get cheaper in the common case (execution-level fixes) while preserving fresh-eyes review where it matters.
 - The Reviewer brief grows one field (Block class); the Orchestrator bootstrap's retry step routes on it.
-- ADR-013's peer-dispatch topology (no nested subagent spawns; every subagent a peer under the Orchestrator) is **unchanged** and re-verified — only its retry-mechanism section is superseded.
+- FWADR-013's peer-dispatch topology (no nested subagent spawns; every subagent a peer under the Orchestrator) is **unchanged** and re-verified — only its retry-mechanism section is superseded.
 
 ## Alternatives considered
 

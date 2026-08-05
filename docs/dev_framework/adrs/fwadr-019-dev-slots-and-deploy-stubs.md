@@ -1,4 +1,4 @@
-# ADR-019: Dev slots and deploy script stubs
+# FWADR-019: Dev slots and deploy script stubs
 
 **Status:** accepted
 **Date:** 2026-05-02
@@ -23,7 +23,7 @@ Bring the codex pattern into `claude_template_yaml`, adapted for two claude-side
 2. **Caddy as the routing layer.** Caddy reverse-proxies `<slot>.<sub>.localhost` → `localhost:<port>`. The setup script generates the Caddy block and (with user confirmation) appends it to the user's Caddyfile, wrapped in `# BEGIN <sub>-dev-slots` / `# END <sub>-dev-slots` markers so re-runs update in place. Caddy auto-issues internal-CA certs for `.localhost` hosts; first-time use may require `caddy trust` once to suppress browser cert warnings.
 
 3. **Four scripts in `scripts/`** (all ship as stubs, idempotent-init):
-   - **`scripts/setup_dev_slots.sh`** — interactive one-time setup. Asks for base port, fills in slots.yaml (hostnames + ports), generates the Caddy block, prompts for Caddyfile path (auto-detects `/opt/homebrew/etc/Caddyfile`, `/usr/local/etc/Caddyfile`, `/etc/caddy/Caddyfile`, `~/Caddyfile` in order), appends with begin/end markers. Re-runnable; updates between markers on subsequent runs. Does NOT edit CLAUDE.md — `{{ports}}` lives inside the framework-managed block which gets overwritten on every sync (per ADR-014); slots.yaml is the authoritative source of truth for actual port assignments.
+   - **`scripts/setup_dev_slots.sh`** — interactive one-time setup. Asks for base port, fills in slots.yaml (hostnames + ports), generates the Caddy block, prompts for Caddyfile path (auto-detects `/opt/homebrew/etc/Caddyfile`, `/usr/local/etc/Caddyfile`, `/etc/caddy/Caddyfile`, `~/Caddyfile` in order), appends with begin/end markers. Re-runnable; updates between markers on subsequent runs. Does NOT edit CLAUDE.md — `{{ports}}` lives inside the framework-managed block which gets overwritten on every sync (per FWADR-014); slots.yaml is the authoritative source of truth for actual port assignments.
    - **`scripts/launch_local.sh <slot>`** — claims the slot (writes `.local/dev_slots/<slot>.yaml` state file), then runs the project-specific launch body. Slot-claim plumbing is pre-filled; the launch body (the actual `docker run …` or equivalent) is stubbed with `exit 1` until the agent fills it in. Detects "stub still has placeholders" via `port: 0` / `hostname: PLACEHOLDER` and halts with a "run setup_dev_slots.sh first" message.
    - **`scripts/teardown_local.sh <slot>`** — reads the state file, runs the project-specific teardown body, removes the state file. Same stub-and-fill shape as launch.
    - **`scripts/main_to_prod.sh`** — the **named escape hatch** for user-approved direct-to-server production deploy. Ships as a stub; agent scopes the real server with the user once and fills in connection + update + restart + verification steps. After filling, every prod deploy goes through this script — never improvise prod commands outside it.
@@ -32,7 +32,7 @@ Bring the codex pattern into `claude_template_yaml`, adapted for two claude-side
 
 5. **Idempotent-init sync.** All four scripts and `slots.yaml` ship under `docs/dev_framework/_stubs/` in the canonical template. The sync hook (`.claude/hooks/sync-framework.sh`) copies them on first sync and never overwrites afterward — same pattern already used for `framework_exceptions/` and `.mcp.json`. Adopters that fill in the stubs keep their work across all future syncs.
 
-6. **Parent-side placement under split layout.** All four scripts and `slots.yaml` are seeded at **`$PROJECT_DIR/scripts/`** and **`$PROJECT_DIR/docs/dev/slots.yaml`** — the parent directory under split layout ([ADR-021](adr-021-split-layout.md)), NOT inside `$CODE_ROOT`. These are agent-orchestration artifacts (dev-slot launch/teardown, deploy escape hatch); they belong with the tracking tree, not the code repo. About the only deploy-shaped thing that lives in `$CODE_ROOT` is CI config. Agents invoke the scripts with `$PROJECT_DIR` as the working directory (the scripts use CWD-relative paths internally). See [ADR-021](adr-021-split-layout.md) §"Script placement doctrine" for the full rule.
+6. **Parent-side placement under split layout.** All four scripts and `slots.yaml` are seeded at **`$PROJECT_DIR/scripts/`** and **`$PROJECT_DIR/docs/dev/slots.yaml`** — the parent directory under split layout ([FWADR-021](fwadr-021-split-layout.md)), NOT inside `$CODE_ROOT`. These are agent-orchestration artifacts (dev-slot launch/teardown, deploy escape hatch); they belong with the tracking tree, not the code repo. About the only deploy-shaped thing that lives in `$CODE_ROOT` is CI config. Agents invoke the scripts with `$PROJECT_DIR` as the working directory (the scripts use CWD-relative paths internally). See [FWADR-021](fwadr-021-split-layout.md) §"Script placement doctrine" for the full rule.
 
 ### Production-deploy doctrine (carve-out)
 
@@ -73,7 +73,7 @@ This makes the named-escape-hatch enforceable. Without Reviewer enforcement, `ma
 **What this does NOT do:**
 
 - **Does not change the production-deploy default.** CI-only remains the rule. `main_to_prod.sh` is for projects that have already opted out of CI by user decision; it does not encourage opting out.
-- **Does not change the Developer's QA-loop pattern.** User-mediated QA inside `in_progress` (per ADR-018) is unchanged. The slots simply give the runtime a stable hostname/port for the user to QA against.
+- **Does not change the Developer's QA-loop pattern.** User-mediated QA inside `in_progress` (per FWADR-018) is unchanged. The slots simply give the runtime a stable hostname/port for the user to QA against.
 - **Does not change Orchestrator-mode dispatch.** Executor subagents in worktrees can use the slots if the project is configured, but the slot mechanism is Developer-centric — the QA-loop framing assumes a persistent session.
 - **Does not auto-fill the launch/teardown bodies.** Fundamentally project-specific (which container, which env vars, which compose file). The agent fills them in once on first use, then the script is the canonical entry point forever.
 
@@ -132,7 +132,7 @@ Field experience from the first multi-port-surface adopter (Postgres-per-slot + 
 
 3. **Project variables move to `.env` (canonical machine source); CLAUDE.md is the human-readable mirror.** Previously the script regex-parsed CLAUDE.md to extract `{{sub}}` and `{{ports}}` — fragile against any rephrasing of the bullet text. Now: a starter `.env.example` ships with the template (`docs/dev_framework/_stubs/.env.example`) and is idempotent-init'd to `$PROJECT_DIR/.env.example` by the sync hook. The adopter copies it to `.env` (gitignored) on first init; the Strategist fills the values during the first-contact interview. Scripts source `.env` directly — `setup_dev_slots.sh` halts if `PROJECT_SUB` or `PROJECT_PORTS` is empty or `PLACEHOLDER`. CLAUDE.md still displays the same values inline (for human readability), kept in sync by Strategist discipline + the §"Stub audit" `.env`↔CLAUDE.md drift row.
 
-4. **Strategist owns the first-contact interview, including port-range confirmation.** Port allocation is a cross-project resource decision (avoids collisions with other projects on the same machine) — the Strategist negotiates with the user, fills `.env` (`PROJECT_SUB`, `PROJECT_PORTS`, etc.) and CLAUDE.md atomically. The script halt above is the forcing function: the Developer can't bring up a local runtime until the interview is done. Full question list in [`strategist.md`](../dev_framework/strategist.md) §"First-contact interview."
+4. **Strategist owns the first-contact interview, including port-range confirmation.** Port allocation is a cross-project resource decision (avoids collisions with other projects on the same machine) — the Strategist negotiates with the user, fills `.env` (`PROJECT_SUB`, `PROJECT_PORTS`, etc.) and CLAUDE.md atomically. The script halt above is the forcing function: the Developer can't bring up a local runtime until the interview is done. Full question list in [`strategist.md`](../strategist.md) §"First-contact interview."
 
 5. **`setup_dev_slots.sh` asks the HTTP-surface question.** New interactive prompt: "Does this project expose an HTTP surface that needs Caddy routing?" Answer `true|false` is written to `http_surface` at the top of `slots.yaml`. If `false`, the script skips Caddy block generation entirely (no `<slot>.<sub>.localhost` blocks written). This lets non-HTTP projects (CLI tools, libraries, headless pipelines) use the slot model for port assignment without Caddy noise.
 
@@ -176,7 +176,7 @@ Projects with no app port (CLI-only tooling) leave `port` set to whatever (or `0
 - `docs/dev_framework/developer.md §Build` — QA-target-is-slot-hostname rule (conditional on `http_surface: true`).
 - `docs/dev_framework/templates/reviewer-brief.md` — new conditional MED rule (pre-condition reads `http_surface` from `slots.yaml`).
 - `docs/dev_framework/strategist.md` — first-contact-interview responsibility (subsumes the prior port-range bullet); §"First-contact interview" section with .env + CLAUDE.md dual-surface fill instructions; new stub-audit rows for `.env` PLACEHOLDERs and `.env`↔CLAUDE.md drift.
-- `docs/architecture/adr-019-dev-slots-and-deploy-stubs.md` — this Revision (v1.1) section.
+- `docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md` — this Revision (v1.1) section.
 
 ## Revision (v1.2) — 2026-05-27: launch/teardown safety primitives
 
@@ -192,7 +192,7 @@ Field experience from a Parallel Developer at an adopter on 2026-05-27 exposed a
 
 4. **State-file schema additions.** The generic state-file write (above the `PROJECT-SPECIFIC LAUNCH BODY` marker) now includes `code_path`, `mode`, `branch`, `sha`. Project-specific bodies continue to append project-specific fields (e.g. `compose_project`, `compose_file`, `compose_override`) below the generic write. Teardown's generic header reads only the generic fields; the project-specific teardown body reads project-specific fields and is the right place for backwards-compat fallbacks when an in-flight slot pre-dates a body change.
 
-5. **`DEFAULT_CODE_SUBDIR` sourced from `$PROJECT_DIR/.env` in the launch stub.** Aligns with v1.1's `setup_dev_slots.sh` doctrine (project variables live in `.env`, scripts source it). No init-time placeholder edit in the stub. Single source of truth per [ADR-021](adr-021-split-layout.md).
+5. **`DEFAULT_CODE_SUBDIR` sourced from `$PROJECT_DIR/.env` in the launch stub.** Aligns with v1.1's `setup_dev_slots.sh` doctrine (project variables live in `.env`, scripts source it). No init-time placeholder edit in the stub. Single source of truth per [FWADR-021](fwadr-021-split-layout.md).
 
 ### Migration (adopter-side)
 

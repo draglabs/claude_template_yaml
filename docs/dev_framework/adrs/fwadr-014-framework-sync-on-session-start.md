@@ -1,4 +1,4 @@
-# ADR-014: Framework sync on SessionStart
+# FWADR-014: Framework sync on SessionStart
 
 **Status:** accepted
 **Date:** 2026-04-23
@@ -10,7 +10,7 @@ Two related problems the template had to solve together:
 
 1. **Framework drift in adopting projects.** `docs/dev_framework/` is the canonical SOP — the role docs, the subagent briefs, the session policy, the coding standards. If an adopting project's Strategist edits those files locally to accommodate some project reality, the project silently diverges from every other adopter. Future template updates become manual merges. The "copy-paste the new framework over" story breaks.
 
-2. **Context-reset re-orientation already exists but doesn't cover the sync.** ADR-012 added a `SessionStart` hook that re-orients the session after compact/clear/resume/startup. Adding framework sync to the same trigger closes the loop: after any context reset, the session also has the freshest canonical framework on disk, not whatever-was-there-whenever-this-project-was-cloned.
+2. **Context-reset re-orientation already exists but doesn't cover the sync.** FWADR-012 added a `SessionStart` hook that re-orients the session after compact/clear/resume/startup. Adding framework sync to the same trigger closes the loop: after any context reset, the session also has the freshest canonical framework on disk, not whatever-was-there-whenever-this-project-was-cloned.
 
 Policy text alone can't enforce "don't edit `docs/dev_framework/*`" — that's another English-only rule. The mechanical equivalent is to overwrite any such edits on every session start. Projects that need to deviate record the deviation in `docs/framework_exceptions/dev_framework_exceptions.md`, which the sync never touches.
 

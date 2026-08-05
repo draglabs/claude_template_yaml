@@ -2,7 +2,7 @@
 # SessionStart hook: re-orients the session after any context-reset event.
 # Fires on source in {startup, resume, compact, clear}. Routes the message.
 #
-# Wired from .claude/settings.json. See docs/architecture/adr-012-auto-reorient-hook.md.
+# Wired from .claude/settings.json. See docs/dev_framework/adrs/fwadr-012-auto-reorient-hook.md.
 #
 # Hook stdout is injected into the post-reset session context.
 # Keep the emitted text short and actionable — it lands in every session start.
@@ -117,7 +117,7 @@ EOF
 # A context reset reloads role doctrine at full strength while the user's actual
 # request may be gone; the doctrine then wins and the agent writes the nearest
 # artifact its role already owns. Phrased so a lost request produces a QUESTION,
-# not a silent substitution. See ADR-025 and strategist.md §"Named deliverables".
+# not a silent substitution. See FWADR-025 and strategist.md §"Named deliverables".
 cat <<'EOF'
 
 [session-reorient] Named deliverables — write what was asked for.

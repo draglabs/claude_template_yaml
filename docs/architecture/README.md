@@ -24,6 +24,8 @@ System design docs. Owned by the Strategist. Referenced by the Orchestrator when
 - ADRs: `adr-NNN-<slug>.md` (numbered, padded to 3 digits). Example: `adr-001-postgres-over-mysql.md`.
 - Diagrams / models / maps: free-form descriptive name. Example: `system-overview.md`, `data-model.md`, `api-surface.md`.
 
+**This directory is the *product* ADR space only.** Framework decisions live in a separate `fwadr-NNN` number space at `docs/dev_framework/adrs/` — synced from the template, never edited per-project, cited as `FWADR-NNN`. The two sequences are independent by design; a product `adr-023` and the framework's `fwadr-023` can coexist without collision ([FWADR-028](../dev_framework/adrs/fwadr-028-framework-adr-namespace.md)). Never create `fwadr-*` files here, and never number product decisions against the framework sequence.
+
 ## ADR template
 
 ```markdown
@@ -69,7 +71,7 @@ When a revision *is* the right disposition (see §"Staleness rule" — usually i
 
 ## Living architecture, not doctrine
 
-**An ADR is the best current record of a decision. It is not a constraint that outranks a live instruction from the user.** See [ADR-027](adr-027-living-architecture.md).
+**An ADR is the best current record of a decision. It is not a constraint that outranks a live instruction from the user.** See [FWADR-027](../dev_framework/adrs/fwadr-027-living-architecture.md).
 
 When a user instruction conflicts with an accepted ADR, the ADR is what changes — rewritten to state the decision that now holds, or escalated to the user when their intent isn't clear. What must never happen is the silent inverse: code built to the user's order, blocked at a review gate for "canonical misalignment," and quietly re-coded back to the stale ADR. Review gates are fresh subagents that cannot see the conversation, so they need the deviation recorded on the W-item (`## User-directed deviation` — [`../execution-plans/README.md`](../execution-plans/README.md)) to tell an ordered departure from a careless one.
 

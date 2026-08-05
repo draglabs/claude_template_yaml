@@ -6,7 +6,7 @@ Applies to any session (any model tier) driving work items from [execution-plans
 
 **Project deviations** from this policy live in [`dev_framework_exceptions.md`](../framework_exceptions/dev_framework_exceptions.md), maintained by the project's Strategist. Every agent reads that file alongside CLAUDE.md. This policy doc is canonical — it is not edited per-project.
 
-## Model tiers (role-relative, ADR-022)
+## Model tiers (role-relative, FWADR-022)
 
 Framework docs and briefs never name literal models — model generations change under the framework. Two named tiers, resolved to concrete model names **at spawn time**:
 
@@ -15,7 +15,7 @@ Framework docs and briefs never name literal models — model generations change
 
 The Integrator-QA additionally requires the **long-context variant** available at the top tier (see §"Batch mode").
 
-**Invariant: a review gate runs at a tier ≥ the tier that wrote the code.** Subagents inherit the parent session's model by default in the current harness — so the spawner sets the work-tier model *explicitly* for Executors/QA/consultants, and for a Reviewer either inherits (when the session itself runs top tier) or explicitly sets the top-tier model. Merge-commit trailers record the **actual resolved model names**, never names copied from a template. See [ADR-022](../architecture/adr-022-runtime-recalibration.md).
+**Invariant: a review gate runs at a tier ≥ the tier that wrote the code.** Subagents inherit the parent session's model by default in the current harness — so the spawner sets the work-tier model *explicitly* for Executors/QA/consultants, and for a Reviewer either inherits (when the session itself runs top tier) or explicitly sets the top-tier model. Merge-commit trailers record the **actual resolved model names**, never names copied from a template. See [FWADR-022](adrs/fwadr-022-runtime-recalibration.md).
 
 ## Roles
 
@@ -25,13 +25,13 @@ The Integrator-QA additionally requires the **long-context variant** available a
 | **Executor** | Work-tier subagent spawned via Agent tool by the Orchestrator. | **Writer.** Writes code + tests in a pre-created worktree, commits to the feature branch, returns a code-only package to the Orchestrator. Does NOT spawn Reviewer or QA. Does NOT merge or push. |
 | **Reviewer** | Top-tier subagent spawned via Agent tool **by the Orchestrator**. Sequential-mode (per-task) only. | Reviews the Executor's diff against canonical docs + coding standards. Returns verdict + concerns to the Orchestrator. Does not modify files. |
 | **QA** | Work-tier subagent spawned via Agent tool **by the Orchestrator** — per-W-item (pre-merge, sequential mode only), at phase exit, or post-promotion. | Runs end-to-end tests against a pre-merge worktree build or the live dev environment. Returns structured pass/fail to the Orchestrator. Cleans up test artifacts on success. |
-| **Integrator-QA** | Top-tier long-context subagent spawned via Agent tool **by the Orchestrator** — batch mode (ADR-016) only, end of parallel batch. | Integrates N parallel-safe W-item branches, resolves merges, reviews against coding standards, runs full test suite (including live/Playwright), fixes within acceptance, files claims for scope changes. Absorbs per-task Reviewer and pre-merge QA for items in the batch. |
+| **Integrator-QA** | Top-tier long-context subagent spawned via Agent tool **by the Orchestrator** — batch mode (FWADR-016) only, end of parallel batch. | Integrates N parallel-safe W-item branches, resolves merges, reviews against coding standards, runs full test suite (including live/Playwright), fixes within acceptance, files claims for scope changes. Absorbs per-task Reviewer and pre-merge QA for items in the batch. |
 | **Doc Consultant** | Work-tier subagent spawned by any role. | Reads the doc corpus and answers a targeted question. Returns a short citation-backed answer. Does not modify files. |
 | **Code Consultant** | Work-tier subagent spawned primarily by the Strategist. | Reads code and answers a targeted question. Returns a short citation-backed answer. Does not modify files. |
 
 Briefing templates for each subagent role live in [`templates/`](templates/). Load them when spawning a subagent — not at session start.
 
-**Hard constraint of the runtime: subagents cannot spawn subagents.** Confirmed by Anthropic's Agent SDK docs and by GitHub issue history. Under this policy every subagent is a peer under the Orchestrator. See [ADR-013](../architecture/adr-013-peer-dispatch.md) for the decision record.
+**Hard constraint of the runtime: subagents cannot spawn subagents.** Confirmed by Anthropic's Agent SDK docs and by GitHub issue history. Under this policy every subagent is a peer under the Orchestrator. See [FWADR-013](adrs/fwadr-013-peer-dispatch.md) for the decision record.
 
 ### Dispatch flow
 
@@ -94,7 +94,7 @@ All tiers use the same peer-dispatch flow. Tiers differ only in **which gates ar
 
 Retry state lives in the Orchestrator session; it is NOT written to the plan ledger. The plan records only Status transitions (`pending` → `in_progress` → `blocked` / `done` / `shipped`) — retry counts are ephemeral.
 
-Two retry mechanisms exist ([ADR-022](../architecture/adr-022-runtime-recalibration.md)):
+Two retry mechanisms exist ([FWADR-022](adrs/fwadr-022-runtime-recalibration.md)):
 
 - **Continuation (default).** The Orchestrator sends the blocking concerns to the *same* Executor via SendMessage — context intact, cheapest path. The message contains the full verbatim concerns from the Reviewer (or QA) and the one-line instruction: "address these concerns; do not reopen the original scope." Appropriate when the block is about incomplete or incorrect *execution* of a sound approach.
 - **Fresh dispatch.** A new Executor spawned via the Agent tool with a rebuilt brief containing: the feature branch name (worktree already exists; Executor checks out the existing commits), the full verbatim concerns, and the same no-scope-reopen instruction. **Mandatory** when any of:
@@ -106,7 +106,7 @@ The routing signal is mechanical: the Reviewer's `block` return includes a **Blo
 
 The Executor writes a new commit on top of the existing ones — **no rebase, no amend.** The Reviewer reads history; the chain of fix-commits shows the loop's work.
 
-**History note.** Earlier framework versions mandated fresh dispatch exclusively because SendMessage was unavailable in the Claude Code CLI runtime (ADR-013, verified 2026-04-23). The runtime now provides SendMessage; continuation-by-default is a deliberate choice, with fresh dispatch retained where independent judgment matters. See ADR-022.
+**History note.** Earlier framework versions mandated fresh dispatch exclusively because SendMessage was unavailable in the Claude Code CLI runtime (FWADR-013, verified 2026-04-23). The runtime now provides SendMessage; continuation-by-default is a deliberate choice, with fresh dispatch retained where independent judgment matters. See FWADR-022.
 
 ### Escalation
 
@@ -124,7 +124,7 @@ The Orchestrator does NOT escalate when:
 
 ## Batch mode
 
-An alternative dispatch path for W-items marked `Parallel-safe: true` on the plan. Introduced in [ADR-016](../architecture/adr-016-batch-mode-integrator-qa.md) to amortize top-tier review cost across independent work. When multiple parallel-safe W-items are ready to dispatch, the Orchestrator runs them as a batch instead of serially.
+An alternative dispatch path for W-items marked `Parallel-safe: true` on the plan. Introduced in [FWADR-016](adrs/fwadr-016-batch-mode-integrator-qa.md) to amortize top-tier review cost across independent work. When multiple parallel-safe W-items are ready to dispatch, the Orchestrator runs them as a batch instead of serially.
 
 ### Batch dispatch flow
 
@@ -158,7 +158,7 @@ Orchestrator
 
 ### How batch mode differs from sequential mode
 
-| Concern | Sequential (ADR-013) | Batch (ADR-016) |
+| Concern | Sequential (FWADR-013) | Batch (FWADR-016) |
 |---|---|---|
 | Reviewer stage | Per-task top-tier call | Absorbed into Integrator-QA (one top-tier long-context call per batch) |
 | Pre-merge QA | Per-task work-tier call (L/XL/🧪/⚠️) | Absorbed into Integrator-QA |
@@ -189,11 +189,11 @@ There is no "re-run the Integrator-QA" loop the way sequential mode runs Reviewe
 
 ### Claim resolution
 
-Integration claims (IC-NNN) live in `claims.md` inside the plan folder under the ADR-017 layout, or inline on the single-file plan under the pre-ADR-017 layout — see `execution-plans/README.md §"Integration claims"`. Filing a claim is the Integrator-QA's `in_progress → held` write (atomic with the IC-NNN entry). The Strategist triages alongside `process-exceptions.md` at phase boundaries and on demand. Dispositions (`approve` / `reject` / `modify`) are recorded with the claim and flip the named W-items' Status atomically: `held → in_progress` on approve/modify, `held → blocked` on reject. After the Strategist's disposition the Orchestrator re-dispatches affected items at its next eligibility check (either as a small batch or sequentially, depending on updated `Parallel-safe` status). The Orchestrator's cadence is "continue forward progress on unblocked items; revisit held items after Strategist disposition."
+Integration claims (IC-NNN) live in `claims.md` inside the plan folder under the FWADR-017 layout, or inline on the single-file plan under the pre-FWADR-017 layout — see `execution-plans/README.md §"Integration claims"`. Filing a claim is the Integrator-QA's `in_progress → held` write (atomic with the IC-NNN entry). The Strategist triages alongside `process-exceptions.md` at phase boundaries and on demand. Dispositions (`approve` / `reject` / `modify`) are recorded with the claim and flip the named W-items' Status atomically: `held → in_progress` on approve/modify, `held → blocked` on reject. After the Strategist's disposition the Orchestrator re-dispatches affected items at its next eligibility check (either as a small batch or sequentially, depending on updated `Parallel-safe` status). The Orchestrator's cadence is "continue forward progress on unblocked items; revisit held items after Strategist disposition."
 
 ## Status ledger (non-negotiable)
 
-Status writes on the active execution plan are **atomic with the git events that trigger them**. Under [ADR-017](../architecture/adr-017-plan-folder-restructure.md) and [ADR-018](../architecture/adr-018-developer-role.md), four agents share the writer authority — each owns a distinct subset of transitions:
+Status writes on the active execution plan are **atomic with the git events that trigger them**. Under [FWADR-017](adrs/fwadr-017-plan-folder-restructure.md) and [FWADR-018](adrs/fwadr-018-developer-role.md), four agents share the writer authority — each owns a distinct subset of transitions:
 
 - **Orchestrator** (Orchestrator-mode phases) — owns most transitions:
   - `pending → in_progress` on Executor dispatch (commit the plan update **before** spawning the Executor; no "update later").
@@ -201,9 +201,9 @@ Status writes on the active execution plan are **atomic with the git events that
   - `in_progress → blocked` on Executor stumped or Integrator-QA integration failure.
   - `blocked → in_progress` on re-dispatch with sharpened brief.
   - `done → shipped` in the same commit as the `dev → main` promotion merge.
-- **Integrator-QA** — owns `in_progress → held` (Orchestrator batch mode). Atomic with filing an IC-NNN claim: one commit writes both `claims.md` (new entry under "## Open") and the index `plan.md` (Status flip on every named W-item). Under the pre-ADR-017 single-file layout the same commit edits the inline claims section and the per-W-item Status fields.
+- **Integrator-QA** — owns `in_progress → held` (Orchestrator batch mode). Atomic with filing an IC-NNN claim: one commit writes both `claims.md` (new entry under "## Open") and the index `plan.md` (Status flip on every named W-item). Under the pre-FWADR-017 single-file layout the same commit edits the inline claims section and the per-W-item Status fields.
 - **Strategist** — owns `held → in_progress` (claim approve / modify) and `held → blocked` (claim reject). Atomic with claim disposition: one commit moves the IC-NNN entry from "## Open" to "## Resolved" on `claims.md` AND flips the named W-items' Status on the index. If the disposition revises acceptance, the W-item file edit is part of the same commit.
-- **Developer** (Developer-mode phases) — owns Developer-mode lifecycle transitions ([ADR-018](../architecture/adr-018-developer-role.md)):
+- **Developer** (Developer-mode phases) — owns Developer-mode lifecycle transitions ([FWADR-018](adrs/fwadr-018-developer-role.md)):
   - `pending → in_progress` on item claim (atomic with branch creation + the user-anchor message).
   - `in_progress → code_review` when the user confirms the feature works (atomic with a "ready for review" commit on the W-item branch; Developer then spawns a Reviewer subagent).
   - `code_review → done` on Reviewer-subagent ship verdict (atomic with the merge to `dev` + Implementation log written on the W-item file).
@@ -214,7 +214,7 @@ Status writes on the active execution plan are **atomic with the git events that
 
 A retry dispatch (`blocked → in_progress` or `code_review → in_progress`) does NOT increment any counter on the plan — the W-item simply moves through Status. Retry counts are role-internal (Orchestrator's tier-based caps, Developer's user-mediated re-engagement).
 
-**Mode coexistence per item (ADR-018, v2).** Orchestrator and Developer modes both write Status. Per-item collision is naturally enforced by the mode-specific Status paths — Orchestrator's `pending → in_progress → done` and Developer's `pending → in_progress → code_review → done` take different routes from `in_progress`. Plans carry a Strategist-set `Mode` field as a recommendation (advisory, not binding); mixed-mode phases are allowed. Items lock into a mode at claim time via the path they take. Claim attribution lives in the plan's Notes section for at-a-glance disambiguation of in-flight items.
+**Mode coexistence per item (FWADR-018, v2).** Orchestrator and Developer modes both write Status. Per-item collision is naturally enforced by the mode-specific Status paths — Orchestrator's `pending → in_progress → done` and Developer's `pending → in_progress → code_review → done` take different routes from `in_progress`. Plans carry a Strategist-set `Mode` field as a recommendation (advisory, not binding); mixed-mode phases are allowed. Items lock into a mode at claim time via the path they take. Claim attribution lives in the plan's Notes section for at-a-glance disambiguation of in-flight items.
 
 PLAN-WRITE DISCIPLINE — the read-fresh / Edit / single-commit / verify-pushed sequence — applies at all four write sites. The Orchestrator's discipline lives in [`templates/orchestrator-bootstrap.md`](templates/orchestrator-bootstrap.md) (top of file). The Integrator-QA's lives in [`templates/integrator-qa-brief.md`](templates/integrator-qa-brief.md) §STEP 3. The Strategist's lives in [`strategist.md`](strategist.md) §"Plan-write discipline (claim disposition)." The Developer's lives in [`developer.md`](developer.md) §"Plan-write discipline (Developer)."
 
@@ -255,9 +255,9 @@ After merging to **`dev`** and pushing (and after flipping the W-item Status to 
 - **⚠️ items** — Top-tier review is already the default. ⚠️ additionally forces QA regardless of tier and bumps the retry cap to 3.
 - **🔍 items** — The Orchestrator runs the spike directly (research, not code). 2h max. No Executor dispatch. Validate conclusions in the real runtime environment, not simplified tests. This is the ONE case where the Orchestrator touches content, because there's no diff to produce.
 - **🧪 items** — QA required regardless of tier. Orchestrator dispatches QA after Reviewer ships.
-- **Parallel execution** — only for dependency-graph-independent W-items marked `Parallel-safe: true` on the plan (see [ADR-016](../architecture/adr-016-batch-mode-integrator-qa.md) and `execution-plans/README.md §"Parallel-safe field"`). Two dispatch paths:
+- **Parallel execution** — only for dependency-graph-independent W-items marked `Parallel-safe: true` on the plan (see [FWADR-016](adrs/fwadr-016-batch-mode-integrator-qa.md) and `execution-plans/README.md §"Parallel-safe field"`). Two dispatch paths:
   - **Batch mode (Parallel-safe: true):** Orchestrator dispatches up to ~3 concurrent Executors, one worktree each. When all return, a single Integrator-QA (top tier, long-context) call absorbs per-task Reviewer + pre-merge QA — one top-tier call amortized across the batch instead of N. See §"Batch mode" below.
-  - **Sequential mode (Parallel-safe: false or unset):** Orchestrator runs each W-item through its own per-task peer chain (Executor, Reviewer, optional QA) serially. This is the ADR-013 default.
+  - **Sequential mode (Parallel-safe: false or unset):** Orchestrator runs each W-item through its own per-task peer chain (Executor, Reviewer, optional QA) serially. This is the FWADR-013 default.
   Practical cap on batch size is ~3 W-items — wider batches increase Integrator-QA blast radius on failure.
 - **Doc questions → Doc Consultant, not inline reads.** When the Orchestrator needs to check a locked decision, cross-reference acceptance criteria, or verify a constraint, spawn a Doc Consultant subagent instead of reading the docs inline. The Consultant's 10-line answer costs far less context than loading 3 full docs. Exception: docs already loaded at session start (Layer 1).
 - **Strategist code questions → Code Consultant.** The Strategist does not load project `src/`. When it needs a code-level fact to approve a plan or verify a claim, it spawns a Code Consultant subagent.
@@ -283,7 +283,7 @@ Under peer dispatch the Orchestrator sees Reviewer and QA verdicts inline — pe
 
 This project uses a **dev branch** between feature branches and main. Features merge to dev; dev promotes to main at phase boundaries.
 
-**Pushing `main` is mechanically blocked** ([ADR-023](../architecture/adr-023-main-push-guard.md)): the framework sync installs a git pre-push guard into every code repo's `.git/hooks/pre-push` that rejects any push updating `refs/heads/main` unless `FRAMEWORK_ALLOW_MAIN_PUSH=1` — and the only sanctioned setter of that variable is `scripts/promote_dev_to_main.sh` (run from `$PROJECT_DIR`; default mode for phase-exit promotion, `--bypass` for the emergency path). Never set the variable by hand and never put it in `.env`. Host-side branch protection on `main` is recommended in addition where the git host supports it (Strategist first-contact interview).
+**Pushing `main` is mechanically blocked** ([FWADR-023](adrs/fwadr-023-main-push-guard.md)): the framework sync installs a git pre-push guard into every code repo's `.git/hooks/pre-push` that rejects any push updating `refs/heads/main` unless `FRAMEWORK_ALLOW_MAIN_PUSH=1` — and the only sanctioned setter of that variable is `scripts/promote_dev_to_main.sh` (run from `$PROJECT_DIR`; default mode for phase-exit promotion, `--bypass` for the emergency path). Never set the variable by hand and never put it in `.env`. Host-side branch protection on `main` is recommended in addition where the git host supports it (Strategist first-contact interview).
 
 ```
 feature (w-<id>/<slug>)  ──Orchestrator merge──▶  dev  ──phase-exit promotion──▶  main
@@ -295,7 +295,7 @@ feature (w-<id>/<slug>)  ──Orchestrator merge──▶  dev  ──phase-exi
 
 See [`dev-environment.md`](dev-environment.md) for local vs remote dev mode.
 
-Every W-item follows one of two flows depending on its `Parallel-safe` field (see §"Batch mode" above and [ADR-016](../architecture/adr-016-batch-mode-integrator-qa.md)). The sequential flow described below is per-task mode (ADR-013); batch-mode items follow the batch flow in §"Batch mode" §"Batch dispatch flow" instead of steps 3–4 below.
+Every W-item follows one of two flows depending on its `Parallel-safe` field (see §"Batch mode" above and [FWADR-016](adrs/fwadr-016-batch-mode-integrator-qa.md)). The sequential flow described below is per-task mode (FWADR-013); batch-mode items follow the batch flow in §"Batch mode" §"Batch dispatch flow" instead of steps 3–4 below.
 
 ### Sequential mode (Parallel-safe: false or unset)
 
@@ -344,13 +344,13 @@ Co-Authored-By: Claude <executor model> <noreply@anthropic.com>
 Co-Authored-By: Claude <reviewer model> <noreply@anthropic.com>
 ```
 
-Model lines record the **actual model names resolved at spawn time** — never copy literal names from a template. A trailer that names a model the agent didn't run on is a ledger that lies (ADR-022).
+Model lines record the **actual model names resolved at spawn time** — never copy literal names from a template. A trailer that names a model the agent didn't run on is a ledger that lies (FWADR-022).
 
 If the Executor's return came back without Lessons learned, the Orchestrator bounces back and asks — does NOT merge with an empty block. (Exception: Executor wrote "Nothing surprising." That's a valid Lessons-learned value.)
 
 ### Promotion commit (dev → main)
 
-At phase exit, after QA passes on the dev environment and the user authorizes, the Orchestrator merges `dev` → `main`. Use a single annotated merge commit, then push via `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` — the pre-push guard (ADR-023) blocks a raw `git push origin main`, and the script verifies the promotion-merge shape before setting the one-shot bypass:
+At phase exit, after QA passes on the dev environment and the user authorizes, the Orchestrator merges `dev` → `main`. Use a single annotated merge commit, then push via `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` — the pre-push guard (FWADR-023) blocks a raw `git push origin main`, and the script verifies the promotion-merge shape before setting the one-shot bypass:
 
 ```
 Promote dev → main: <phase name> complete
@@ -376,7 +376,7 @@ All W-items done is necessary but not sufficient. Phase exit under the dev-branc
 4. Push `dev` to origin (if any unpushed commits). Wait for dev-branch CI to pass.
 5. **Orchestrator spawns a QA subagent against `{{sub}}.dev.{{website}}.com`** (this is the same peer-dispatch pattern as per-W-item QA; spawn context is "phase exit"). Record pass/fail per criterion.
 6. Report per-criterion results to the user. **Explicit user authorization required to proceed.** The user sees the QA verdict; the user says "promote" or "hold."
-7. On authorization: Orchestrator merges `dev` → `main` (annotated merge commit per §"Promotion commit"), then pushes via `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` (ADR-023 — raw `git push origin main` is blocked by the pre-push guard). Production CI deploys.
+7. On authorization: Orchestrator merges `dev` → `main` (annotated merge commit per §"Promotion commit"), then pushes via `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` (FWADR-023 — raw `git push origin main` is blocked by the pre-push guard). Production CI deploys.
 8. Optional post-promotion smoke test against production URL (`{{sub}}.{{website}}.com`). Strongly recommended for phases that touched critical paths (auth, billing, data migration). Not mandatory.
 
 ### Failure modes
@@ -408,14 +408,14 @@ The Orchestrator does NOT escalate when:
 
 Claude Code loses context on four paths: fresh startup, `--resume`, manual `/clear`, automatic or manual `/compact`. Two `SessionStart` hooks fire on all four — wired in `.claude/settings.json`, runs in order:
 
-1. **`.claude/hooks/sync-framework.sh`** — destructively syncs `docs/dev_framework/` and `.claude/hooks/` from the canonical `claude_template_yaml` repo, initializes `docs/framework_exceptions/` if missing, and refreshes the framework-managed block of CLAUDE.md. See §"Framework sync on context resets" below and [ADR-014](../architecture/adr-014-framework-sync-on-session-start.md).
-2. **`.claude/hooks/session-reorient.sh`** — injects a role re-orientation instruction tailored to the reset `source`. The hook routes by source and tells the session which docs to re-read and — for Orchestrators — to run the ledger reconciliation before dispatching. See [ADR-012](../architecture/adr-012-auto-reorient-hook.md).
+1. **`.claude/hooks/sync-framework.sh`** — destructively syncs `docs/dev_framework/` and `.claude/hooks/` from the canonical `claude_template_yaml` repo, initializes `docs/framework_exceptions/` if missing, and refreshes the framework-managed block of CLAUDE.md. See §"Framework sync on context resets" below and [FWADR-014](adrs/fwadr-014-framework-sync-on-session-start.md).
+2. **`.claude/hooks/session-reorient.sh`** — injects a role re-orientation instruction tailored to the reset `source`. The hook routes by source and tells the session which docs to re-read and — for Orchestrators — to run the ledger reconciliation before dispatching. See [FWADR-012](adrs/fwadr-012-auto-reorient-hook.md).
 
 Both are mechanical enforcements of rules that used to be English-only: "re-read the SOP after context loss" and "keep the framework canonical." Each one is a command, not a hope.
 
 Hooks are canonical to the template; projects that adopt the template inherit them automatically through the framework sync itself. Project-specific deviations go in [`dev_framework_exceptions.md`](../framework_exceptions/dev_framework_exceptions.md), not by editing the hooks.
 
-**After `/compact` or `/clear`, send a one-word trigger** (`ack`, `continue`, `role?`) to get the session to re-orient. Claude Code is turn-reactive: SessionStart hooks inject the re-orientation text into Claude's context, but Claude cannot produce a message without a user turn. The first user message after a reset is what triggers the acknowledgement and any role question. This is a Claude Code platform constraint, not a framework choice — see ADR-012 §"What this does NOT do".
+**After `/compact` or `/clear`, send a one-word trigger** (`ack`, `continue`, `role?`) to get the session to re-orient. Claude Code is turn-reactive: SessionStart hooks inject the re-orientation text into Claude's context, but Claude cannot produce a message without a user turn. The first user message after a reset is what triggers the acknowledgement and any role question. This is a Claude Code platform constraint, not a framework choice — see FWADR-012 §"What this does NOT do".
 
 ## Framework sync on context resets
 
@@ -425,12 +425,12 @@ Hooks are canonical to the template; projects that adopt the template inherit th
 - **Template-self detection:** if the current project's resolved path equals the template root's, the hook reports "no sync needed" and exits. This repo is safe from syncing onto itself.
 - **Destructive sync of `docs/dev_framework/`** via `rsync -a --delete` — any local edits are silently overwritten. Adopters who need framework changes open a PR against the template repo, not against their local copy.
 - **Destructive sync of `.claude/hooks/`** via the same pattern — hooks are part of the canonical machinery.
-- **Main-push guard installation** ([ADR-023](../architecture/adr-023-main-push-guard.md)) — the synced `git-guard-pre-push.sh` is installed into `.git/hooks/pre-push` of every code repo under the project (flat-layout root and every immediate subdir with `.git/`). Idempotent; never overwrites an adopter-owned pre-push hook (warns instead).
+- **Main-push guard installation** ([FWADR-023](adrs/fwadr-023-main-push-guard.md)) — the synced `git-guard-pre-push.sh` is installed into `.git/hooks/pre-push` of every code repo under the project (flat-layout root and every immediate subdir with `.git/`). Idempotent; never overwrites an adopter-owned pre-push hook (warns instead).
 - **Idempotent init of `docs/framework_exceptions/`** from pristine stubs at `$TEMPLATE_ROOT/docs/dev_framework/_stubs/framework_exceptions/`. Only files that don't exist get created; existing files are preserved.
 - **CLAUDE.md managed-block reconciliation.** The block between `<!-- BEGIN FRAMEWORK MANAGED -->` and `<!-- END FRAMEWORK MANAGED -->` in the local CLAUDE.md is replaced with the template's corresponding block. Content outside those markers is never touched.
 - **Failure posture:** every step warns and continues on error. Framework sync is value-add, never a blocker for session start.
 
-See [ADR-014](../architecture/adr-014-framework-sync-on-session-start.md) for rationale, alternatives considered, and acceptance criteria.
+See [FWADR-014](adrs/fwadr-014-framework-sync-on-session-start.md) for rationale, alternatives considered, and acceptance criteria.
 
 ## Policy propagation
 
@@ -446,7 +446,7 @@ Peer-dispatch discipline is for normal operations. When production is on fire an
 
 Under bypass:
 
-1. **Orchestrator writes directly to `main`.** Skip dev entirely — dev-branch discipline is about orderly integration, not fire suppression. Commit goes straight to main and is pushed via `./scripts/promote_dev_to_main.sh --bypass` from `$PROJECT_DIR` — the pre-push guard (ADR-023) blocks a raw main push even during a fire, and `--bypass` is the sanctioned one-shot override. This is the single explicit exception to "Orchestrator doesn't write code." CI deploys to production.
+1. **Orchestrator writes directly to `main`.** Skip dev entirely — dev-branch discipline is about orderly integration, not fire suppression. Commit goes straight to main and is pushed via `./scripts/promote_dev_to_main.sh --bypass` from `$PROJECT_DIR` — the pre-push guard (FWADR-023) blocks a raw main push even during a fire, and `--bypass` is the sanctioned one-shot override. This is the single explicit exception to "Orchestrator doesn't write code." CI deploys to production.
 2. **Commit with a `[bypass]` tag** in the first line, plus a one-line reason:
    ```
    [bypass] Fix null-deref on /api/login — prod error rate spike

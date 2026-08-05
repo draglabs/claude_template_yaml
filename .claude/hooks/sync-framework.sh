@@ -6,7 +6,7 @@
 # if missing, and refreshes the managed block in CLAUDE.md. All failure modes
 # warn + continue — sync is value-add, never a session-start blocker.
 #
-# See docs/architecture/adr-014-framework-sync-on-session-start.md.
+# See docs/dev_framework/adrs/fwadr-014-framework-sync-on-session-start.md.
 
 # Soft-fail mode: every step logs and continues.
 set +e
@@ -42,7 +42,7 @@ fi
 # Fallback: scan immediate subdirectories that look like git repos and try
 # their .env files. This supports split-layout adopters whose single .env
 # lives inside the code subdirectory rather than at the parent level
-# (per ADR-021).
+# (per FWADR-021).
 if [[ -z "$TEMPLATE_ROOT" ]]; then
   for subdir in "$PROJECT_DIR"/*/; do
     [[ -d "$subdir/.git" && -f "$subdir/.env" ]] || continue
@@ -77,6 +77,11 @@ TEMPLATE_ROOT="$(cd "$TEMPLATE_ROOT" && pwd -P)"
 
 if [[ "$PROJECT_DIR" == "$TEMPLATE_ROOT" ]]; then
   echo "[sync-framework] This project IS the template — no sync."
+  # Template-only lint: framework ADR namespace discipline (FWADR-028).
+  if [[ -x "$PROJECT_DIR/scripts/check-framework-links.sh" ]]; then
+    "$PROJECT_DIR/scripts/check-framework-links.sh" \
+      || echo "[sync-framework] WARN: framework link check FAILED — fix before committing (FWADR-028)."
+  fi
   exit 0
 fi
 
@@ -85,7 +90,7 @@ fi
 #     If $PROJECT_DIR contains a .git/ directory, the project is using the
 #     legacy flat layout (project dir == git repo). Emit a migration notice
 #     and continue — the sync itself is still valid (all sync targets write
-#     to $PROJECT_DIR, which is correct for both layouts). See ADR-021.
+#     to $PROJECT_DIR, which is correct for both layouts). See FWADR-021.
 # ---------------------------------------------------------------------------
 
 if [[ -d "$PROJECT_DIR/.git" ]]; then
@@ -97,7 +102,7 @@ fi
 
 # ---------------------------------------------------------------------------
 # 3. Destructive sync of docs/dev_framework/ from template.
-#    Per ADR-014: always destructive. If local framework drifted, pull it
+#    Per FWADR-014: always destructive. If local framework drifted, pull it
 #    back into alignment. Adopters are expected to make changes ONLY in
 #    docs/framework_exceptions/, not in docs/dev_framework/.
 # ---------------------------------------------------------------------------
@@ -139,7 +144,7 @@ fi
 #     without the FRAMEWORK-PUSH-GUARD marker) — warns instead.
 #     Covers flat layout ($PROJECT_DIR/.git) and split layout (every
 #     immediate subdir with .git/, which also covers multi-repo projects).
-#     See docs/architecture/adr-023-main-push-guard.md.
+#     See docs/dev_framework/adrs/fwadr-023-main-push-guard.md.
 # ---------------------------------------------------------------------------
 
 GUARD_SRC="$PROJECT_DIR/.claude/hooks/git-guard-pre-push.sh"
@@ -150,7 +155,7 @@ install_push_guard() {
   [[ -d "$repo/.git" && -f "$GUARD_SRC" ]] || return 0
   local dst="$repo/.git/hooks/pre-push"
   if [[ -f "$dst" ]] && ! grep -q "$GUARD_MARKER" "$dst" 2>/dev/null; then
-    echo "[sync-framework] WARN: $dst exists and is not the framework push guard — main-push guard NOT installed for $(basename "$repo"). Merge the guard's main check into your hook manually (see ADR-023)."
+    echo "[sync-framework] WARN: $dst exists and is not the framework push guard — main-push guard NOT installed for $(basename "$repo"). Merge the guard's main check into your hook manually (see FWADR-023)."
     return 0
   fi
   if ! cmp -s "$GUARD_SRC" "$dst" 2>/dev/null; then
@@ -226,12 +231,12 @@ fi
 #     for .sh files (cp -p).
 #
 #     Stubs covered:
-#       - Dev-slot infrastructure (ADR-019): launch_local.sh,
+#       - Dev-slot infrastructure (FWADR-019): launch_local.sh,
 #         teardown_local.sh, main_to_prod.sh, setup_dev_slots.sh,
 #         docs/dev/slots.yaml.
-#       - Reviewer-side mechanical scope check (ADR-020):
+#       - Reviewer-side mechanical scope check (FWADR-020):
 #         check-touches.sh — generic, no project-specific body to fill.
-#       - Project variables starter (ADR-019 Revision v1.1):
+#       - Project variables starter (FWADR-019 Revision v1.1):
 #         .env.example — committed template; adopter copies to .env (gitignored)
 #         and fills in. Strategist owns the values per first-contact interview.
 # ---------------------------------------------------------------------------

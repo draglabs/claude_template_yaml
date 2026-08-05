@@ -4,7 +4,7 @@ Copy, fill in brackets, paste as the Agent tool's `prompt` argument.
 
 Under peer dispatch, the Reviewer is spawned **by the Orchestrator** — a peer of the Executor, not a child of it. You return your verdict to the Orchestrator, which owns the retry loop and either re-dispatches the Executor (on `block`) or proceeds to QA / merge (on `ship`).
 
-**Scope: per-task (sequential) mode only.** This brief applies to W-items where the plan's `Parallel-safe` field is `false` or unset — i.e., dispatched under the per-task peer chain from [ADR-013](../../architecture/adr-013-peer-dispatch.md). For `Parallel-safe: true` W-items dispatched in batch mode ([ADR-016](../../architecture/adr-016-batch-mode-integrator-qa.md)), the Reviewer role is absorbed into the end-of-batch Integrator-QA — use [`integrator-qa-brief.md`](integrator-qa-brief.md) instead, not this brief.
+**Scope: per-task (sequential) mode only.** This brief applies to W-items where the plan's `Parallel-safe` field is `false` or unset — i.e., dispatched under the per-task peer chain from [FWADR-013](../adrs/fwadr-013-peer-dispatch.md). For `Parallel-safe: true` W-items dispatched in batch mode ([FWADR-016](../adrs/fwadr-016-batch-mode-integrator-qa.md)), the Reviewer role is absorbed into the end-of-batch Integrator-QA — use [`integrator-qa-brief.md`](integrator-qa-brief.md) instead, not this brief.
 
 ```
 ## Review diff for {{W-id}} — {{title}}
@@ -37,7 +37,7 @@ branch. The Executor's changes are only in the worktree until the
 Orchestrator merges.
 
 **Do not read working log files (`w-<id>.log.md` if present in the plan
-folder).** Those are Developer-mode working memory (ADR-018 Revision
+folder).** Those are Developer-mode working memory (FWADR-018 Revision
 v3.3) and not part of the code-review surface. Stick to the named files
 listed under "Files changed" + the canonical references below.
 
@@ -50,7 +50,7 @@ feature branch, not just the latest commit.
 ## Canonical references
 
 - The W-item SOW (acceptance criteria + Touches + References + Contingencies):
-  - Folder format (ADR-017): docs/execution-plans/<plan>/w-{{id}}.md
+  - Folder format (FWADR-017): docs/execution-plans/<plan>/w-{{id}}.md
   - Single-file format: docs/execution-plans/<active-plan>.md §{{W-id}}
 - docs/dev_framework/session-policy.md                     (dispatch policy)
 - docs/dev_framework/coding-standards.md                   (enforced practices)
@@ -60,7 +60,7 @@ feature branch, not just the latest commit.
 ## Files changed
 
 {{paste `touches` list verbatim from the W-item file's YAML frontmatter
-  (ADR-020), or the prose `**Touches:**` line for pre-ADR-020 plans, +
+  (FWADR-020), or the prose `**Touches:**` line for pre-FWADR-020 plans, +
   any additional files the Executor flagged in its Scope creep field}}
 
 Read each one in full at the path specified above. Diff interpretation
@@ -71,7 +71,7 @@ this belong here?"
 
 Before reading the diff, run `scripts/check-touches.sh` from the
 worktree root. This compares `git diff --name-only origin/dev` against
-the `touches:` list in the W-item file's YAML frontmatter (ADR-020).
+the `touches:` list in the W-item file's YAML frontmatter (FWADR-020).
 The script is the verified scope signal — your prose judgment in
 question 6 builds on top of it.
 
@@ -97,7 +97,7 @@ verified signal you must address in question 6.
 ## References (orientation-only files the Executor was given)
 
 {{paste `references` list verbatim from the W-item file's YAML frontmatter
-  (ADR-020), or the prose `**References:**` line for pre-ADR-020 plans,
+  (FWADR-020), or the prose `**References:**` line for pre-FWADR-020 plans,
   if the W-item had any; otherwise omit this section}}
 
 These should NOT appear in the diff. If the Executor modified any file
@@ -128,7 +128,7 @@ Reviewer judgment call.)
      it names** → `block`, and say exactly which part exceeded it.
    An accepted ADR is the best current record of a decision, not a
    constraint that outranks a live instruction from the user. See
-   [ADR-027](../../architecture/adr-027-living-architecture.md).
+   [FWADR-027](../adrs/fwadr-027-living-architecture.md).
 3. **Coding standards (cite specific violations):** TDD followed — is
    there a test committed alongside each new code path? No hardcoded
    lifecycle values — any domain/version/path literal that duplicates a
@@ -147,7 +147,7 @@ Reviewer judgment call.)
    orientation-only — a modification is scope creep by definition (the
    script does not catch this; it's a manual check). Cite each finding
    with file:line where the diff lands.
-7. **Production-deploy doctrine (ADR-019):** did any commit in this work
+7. **Production-deploy doctrine (FWADR-019):** did any commit in this work
    invoke a production deploy by a path other than
    `scripts/main_to_prod.sh`? Examples to flag: raw
    `ssh user@host docker pull`, ad-hoc `kubectl apply`, manual
@@ -157,8 +157,8 @@ Reviewer judgment call.)
    (i.e., the script exits 1) means the project is CI-only and prod
    deploys go through CI — that's the correct steady state, do NOT
    flag it. Flag only when a commit actually ran a non-CI prod deploy
-   outside the script. See ../../architecture/adr-019-dev-slots-and-deploy-stubs.md.
-8. **QA target doctrine (ADR-019 Revision v1.1) — conditional:** when
+   outside the script. See ../adrs/fwadr-019-dev-slots-and-deploy-stubs.md.
+8. **QA target doctrine (FWADR-019 Revision v1.1) — conditional:** when
    the project uses Caddy-routed dev slots, the user-QA loop should
    target `https://<slot>.<sub>.localhost/` (the Caddy-fronted hostname),
    NOT raw `localhost:<port>`. The slot hostname is the prod-shaped path
@@ -203,10 +203,10 @@ Reviewer judgment call.)
    **orthogonal to the verdict**: code that is otherwise clean is
    `ship` + `doc-conflict`, not `block`. It routes to ADR
    reconciliation (the Developer rewrites the ADR or asks the user —
-   [ADR-027](../../architecture/adr-027-living-architecture.md)), never
+   [FWADR-027](../adrs/fwadr-027-living-architecture.md)), never
    to an Executor re-code.
    On `block`, additionally classify: **Block class: `execution` or
-   `approach`** (ADR-022). `execution` = the approach is sound but the
+   `approach`** (FWADR-022). `execution` = the approach is sound but the
    implementation is incomplete or wrong (the same Executor can fix it
    via continuation). `approach` = the approach itself is wrong — a
    design, decomposition, or interpretation error (the Orchestrator

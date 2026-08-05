@@ -1,4 +1,4 @@
-# ADR-016: Batch-mode peer dispatch with Integrator-QA
+# FWADR-016: Batch-mode peer dispatch with Integrator-QA
 
 **Status:** accepted
 **Date:** 2026-04-24
@@ -6,7 +6,7 @@
 
 ## Context
 
-Per-task peer dispatch (ADR-013) runs three subagents per W-item — Executor (Sonnet), Reviewer (Opus, always), and, for L/XL/🧪/⚠️ items, QA (Sonnet) — plus any retries. Practical cost observed in an adopting project: a 4-hour session burned through Claude Pro 20× weekly usage. The dominant cost pattern was **parallelism gap** — long sequences of small independent W-items running back-to-back, each paying a full per-task Opus Reviewer call even though the items had no dependencies on each other.
+Per-task peer dispatch (FWADR-013) runs three subagents per W-item — Executor (Sonnet), Reviewer (Opus, always), and, for L/XL/🧪/⚠️ items, QA (Sonnet) — plus any retries. Practical cost observed in an adopting project: a 4-hour session burned through Claude Pro 20× weekly usage. The dominant cost pattern was **parallelism gap** — long sequences of small independent W-items running back-to-back, each paying a full per-task Opus Reviewer call even though the items had no dependencies on each other.
 
 The existing `session-policy.md` §"Mandatory overrides" permits parallel execution of dependency-independent W-items "up to ~3 concurrent, each with its own peer chain (Executor, Reviewer, optional QA)." This preserves correctness but does nothing for Opus spend — 3 parallel W-items still means 3 Opus Reviewer calls. The framework had no mechanism for amortizing Opus review across independent work.
 
@@ -16,9 +16,9 @@ Secondary cost pattern: retries. Reviewer `block` → fresh Executor → fresh R
 
 Add **batch mode** to peer dispatch, alongside the existing per-task mode. Batch mode is opt-in per W-item via a plan-time `Parallel-safe` field set by the Strategist. When a parallel-safe batch is dispatched:
 
-- **Executors** run concurrently as under ADR-013 (one worktree each, Sonnet).
+- **Executors** run concurrently as under FWADR-013 (one worktree each, Sonnet).
 - **Per-task Reviewer and per-task (pre-merge) QA are replaced by a single Integrator-QA** call (Opus, 1M context) at the end of the batch. The Integrator-QA pulls all branches, handles integration (including merge-conflict resolution), runs a first-pass scan for high-profile issues, then full code-quality review, full test suite (Playwright if enabled), and fixes issues within acceptance.
-- **Sequential (parallel-safe: false) W-items keep the current per-task Reviewer + optional QA chain** from ADR-013. Batch mode is an added mode, not a replacement. ADR-013 is extended, not superseded.
+- **Sequential (parallel-safe: false) W-items keep the current per-task Reviewer + optional QA chain** from FWADR-013. Batch mode is an added mode, not a replacement. FWADR-013 is extended, not superseded.
 
 ### Integrator-QA behavior
 
@@ -41,7 +41,7 @@ Executors in batch mode own first-pass quality more aggressively — the Reviewe
 
 ### Integration claim
 
-- **Artifact location:** under ADR-017's folder structure, claims live in `claims.md` inside the plan folder (`docs/execution-plans/<plan>/claims.md`). Under the pre-ADR-017 single-file layout, claims live inline on the active plan file under a `## Integration claims` section. Both layouts use the same shape and triage protocol; only the file location differs. The Orchestrator's STEP 0 PRELUDE format detection (orchestrator-bootstrap.md) resolves the path; the Integrator brief's `CLAIMS_PATH` field carries it.
+- **Artifact location:** under FWADR-017's folder structure, claims live in `claims.md` inside the plan folder (`docs/execution-plans/<plan>/claims.md`). Under the pre-FWADR-017 single-file layout, claims live inline on the active plan file under a `## Integration claims` section. Both layouts use the same shape and triage protocol; only the file location differs. The Orchestrator's STEP 0 PRELUDE format detection (orchestrator-bootstrap.md) resolves the path; the Integrator brief's `CLAIMS_PATH` field carries it.
 - **Shape:**
   ```markdown
   ### IC-NNN — YYYY-MM-DD — {{W-id(s)}} — {{short title}}
@@ -52,7 +52,7 @@ Executors in batch mode own first-pass quality more aggressively — the Reviewe
   **Why:** <what forced the proposal — test failing for X, acceptance ambiguous on Y>
   **Blocks:** <W-item ids whose merge is held pending resolution>
   ```
-- **Status linkage (ADR-017):** under the folder layout, filing a claim atomically flips named W-items to `held` on the index (one commit, both files). Disposition (`approve`/`modify`/`reject`) atomically moves the claim to Resolved AND flips Status (`held → in_progress` for approve/modify; `held → blocked` for reject). The pre-ADR-017 layout keeps named items at `in_progress` with a Notes line; the new `held` state replaces that convention so the Status field stops misleading.
+- **Status linkage (FWADR-017):** under the folder layout, filing a claim atomically flips named W-items to `held` on the index (one commit, both files). Disposition (`approve`/`modify`/`reject`) atomically moves the claim to Resolved AND flips Status (`held → in_progress` for approve/modify; `held → blocked` for reject). The pre-FWADR-017 layout keeps named items at `in_progress` with a Notes line; the new `held` state replaces that convention so the Status field stops misleading.
 - **Blocking semantics:** an open claim blocks **only the named W-items** from merging. Other W-items in the batch that aren't named proceed normally. Other batches, sequential work, and the Orchestrator's forward progress are not blocked.
 - **Triage:** the Strategist reviews open claims on a cadence similar to `process-exceptions.md` — at phase boundaries and on demand. Resolution loops in the user. No autonomous resolution by the Strategist — claims exist because the Integrator refused to make a scope decision without authorization.
 
@@ -75,13 +75,13 @@ Existing adopter plans predate this ADR — their W-items have no `Parallel-safe
 **What this costs:**
 
 - **Opus 1M context spend per batch.** Individually large, but the amortized per-W-item cost is lower than 3× Opus Reviewer calls on the same N items.
-- **Larger blast radius on Integrator failure.** When the Integrator can't resolve a batch, all N items stall (or named items stall if only some are claimed). Under per-task mode, a stumped item stalled only itself. Mitigated by the first-pass high-profile scan (fail fast before sinking compute) and by the batching cap (~3, same as ADR-013's parallel cap) — a stuck batch is a stuck 3-way, not a stuck 12-way.
+- **Larger blast radius on Integrator failure.** When the Integrator can't resolve a batch, all N items stall (or named items stall if only some are claimed). Under per-task mode, a stumped item stalled only itself. Mitigated by the first-pass high-profile scan (fail fast before sinking compute) and by the batching cap (~3, same as FWADR-013's parallel cap) — a stuck batch is a stuck 3-way, not a stuck 12-way.
 - **Two modes to maintain.** Sequential (parallel-safe: false) keeps per-task peer chain; parallel (parallel-safe: true) uses batch mode. The Orchestrator bootstrap, `session-policy.md`, and brief templates all document both paths. Documentation weight goes up; the per-mode enforcement stays separate and verifiable.
 - **Strategist judgment load at plan time.** `Parallel-safe` is a new field and requires real reasoning about shared surfaces. A hasty "true" on a W-item that touches `package.json` is a landmine. The Strategist brief names the risk explicitly and requires a "considered factors" line.
 
 **What this does NOT do:**
 
-- **Does not remove per-task mode.** Sequential W-items (`parallel-safe: false`, or dependency chains) still run under ADR-013's Executor → Reviewer → QA chain. This ADR adds a mode; it does not retire the default.
+- **Does not remove per-task mode.** Sequential W-items (`parallel-safe: false`, or dependency chains) still run under FWADR-013's Executor → Reviewer → QA chain. This ADR adds a mode; it does not retire the default.
 - **Does not change Orchestrator's role or read surface.** Orchestrator still dispatches and merges; still does not open diffs. The Integrator-QA is a new peer under the Orchestrator, not a replacement for it.
 - **Does not change phase-exit QA or post-promotion QA.** Those are live-environment passes against `{{sub}}.dev.{{website}}.com` or production URLs. Unchanged under this ADR. `qa-brief.md` retains those two contexts; the per-W-item (pre-merge) context is deprecated for parallel-safe W-items (those flow through Integrator-QA instead) and retained for sequential W-items.
 - **Does not grant Integrator-QA scope-change authority.** Every scope change routes through a claim. The Integrator is a fix-within-acceptance agent; scope decisions stay with the Strategist + user.
@@ -98,7 +98,7 @@ Existing adopter plans predate this ADR — their W-items have no `Parallel-safe
 ## Acceptance criteria for the shipping PR
 
 - `docs/execution-plans/README.md` defines the `Parallel-safe` field and the integration-claim section + shape.
-- `docs/dev_framework/session-policy.md` §"Batch mode" exists and cross-references ADR-013 for per-task mode.
+- `docs/dev_framework/session-policy.md` §"Batch mode" exists and cross-references FWADR-013 for per-task mode.
 - `docs/dev_framework/templates/executor-brief.md` includes the run-own-tests step, the self-check step, and the explicit "no live dev server in the worktree" rule.
 - `docs/dev_framework/templates/integrator-qa-brief.md` exists with first-pass, deep-pass, fix-within-acceptance, and claim-filing sections.
 - `docs/dev_framework/templates/reviewer-brief.md` names its scope explicitly as sequential-mode W-items; points at Integrator-QA for batch-mode.

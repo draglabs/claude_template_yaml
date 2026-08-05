@@ -1,19 +1,19 @@
 #!/usr/bin/env bash
 # check-curator-scope.sh — mechanical write-fence for the Curator role
-# (ADR-026). The Curator audits the project's accumulated doc corpus but may
+# (FWADR-026). The Curator audits the project's accumulated doc corpus but may
 # NOT edit canonical framework files: they are destructively re-synced from the
 # template on the next SessionStart, so an edit buys one session and then
 # silently reverts. Framework findings become fwreq-*.md requests instead.
 #
 # Mechanism: compare the local framework surfaces against the canonical
-# template rather than against git. This is deliberate — under ADR-021's
+# template rather than against git. This is deliberate — under FWADR-021's
 # DEFAULT untracked-parent layout, $PROJECT_DIR is not a git repo at all, so a
 # git-diff-based fence would be silently inert in the most common
 # configuration. Diffing the template works in every layout mode, and is also
 # semantically exact: "framework file" means "byte-identical to the template",
 # so any deviation IS the violation.
 #
-# Usage (run from $PROJECT_DIR, per ADR-021 script placement doctrine):
+# Usage (run from $PROJECT_DIR, per FWADR-021 script placement doctrine):
 #   ./scripts/check-curator-scope.sh
 #
 # Exit codes:

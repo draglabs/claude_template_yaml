@@ -17,7 +17,7 @@
 # NEVER put FRAMEWORK_ALLOW_MAIN_PUSH in .env — framework scripts source .env
 # wholesale (set -a), which would leave the guard permanently bypassed.
 #
-# See docs/architecture/adr-023-main-push-guard.md.
+# See docs/dev_framework/adrs/fwadr-023-main-push-guard.md.
 
 if [[ "${FRAMEWORK_ALLOW_MAIN_PUSH:-}" == "1" ]]; then
   exit 0
@@ -43,7 +43,7 @@ if [[ -n "$blocked_refs" ]]; then
     ./scripts/promote_dev_to_main.sh --bypass   # emergency bypass ([bypass] commit)
 
   run from $PROJECT_DIR. Feature work merges to dev, never to main.
-  See docs/architecture/adr-023-main-push-guard.md.
+  See docs/dev_framework/adrs/fwadr-023-main-push-guard.md.
 EOF
   exit 1
 fi

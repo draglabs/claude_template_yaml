@@ -1,10 +1,10 @@
 # Integrator-QA subagent briefing template
 
-Copy, fill in brackets, paste as the Agent tool's `prompt` argument. Integrator-QA is the end-of-batch gate under **batch mode** (ADR-016): it absorbs the per-task Reviewer and pre-merge QA roles for a parallel batch of W-items, pulls their branches into dev, handles merge-conflict resolution, runs the full quality review + test suite, and either merges the batch or files claims / surfaces failures.
+Copy, fill in brackets, paste as the Agent tool's `prompt` argument. Integrator-QA is the end-of-batch gate under **batch mode** (FWADR-016): it absorbs the per-task Reviewer and pre-merge QA roles for a parallel batch of W-items, pulls their branches into dev, handles merge-conflict resolution, runs the full quality review + test suite, and either merges the batch or files claims / surfaces failures.
 
 Integrator-QA is spawned by the **Orchestrator** — a peer of the Executors, not a child. It returns its verdict and any filed claims to the Orchestrator, which owns dispatch, retry, and merge decisions.
 
-**Model:** top tier, long-context variant ([`../session-policy.md`](../session-policy.md) §"Model tiers", ADR-022). The batch context (N worktree diffs + coding-standards + plan + dependency considerations) is large; the long context is the load-bearing capability that makes batch mode pay off over N separate per-task Reviewer calls.
+**Model:** top tier, long-context variant ([`../session-policy.md`](../session-policy.md) §"Model tiers", FWADR-022). The batch context (N worktree diffs + coding-standards + plan + dependency considerations) is large; the long context is the load-bearing capability that makes batch mode pay off over N separate per-task Reviewer calls.
 
 **Do not use this brief for:**
 - Sequential-mode W-items (Parallel-safe: false) — use `reviewer-brief.md` + `qa-brief.md` instead.
@@ -27,7 +27,7 @@ same TDD + coding-standards discipline the Executor followed.
 Batch ID: {{batch-id}}
 Target branch: dev
 
-Plan format: {{folder | single-file}} (per ADR-017 / Orchestrator STEP 0
+Plan format: {{folder | single-file}} (per FWADR-017 / Orchestrator STEP 0
 PRELUDE)
 PLAN_PATH: {{absolute or repo-relative path to the index — plan.md
 under folder format, <plan>.md under single-file format}}
@@ -140,7 +140,7 @@ pre-merge worktree state — the integrated state is what would ship):
   file an integration claim against it; `doc-conflict` routes to ADR
   reconciliation with the user, not to re-coding. Absent or vaguer than the
   actual deviation → handle as normal misalignment. See
-  [ADR-027](../../architecture/adr-027-living-architecture.md).
+  [FWADR-027](../adrs/fwadr-027-living-architecture.md).
 - Coding standards — TDD, no hardcoded lifecycle values, no silent
   fallbacks, canonical-value drift. Cite file:line for any violation.
 - Hidden assumptions — undocumented invariants?
@@ -190,7 +190,7 @@ Assess confidence in your proposed resolution (same 80% threshold as
 STEP 1).
 
 **IF confidence ≥ 80% → file a claim.** A claim is a TWO-FILE atomic
-write under ADR-017: the IC-NNN entry on CLAIMS_PATH AND the index
+write under FWADR-017: the IC-NNN entry on CLAIMS_PATH AND the index
 Status flip on PLAN_PATH ship as ONE commit. Shape of the entry:
 
 ```

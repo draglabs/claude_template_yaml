@@ -21,7 +21,7 @@ notes:
   - the launch_local.sh project body reads extras directly from this file as needed
   - first launch may show a cert warning until `caddy trust` runs once
   - per-slot live state lives in .local/dev_slots/<slot>.yaml (gitignored)
-  - canonical doctrine: docs/architecture/adr-019-dev-slots-and-deploy-stubs.md (Revision v1.1)
+  - canonical doctrine: docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md (Revision v1.1)
 slots:
   dev0:
     role: default_developer

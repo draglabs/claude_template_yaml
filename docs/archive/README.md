@@ -10,7 +10,7 @@ When archiving a plan:
 
 ## Superseded ADRs
 
-A superseded ADR **moves here**; it does not stay in `docs/architecture/`. Leaving it there is a permanent context tax — every future session greps, loads, and reads past a decision that is no longer true, and the corpus can only grow. See [`curator.md`](../dev_framework/curator.md) §"Dispositions" and [ADR-026](../architecture/adr-026-curator-role.md).
+A superseded ADR **moves here**; it does not stay in `docs/architecture/`. Leaving it there is a permanent context tax — every future session greps, loads, and reads past a decision that is no longer true, and the corpus can only grow. See [`curator.md`](../dev_framework/curator.md) §"Dispositions" and [FWADR-026](../dev_framework/adrs/fwadr-026-curator-role.md).
 
 When archiving an ADR:
 1. Set `**Status:** superseded by ADR-NNN` (or `deprecated`) on the ADR itself.

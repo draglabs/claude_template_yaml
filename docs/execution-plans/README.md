@@ -12,7 +12,7 @@ docs/execution-plans/
   exec-<slug>/             # one folder per active or archived plan
     plan.md                # the index — runtime state surface
     w-a1.md                # W-item SOW (one file per W-item)
-    w-a1.log.md            # Working log (lazy — created when Developer claims; ADR-018)
+    w-a1.log.md            # Working log (lazy — created when Developer claims; FWADR-018)
     w-a2.md
     claims.md              # Integration claims (open + resolved)
 ```
@@ -21,19 +21,19 @@ Naming:
 - Folder: `exec-<slug>/` (e.g. `exec-phase-1/`).
 - Index: always `plan.md`.
 - W-item files: `w-<id-lowercase>.md` (e.g. `w-a1.md`, `w-b3.md`).
-- Working log files: `w-<id-lowercase>.log.md` (e.g. `w-a1.log.md`) — lazy; created at the Developer's first append after claiming an item (Developer mode only; ADR-018).
+- Working log files: `w-<id-lowercase>.log.md` (e.g. `w-a1.log.md`) — lazy; created at the Developer's first append after claiming an item (Developer mode only; FWADR-018).
 - Claims file: always `claims.md` (created lazily — first claim filing creates it).
 
-Introduced by [ADR-017](../architecture/adr-017-plan-folder-restructure.md). The folder shape separates runtime state (the index) from static SOW (W-item files) so that Status appears in exactly one place.
+Introduced by [FWADR-017](../dev_framework/adrs/fwadr-017-plan-folder-restructure.md). The folder shape separates runtime state (the index) from static SOW (W-item files) so that Status appears in exactly one place.
 
-### Soft migration (plans that predate ADR-017)
+### Soft migration (plans that predate FWADR-017)
 
-Plans drafted before ADR-017 are single-file at `docs/execution-plans/<plan>.md` (e.g. `exec-phase-1.md`). These continue to work — the Orchestrator detects format in STEP 0 PRELUDE before any reconciliation runs:
+Plans drafted before FWADR-017 are single-file at `docs/execution-plans/<plan>.md` (e.g. `exec-phase-1.md`). These continue to work — the Orchestrator detects format in STEP 0 PRELUDE before any reconciliation runs:
 
 - `docs/execution-plans/<plan>/plan.md` exists → **new format**. Read `plan.md` for ledger; read W-item files on demand; read `claims.md` for claims.
-- `docs/execution-plans/<plan>.md` exists (and no folder of the same name) → **old format**. Read as before — single file with summary table + per-W-item sections + inline Integration claims (ADR-016 inline shape).
+- `docs/execution-plans/<plan>.md` exists (and no folder of the same name) → **old format**. Read as before — single file with summary table + per-W-item sections + inline Integration claims (FWADR-016 inline shape).
 
-Both formats coexist during transition. New plans drafted after ADR-017 use the folder structure by default. Strategists migrate existing plans on a schedule that suits the project; the framework does not force migration.
+Both formats coexist during transition. New plans drafted after FWADR-017 use the folder structure by default. Strategists migrate existing plans on a schedule that suits the project; the framework does not force migration.
 
 ## Archival
 
@@ -108,11 +108,11 @@ The Strategist writes these at plan-draft time. They are not runtime ledger fiel
 
 `Mode` is the Strategist's recommended execution style for the plan. Allowed values:
 
-- **`orchestrator`** — drafted with Orchestrator dispatch in mind (ADR-013 sequential or ADR-016 batch via Executor / Reviewer / QA peer subagents).
-- **`developer`** — drafted with Developer mode in mind (ADR-018 hands-on, user-invoked; user-mediated QA loop + spawned Reviewer subagent for the code-review gate).
+- **`orchestrator`** — drafted with Orchestrator dispatch in mind (FWADR-013 sequential or FWADR-016 batch via Executor / Reviewer / QA peer subagents).
+- **`developer`** — drafted with Developer mode in mind (FWADR-018 hands-on, user-invoked; user-mediated QA loop + spawned Reviewer subagent for the code-review gate).
 - **absent** — no recommendation expressed.
 
-**The field is advisory** ([ADR-018](../architecture/adr-018-developer-role.md) §"Mode field is advisory"). Either mode can claim any `pending` item on any plan. The Strategist's recommendation is a hint about expected execution style, not a lock — items lock into a mode at claim time via the Status path they take (Orchestrator-mode items go `in_progress → done`; Developer-mode items go `in_progress → code_review → done`). Per-item collision is naturally enforced by the mode-specific Status paths; per-plan collision was over-broad enforcement.
+**The field is advisory** ([FWADR-018](../dev_framework/adrs/fwadr-018-developer-role.md) §"Mode field is advisory"). Either mode can claim any `pending` item on any plan. The Strategist's recommendation is a hint about expected execution style, not a lock — items lock into a mode at claim time via the Status path they take (Orchestrator-mode items go `in_progress → done`; Developer-mode items go `in_progress → code_review → done`). Per-item collision is naturally enforced by the mode-specific Status paths; per-plan collision was over-broad enforcement.
 
 When a session is invoked against a plan whose explicit `Mode` recommendation differs from the session's role — e.g., Developer invoked against `Mode: orchestrator` — the bootstrap **prompts the user to confirm**: "this plan's recommended Mode is X; proceed in Y mode anyway?" Confirm → proceed. Cancel → user may want to re-invoke the recommended role. Absent `Mode` is treated as no recommendation, and the session proceeds without prompt.
 
@@ -202,7 +202,7 @@ Pre-planned fallbacks, known edge cases, "if X happens, do Y" guidance. Optional
 
 ## Implementation log
 
-Appended by the Developer at `code_review → done` (Developer mode only in v1; ADR-018). Absent until that flip — the section header does not appear on a W-item file at draft. The Developer drafts it by reading the W-item's working log file (see §"Working log files" below) alongside the diff — the Implementation log is the curated retrospective; the working log is the chronological record.
+Appended by the Developer at `code_review → done` (Developer mode only in v1; FWADR-018). Absent until that flip — the section header does not appear on a W-item file at draft. The Developer drafts it by reading the W-item's working log file (see §"Working log files" below) alongside the diff — the Implementation log is the curated retrospective; the working log is the chronological record.
 
 **Approach:** One paragraph on how the work was actually done.
 
@@ -222,38 +222,38 @@ Appended by the Developer at `code_review → done` (Developer mode only in v1; 
 
 When `parallel-safe: true`, the frontmatter MUST also include a `parallel-safe-considered:` list naming the shared surfaces the Strategist evaluated (see §"Parallel-safe field" below). Omit the field entirely when `parallel-safe: false`.
 
-Introduced by [ADR-020](../architecture/adr-020-yaml-frontmatter-w-items.md). The frontmatter is the structural-metadata surface; the body is prose. Tools that consume the metadata (the Reviewer's `scripts/check-touches.sh` mechanical scope check, the Orchestrator's batch-mode collision evaluation) read frontmatter without loading the full body. Pre-ADR-020 plans use the prior `## Execution notes` prose shape — both formats coexist during transition.
+Introduced by [FWADR-020](../dev_framework/adrs/fwadr-020-yaml-frontmatter-w-items.md). The frontmatter is the structural-metadata surface; the body is prose. Tools that consume the metadata (the Reviewer's `scripts/check-touches.sh` mechanical scope check, the Orchestrator's batch-mode collision evaluation) read frontmatter without loading the full body. Pre-FWADR-020 plans use the prior `## Execution notes` prose shape — both formats coexist during transition.
 
-**No Status field on the W-item file.** Status lives only on the index. The W-item file is the static SOW; the index is the runtime ledger. This is the single-source rule introduced by ADR-017 — there is no second place for Status to drift to. ADR-020 preserves this: the frontmatter carries structural metadata only (`parallel-safe`, `touches`, `references`), never `status`.
+**No Status field on the W-item file.** Status lives only on the index. The W-item file is the static SOW; the index is the runtime ledger. This is the single-source rule introduced by FWADR-017 — there is no second place for Status to drift to. FWADR-020 preserves this: the frontmatter carries structural metadata only (`parallel-safe`, `touches`, `references`), never `status`.
 
 **What is NOT in the W-item file (frontmatter or body) and why:**
 
-- `status` — index-only, per ADR-017's drift-bait elimination.
+- `status` — index-only, per FWADR-017's drift-bait elimination.
 - `effort` / `markers` — index summary-table columns; the Orchestrator reads them at-a-glance there.
-- `blocked-by` — index `Blocked by` column, per ADR-017 v1.1 (single source for dependency data).
+- `blocked-by` — index `Blocked by` column, per FWADR-017 v1.1 (single source for dependency data).
 - `id` / `title` — H1, filename, and the index summary table all carry these; frontmatter duplication earns nothing.
 
-The Implementation log is the one section that gets appended after draft, at the `code_review → done` flip. It is append-only (not mutated after merge) and therefore does not reintroduce drift bait — see ADR-018.
+The Implementation log is the one section that gets appended after draft, at the `code_review → done` flip. It is append-only (not mutated after merge) and therefore does not reintroduce drift bait — see FWADR-018.
 
 ### W-item file fields
 
 | Field | Location | Purpose |
 |-------|----------|---------|
-| **parallel-safe** | Frontmatter | `true` = eligible for **Orchestrator batch-mode dispatch** (ADR-016). `false` = per-task peer chain (ADR-013). Owned by the Strategist; set at plan time. Default: `false`. **Does not gate Parallel Developer** (ADR-018) — Parallel Dev relies on the stream-letter convention on the index instead. See §"Parallel-safe field" below. |
+| **parallel-safe** | Frontmatter | `true` = eligible for **Orchestrator batch-mode dispatch** (FWADR-016). `false` = per-task peer chain (FWADR-013). Owned by the Strategist; set at plan time. Default: `false`. **Does not gate Parallel Developer** (FWADR-018) — Parallel Dev relies on the stream-letter convention on the index instead. See §"Parallel-safe field" below. |
 | **parallel-safe-considered** | Frontmatter | Required when `parallel-safe: true`; list of shared-surface factors the Strategist evaluated (e.g., `package.json bumps`, `shared route registry`, `migration ordering`, `test fixtures`, `refactor-of-a-callee`). Forces the judgment to be recorded rather than mechanized. Omit the field when `parallel-safe: false`. |
-| **touches** | Frontmatter | List of file paths the item will modify. Executor uses this as the scope boundary; Reviewer runs `scripts/check-touches.sh` against this list to mechanically verify the diff stayed in scope (ADR-020). |
-| **user-directed-deviation** | Body section | **Present only when the user's instruction knowingly conflicts with an existing ADR** ([ADR-027](../architecture/adr-027-living-architecture.md)). Names the ADR, quotes the instruction, dates it. Load-bearing: the Reviewer and Integrator-QA are fresh subagents that **cannot see the conversation**, so without this field a user-ordered deviation is indistinguishable from an accidental one and gets blocked as "canonical misalignment" — reversing the user's order. See §"User-directed deviations" below. |
+| **touches** | Frontmatter | List of file paths the item will modify. Executor uses this as the scope boundary; Reviewer runs `scripts/check-touches.sh` against this list to mechanically verify the diff stayed in scope (FWADR-020). |
+| **user-directed-deviation** | Body section | **Present only when the user's instruction knowingly conflicts with an existing ADR** ([FWADR-027](../dev_framework/adrs/fwadr-027-living-architecture.md)). Names the ADR, quotes the instruction, dates it. Load-bearing: the Reviewer and Integrator-QA are fresh subagents that **cannot see the conversation**, so without this field a user-ordered deviation is indistinguishable from an accidental one and gets blocked as "canonical misalignment" — reversing the user's order. See §"User-directed deviations" below. |
 | **references** | Frontmatter | Optional list of read-only orientation entries. Each: `path` (required), `lines` (optional, e.g. `"120-280"`), `purpose` (optional, short string). Intended for port / migration / refactor work where pre-existing structure must be understood. Modifying a References file is scope creep. |
 | **What** | Body §High level | One sentence — what artifact does this item produce? |
 | **Acceptance** | Body §High level | Checkboxes. All must be green before the item is `done`. |
 | **Contingencies** | Body §Contingencies | Pre-planned fallbacks and edge cases. Strategist-authored at draft time. |
-| **Implementation log** | Body §Implementation log (post-completion) | Appended by the Developer at `code_review → done` flip. Captures approach, key decisions, pivots, surprises, followups. Distilled from the W-item's working log file (see §"Working log files") alongside the diff — the curated retrospective; the working log is the chronological record. Developer mode only in v1 (ADR-018). |
+| **Implementation log** | Body §Implementation log (post-completion) | Appended by the Developer at `code_review → done` flip. Captures approach, key decisions, pivots, surprises, followups. Distilled from the W-item's working log file (see §"Working log files") alongside the diff — the curated retrospective; the working log is the chronological record. Developer mode only in v1 (FWADR-018). |
 
 ## Working log files
 
 Each Developer-claimed W-item gets its own working log file in the plan folder, `w-<id-lowercase>.log.md`. Freeform chronological scratchpad the Developer appends to throughout `in_progress` (build + user-mediated QA). Survives `/compact` so a post-compact session can re-establish working context cheaply by reading the log instead of re-deriving it from session memory that was just summarized away.
 
-Introduced by [ADR-018](../architecture/adr-018-developer-role.md) Revision v3.3. Developer mode only — Orchestrator-mode dispatch does not produce working logs (Executor subagents are stateless and per-task; their working memory dies with the dispatch).
+Introduced by [FWADR-018](../dev_framework/adrs/fwadr-018-developer-role.md) Revision v3.3. Developer mode only — Orchestrator-mode dispatch does not produce working logs (Executor subagents are stateless and per-task; their working memory dies with the dispatch).
 
 ### User-directed deviations
 
@@ -262,12 +262,12 @@ When the user instructs something that conflicts with an accepted ADR, the devia
 ```markdown
 ## User-directed deviation
 
-- **Conflicts with:** ADR-014 §"Resolution chain"
+- **Conflicts with:** FWADR-014 §"Resolution chain"
 - **Instruction:** "just resolve it from .env, forget the sibling lookup" — user, 2026-07-31
 - **Status:** ADR reconciliation pending | ADR rewritten (see commit <sha>)
 ```
 
-**Why this exists.** The Reviewer and Integrator-QA are fresh subagents. They read the diff, the W-item file, and `coding-standards.md` — **never the conversation**. A user-ordered deviation and a careless one look identical to them, so without this field the gate can only resolve it as canonical misalignment and `block`, which loops back through the Developer and quietly reverses the user's order. That is the failure [ADR-027](../architecture/adr-027-living-architecture.md) fixes, and this field is the mechanism.
+**Why this exists.** The Reviewer and Integrator-QA are fresh subagents. They read the diff, the W-item file, and `coding-standards.md` — **never the conversation**. A user-ordered deviation and a careless one look identical to them, so without this field the gate can only resolve it as canonical misalignment and `block`, which loops back through the Developer and quietly reverses the user's order. That is the failure [FWADR-027](../dev_framework/adrs/fwadr-027-living-architecture.md) fixes, and this field is the mechanism.
 
 **Who writes it.** Whoever is holding the user's instruction at the time — the Developer in Developer mode, the Strategist when amending a plan. Write it **when the instruction is given**, not after a gate blocks.
 
@@ -341,7 +341,7 @@ The timestamp + short prose pattern is suggested, not required. The discipline t
 
 ## Parallel-safe field
 
-The `Parallel-safe` field gates batch-mode dispatch (ADR-016). When `true`, the Orchestrator may dispatch the item concurrently with other `Parallel-safe: true` items in a batch of up to ~3, with one Integrator-QA (Opus 1M) call replacing the per-task Reviewer and per-W-item (pre-merge) QA. When `false` (or unset), the item flows through the per-task peer chain from ADR-013: Executor → Reviewer → optional QA → merge.
+The `Parallel-safe` field gates batch-mode dispatch (FWADR-016). When `true`, the Orchestrator may dispatch the item concurrently with other `Parallel-safe: true` items in a batch of up to ~3, with one Integrator-QA (Opus 1M) call replacing the per-task Reviewer and per-W-item (pre-merge) QA. When `false` (or unset), the item flows through the per-task peer chain from FWADR-013: Executor → Reviewer → optional QA → merge.
 
 **Judgment rule (Strategist-owned).** `Parallel-safe: true` requires the W-item to be independent of every other W-item in the same plan at the level of **every shared runtime and build surface**, not just `Touches`. Two items with disjoint `Touches` can still conflict on:
 
@@ -355,15 +355,15 @@ The `Parallel-safe` field gates batch-mode dispatch (ADR-016). When `true`, the 
 
 The framework does NOT auto-derive `parallel-safe` from `touches`. The Strategist considers the shared surfaces above and decides explicitly. Whenever `parallel-safe: true`, the W-item file MUST include a `parallel-safe-considered:` list in frontmatter naming what was evaluated — this forces the judgment to be recorded rather than mechanized.
 
-**Default when unset:** `false`. Adopter plans that predate ADR-016 (no parallel-safe data on any W-item) continue to flow through the per-task peer chain. Strategists backfill the field when they decide to opt items into batch mode. No plan breaks at sync time. Pre-ADR-020 plans carry parallel-safe as a prose `**Parallel-safe:**` line under `## Execution notes`; both shapes are read by the framework during the soft-migration window.
+**Default when unset:** `false`. Adopter plans that predate FWADR-016 (no parallel-safe data on any W-item) continue to flow through the per-task peer chain. Strategists backfill the field when they decide to opt items into batch mode. No plan breaks at sync time. Pre-FWADR-020 plans carry parallel-safe as a prose `**Parallel-safe:**` line under `## Execution notes`; both shapes are read by the framework during the soft-migration window.
 
-**Asymmetry: this field gates Orchestrator batch mode only.** Parallel Developer (Developer-mode parallel; ADR-018) does NOT use `Parallel-safe`. Its non-competing scan reads the index alone — stream-letter clash check + `Blocked by` check — and trusts the stream-letter convention to imply collision risk (same letter = same code-path area = likely shares files). The asymmetry is intentional: Orchestrator batch mode is autonomous and benefits from explicit Strategist curation of shared-infra collisions across `Touches`-disjoint items; Parallel Developer is user-supervised, so the rare cross-stream shared-infra collision (lockfile bump, schema bump, registry edit) surfaces as a merge conflict the user catches in the loop.
+**Asymmetry: this field gates Orchestrator batch mode only.** Parallel Developer (Developer-mode parallel; FWADR-018) does NOT use `Parallel-safe`. Its non-competing scan reads the index alone — stream-letter clash check + `Blocked by` check — and trusts the stream-letter convention to imply collision risk (same letter = same code-path area = likely shares files). The asymmetry is intentional: Orchestrator batch mode is autonomous and benefits from explicit Strategist curation of shared-infra collisions across `Touches`-disjoint items; Parallel Developer is user-supervised, so the rare cross-stream shared-infra collision (lockfile bump, schema bump, registry edit) surfaces as a merge conflict the user catches in the loop.
 
 ## Status state machine
 
 Seven states: `pending`, `in_progress`, `code_review`, `held`, `blocked`, `done`, `shipped`.
 
-The state machine has two mode-specific lifecycles. Orchestrator mode (ADR-013 sequential, ADR-016 batch) and Developer mode (ADR-018) share `pending`, `held`, `blocked`, `done`, `shipped` and the `held`/`blocked` recovery transitions. The middle of the lifecycle differs:
+The state machine has two mode-specific lifecycles. Orchestrator mode (FWADR-013 sequential, FWADR-016 batch) and Developer mode (FWADR-018) share `pending`, `held`, `blocked`, `done`, `shipped` and the `held`/`blocked` recovery transitions. The middle of the lifecycle differs:
 
 - **Orchestrator mode** runs `in_progress → done` — Reviewer + QA gates run as peer subagents.
 - **Developer mode** runs `in_progress → code_review → done` — user mediates QA inside `in_progress` (no separate `qa` state); a spawned Reviewer subagent (same brief as Orch sequential mode) covers the `code_review` step.
@@ -444,7 +444,7 @@ Confirm + claim: the Developer asks "ready to start coding W-X?" before the `pen
 
 ### Mode signaling (per item, not per phase)
 
-ADR-018 originally proposed per-phase mode-exclusivity (the user picks at draft; both bootstraps refuse-on-mismatch). That rule was over-strict — it locked Developer out of plans the Strategist had drafted with Orchestrator in mind, even when no W-item had been claimed. The actual collision risk is per-W-item, not per-plan, and is naturally enforced by mode-specific Status transitions: Orchestrator's `in_progress → done` and Developer's `in_progress → code_review → done` take different paths from `in_progress` and don't conflict.
+FWADR-018 originally proposed per-phase mode-exclusivity (the user picks at draft; both bootstraps refuse-on-mismatch). That rule was over-strict — it locked Developer out of plans the Strategist had drafted with Orchestrator in mind, even when no W-item had been claimed. The actual collision risk is per-W-item, not per-plan, and is naturally enforced by mode-specific Status transitions: Orchestrator's `in_progress → done` and Developer's `in_progress → code_review → done` take different paths from `in_progress` and don't conflict.
 
 Under the v2 model (current): the plan-level `Mode` field is the Strategist's recommendation (see §"Mode field" above). Either mode can claim any `pending` item. Items lock into a mode at claim time via the Status path they take. Cross-mode collision on a single in-flight item is prevented by PLAN-WRITE DISCIPLINE (read-fresh + commit) at claim time and by the mode-specific Status paths thereafter.
 
@@ -477,12 +477,12 @@ The plan is a ledger — stale entries mean the ledger is lying and a future ses
 
 A W-item enters `held` when an open Integration claim names it. Filer depends on mode:
 
-- **Orchestrator (batch) mode:** Integrator-QA files when an integration fix would step outside acceptance (ADR-016).
-- **Developer mode:** the Developer files mid-work when it identifies acceptance ambiguity at ≥80% confidence (ADR-018, rare path; most ambiguity resolves with the user in real-time).
+- **Orchestrator (batch) mode:** Integrator-QA files when an integration fix would step outside acceptance (FWADR-016).
+- **Developer mode:** the Developer files mid-work when it identifies acceptance ambiguity at ≥80% confidence (FWADR-018, rare path; most ambiguity resolves with the user in real-time).
 
 In both cases: held items have a branch that exists, the branch is preserved during the hold (no Executor or Developer activity), held items do NOT merge to `dev` until the claim is disposed. Strategist disposes per the standard claim flow (`held → in_progress / blocked`).
 
-The `held` state replaces the convention (used in earlier ADR-016 drafts) of leaving claim-blocked items at `in_progress` with a Notes line — that approach left the Status field misleading.
+The `held` state replaces the convention (used in earlier FWADR-016 drafts) of leaving claim-blocked items at `in_progress` with a Notes line — that approach left the Status field misleading.
 
 ### `code_review` semantics
 
@@ -498,7 +498,7 @@ Resolve vs Postpone is a user judgment: Resolve when the concern would cause use
 
 ### Reconciliation (on session start)
 
-A fresh Orchestrator session MUST reconcile the plan ledger against git reality before dispatching anything. See `orchestrator-bootstrap.md` STEP 0. Check under ADR-017: every `held` W-item must have a corresponding open IC-NNN entry in `claims.md`. A `held` item with no open claim is a ledger lie — surface to the user, do not auto-fix.
+A fresh Orchestrator session MUST reconcile the plan ledger against git reality before dispatching anything. See `orchestrator-bootstrap.md` STEP 0. Check under FWADR-017: every `held` W-item must have a corresponding open IC-NNN entry in `claims.md`. A `held` item with no open claim is a ledger lie — surface to the user, do not auto-fix.
 
 A fresh Developer session reconciles similarly per its bootstrap (`developer.md`). The state IS the memory:
 
@@ -507,11 +507,11 @@ A fresh Developer session reconciles similarly per its bootstrap (`developer.md`
 - Item at `held` → awaiting Strategist disposition; skip.
 - Otherwise → propose top `pending` item by critical path (using the index's `Blocked by` column to derive the dependency graph).
 
-Summary-table-vs-W-item-section drift is structurally impossible under the folder layout (Status appears once on the index). The pre-ADR-017 STEP 0 check for that drift retires.
+Summary-table-vs-W-item-section drift is structurally impossible under the folder layout (Status appears once on the index). The pre-FWADR-017 STEP 0 check for that drift retires.
 
 ## Integration claims
 
-**Filed by the Integrator-QA in batch mode (ADR-016), or by the Developer in Developer mode (ADR-018), when a fix would require stepping outside a W-item's acceptance criteria.** The filer does NOT change scope unilaterally. When confidence in a proposed scope change is ≥80%, the filer adds an integration claim to `claims.md` and flips the named W-item(s) to `held`. The Strategist triages with the user. When confidence is <80%, the filer surfaces to the user immediately as a feature failure — no claim is filed; the W-item moves to `blocked` instead.
+**Filed by the Integrator-QA in batch mode (FWADR-016), or by the Developer in Developer mode (FWADR-018), when a fix would require stepping outside a W-item's acceptance criteria.** The filer does NOT change scope unilaterally. When confidence in a proposed scope change is ≥80%, the filer adds an integration claim to `claims.md` and flips the named W-item(s) to `held`. The Strategist triages with the user. When confidence is <80%, the filer surfaces to the user immediately as a feature failure — no claim is filed; the W-item moves to `blocked` instead.
 
 In Developer mode the rare-path filing is described in [`developer.md`](../dev_framework/developer.md) §"Claim-filing (rare path)" — most acceptance ambiguity in Developer mode resolves with the user in real-time, but a claim is appropriate when the change has cross-W-item implications or the user isn't immediately available to confirm.
 
@@ -528,7 +528,7 @@ Integration claims live in `claims.md` inside the plan folder. Two sections — 
 
 ### IC-NNN — YYYY-MM-DD — {{W-id(s)}} — {{short title}}
 
-**Filed by:** Integrator-QA (batch <ids>) | Developer (Dev-mode session, ADR-018)
+**Filed by:** Integrator-QA (batch <ids>) | Developer (Dev-mode session, FWADR-018)
 **Confidence:** <pct>
 **Proposed scope change:** <what Integrator wants to do but won't do unilaterally>
 **Why:** <what forced the proposal — test failing for X, acceptance ambiguous on Y>
@@ -578,7 +578,7 @@ Three writes touch claim state. Each is one commit:
 
 ## Server-work requests (`req-*`)
 
-**Filed by the Researcher role ([ADR-024](../architecture/adr-024-researcher-role.md)) when the project's API works as designed but the design is insufficient for what a hunt needs.** The request states a desired *outcome*, never a design — deciding how (or whether) to build it is the Strategist's.
+**Filed by the Researcher role ([FWADR-024](../dev_framework/adrs/fwadr-024-researcher-role.md)) when the project's API works as designed but the design is insufficient for what a hunt needs.** The request states a desired *outcome*, never a design — deciding how (or whether) to build it is the Strategist's.
 
 - **File:** `req-YYYY-MM-DD-<slug>.md`, in the active plan's folder when one clearly fits, otherwise in `docs/execution-plans/inbox/` (the Researcher creates the inbox if missing — deciding the "relevant phase" is Strategist judgment, so when in doubt the request goes to the inbox).
 - **Shape:** YAML frontmatter (`type: server-work-request`, `from`, `date`, `status: open`, optional `target-repo`) + three body sections: what the hunt was doing, where the API fell short (evidence), desired capability. Full spec in [`researcher.md`](../dev_framework/researcher.md) §"Server-work requests".

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# promote_dev_to_main.sh — the ONLY sanctioned way to push main (ADR-023).
+# promote_dev_to_main.sh — the ONLY sanctioned way to push main (FWADR-023).
 #
 # The framework installs a git pre-push hook (FRAMEWORK-PUSH-GUARD) that
 # blocks every push updating refs/heads/main unless FRAMEWORK_ALLOW_MAIN_PUSH=1.
@@ -9,7 +9,7 @@
 # bypassed).
 #
 # Run from $PROJECT_DIR (parent dir under split layout), like every framework
-# script (ADR-021 script placement doctrine).
+# script (FWADR-021 script placement doctrine).
 #
 # Modes:
 #   (default)  Phase-exit promotion. Verifies main is checked out and HEAD is

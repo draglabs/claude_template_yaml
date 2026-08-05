@@ -1,4 +1,4 @@
-# ADR-025: Named deliverables — the Strategist writes what was asked for
+# FWADR-025: Named deliverables — the Strategist writes what was asked for
 
 **Status:** accepted
 **Date:** 2026-07-29
@@ -27,7 +27,7 @@ defect:
 1. **No escalation path for out-of-surface requests.** `strategist.md` §"What
    it does not do" enumerates the write surface exhaustively across seven
    "Does not…" bullets. The Developer has an 80/20 confidence ladder
-   ([`developer.md`](../dev_framework/developer.md) §"Confidence-driven
+   ([`developer.md`](../developer.md) §"Confidence-driven
    escalation") whose job is turning sub-threshold confidence into a *visible
    question*. The Strategist had no equivalent — its only "bug the user" rule
    was the MCP health check. With no escalation path, an unmapped request
@@ -144,7 +144,7 @@ Strategist artifact class.
 
    The user confirmed (2026-07-29) that adopters reach it by **Agent-tool
    spawn**, so a brief template is the load-bearing surface.
-   [`templates/strategist-brief.md`](../dev_framework/templates/strategist-brief.md)
+   [`templates/strategist-brief.md`](../templates/strategist-brief.md)
    ships with three properties the role doc cannot provide:
 
    - **It forbids reading `strategist.md`.** The standing job description is
@@ -181,10 +181,10 @@ exchange against one phase.
 **Mechanism honesty.** No script enforces this. The forcing function is that
 both statements are user-visible output, the same shape the framework already
 sanctions where an agent cannot verify something generically
-([`developer.md`](../dev_framework/developer.md) §"Lifecycle (per W-item)" —
-"Ready to start coding W-X?"; [`dev-environment.md`](../dev_framework/dev-environment.md)
+([`developer.md`](../developer.md) §"Lifecycle (per W-item)" —
+"Ready to start coding W-X?"; [`dev-environment.md`](../dev-environment.md)
 §"Pointing prod at a non-main branch (escape hatch)"). Under
-[Template Developer doctrine](../dev_framework/template-developer.md)
+[Template Developer doctrine](../template-developer.md)
 §"Framework-change doctrine" this is an explicitly-named English-only rule with
 a hook-level re-anchor, not hope.
 

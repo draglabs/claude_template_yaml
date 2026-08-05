@@ -16,7 +16,7 @@
 # Slot:           positional, required.
 # --auto-confirm: skip the "Proceed? [Y/n]" prompt.
 #
-# Canonical doctrine: docs/architecture/adr-019-dev-slots-and-deploy-stubs.md
+# Canonical doctrine: docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md
 
 set -euo pipefail
 

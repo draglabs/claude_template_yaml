@@ -19,7 +19,7 @@ Read these in full before answering:
 - CLAUDE.md (locked decisions, coding standards)
 - docs/dev_framework/session-policy.md (execution policy)
 - docs/dev_framework/coding-standards.md (enforced practices)
-- The active execution plan (folder layout: docs/execution-plans/<plan>/plan.md plus W-item files w-<id>.md as needed; pre-ADR-017 single-file layout: docs/execution-plans/<active-plan>.md)
+- The active execution plan (folder layout: docs/execution-plans/<plan>/plan.md plus W-item files w-<id>.md as needed; pre-FWADR-017 single-file layout: docs/execution-plans/<active-plan>.md)
 - docs/dev_framework/context-management.md (context rules)
 
 If the answer might be in a doc not listed above, check

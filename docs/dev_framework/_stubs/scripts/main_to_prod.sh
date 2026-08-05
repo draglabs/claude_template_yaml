@@ -9,7 +9,7 @@
 # go through this script — never improvise prod commands outside it.
 #
 # Reviewer enforcement: a commit that runs prod deploy by any path other
-# than this script is a `block`. See docs/architecture/adr-019-dev-slots-and-deploy-stubs.md
+# than this script is a `block`. See docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md
 # §"Reviewer-side enforcement".
 #
 # THIS IS A STUB. Before first use, an agent must scope the real server with
@@ -31,5 +31,5 @@ echo ""
 echo "Once filled in: every prod deploy MUST go through this script. Never improvise."
 echo "Reviewer will block any commit that ran a prod deploy by any other path."
 echo ""
-echo "Canonical doctrine: docs/architecture/adr-019-dev-slots-and-deploy-stubs.md"
+echo "Canonical doctrine: docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md"
 exit 1

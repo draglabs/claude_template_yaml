@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # check-researcher-scope.sh — mechanical write-fence check for the Researcher
-# role (ADR-024). Verifies that every file changed vs the base ref is inside
+# role (FWADR-024). Verifies that every file changed vs the base ref is inside
 # RESEARCHER_SCOPE_DIR or named in RESEARCHER_DATA_CARVEOUTS.
 #
-# Usage (run from $PROJECT_DIR, per ADR-021 script placement doctrine):
+# Usage (run from $PROJECT_DIR, per FWADR-021 script placement doctrine):
 #   ./scripts/check-researcher-scope.sh [<base-ref>]     # default: origin/dev
 #
 # Reads from $PROJECT_DIR/.env:

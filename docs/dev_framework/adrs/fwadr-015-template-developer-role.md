@@ -1,4 +1,4 @@
-# ADR-015: Split Template Developer from Strategist
+# FWADR-015: Split Template Developer from Strategist
 
 **Status:** accepted
 **Date:** 2026-04-23

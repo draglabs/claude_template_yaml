@@ -1,4 +1,4 @@
-# ADR-027: Living architecture — the review gate must not reverse the user
+# FWADR-027: Living architecture — the review gate must not reverse the user
 
 **Status:** accepted
 **Date:** 2026-07-31
@@ -33,7 +33,7 @@ Three framework properties combine to produce it, none of them a model defect:
    out any divergence, **even if it looks reasonable**."* That trailing clause
    removes the one escape hatch a thoughtful reviewer might have used. The same
    instruction sits in `integrator-qa-brief.md`, so the batch path
-   ([ADR-016](adr-016-batch-mode-integrator-qa.md)) had the identical defect.
+   ([FWADR-016](fwadr-016-batch-mode-integrator-qa.md)) had the identical defect.
 
 3. **No verdict path meant "the document is what's wrong."** The Developer's
    outcomes were Ship / Resolve / Postpone. `Resolve` — "concerns the user
@@ -48,9 +48,9 @@ is what appoints the Reviewer as enforcer. Written for *undocumented
 additions*, it was silently doing duty for *contradicted existing decisions*
 too.
 
-This is the same failure class as [ADR-025](adr-025-named-deliverables.md)
+This is the same failure class as [FWADR-025](fwadr-025-named-deliverables.md)
 (stale doctrine outranking a live instruction) and
-[ADR-026](adr-026-curator-role.md) Revision v1.2 (a churned doc arguing its old
+[FWADR-026](fwadr-026-curator-role.md) Revision v1.2 (a churned doc arguing its old
 position over the user's latest ruling) — but at the merge gate, where it is
 worst, because the gate's verdict is treated as binding and the reversal is
 never surfaced.
@@ -64,7 +64,7 @@ outranks the user. When the two conflict, the ADR changes.**
    `## User-directed deviation` section (naming the ADR, quoting the
    instruction, dated) is added **when the instruction is given**, not after a
    gate blocks. Format in
-   [`../execution-plans/README.md`](../execution-plans/README.md)
+   [`../../execution-plans/README.md`](../../execution-plans/README.md)
    §"User-directed deviations". Nothing else in this ADR works without it: the
    review gate is blind by construction, so this section is the *only* channel
    through which intent reaches it. It records that a conflict is intentional;
@@ -84,7 +84,7 @@ outranks the user. When the two conflict, the ADR changes.**
 4. **The Developer holds targeted ADR-rewrite authority.** On a `doc-conflict`:
    **rewrite the ADR** when the user's intent is clear — an explicit
    instruction this session, or their **last position** on the topic per
-   [ADR-026](adr-026-curator-role.md) §"Reading a churned document" settles it.
+   [FWADR-026](fwadr-026-curator-role.md) §"Reading a churned document" settles it.
    **Ask the user** when intent must be reconstructed rather than transcribed.
    The threshold is the existing 80/20 ladder, not a new test. The asymmetry is
    what makes this safe: **asking costs one exchange; silently reverting the
@@ -95,8 +95,8 @@ outranks the user. When the two conflict, the ADR changes.**
    ADR leaves the superseded decision arguing its case at the top of the file,
    where every future agent reads it first. Rewrite the body to state the
    decision that now holds; git keeps the history. Established in
-   [ADR-026](adr-026-curator-role.md) Revision v1.2 §Dispositions and
-   [`README.md`](README.md) §"Staleness rule" — cited here, not restated.
+   [FWADR-026](fwadr-026-curator-role.md) Revision v1.2 §Dispositions and
+   [`README.md`](../../architecture/README.md) §"Staleness rule" — cited here, not restated.
 
 6. **Rule 1 qualified at the root.** CLAUDE.md and `dev_framework.md` §"Two
    process rules" now scope docs-before-code to *additions*, and state that a
@@ -134,7 +134,7 @@ no script can verify that a quoted instruction was really given. What *is*
 mechanical is the routing: both briefs now branch on the section's presence, so
 the gate cannot reach `block` on a recorded deviation by accident. Named as an
 English-only rule under
-[Template Developer doctrine](../dev_framework/template-developer.md)
+[Template Developer doctrine](../template-developer.md)
 §"Framework-change doctrine".
 
 **Open question deliberately not decided.** `README.md` §"What goes here" names

@@ -2,7 +2,7 @@
 
 The canonical framework layout is **split**: Claude Code is invoked from a parent directory that holds tracking material (`CLAUDE.md`, `docs/`, `.claude/`), with the git repo living as a named subdirectory. If your project currently invokes Claude Code from inside the git repo itself (flat layout), this guide walks the migration.
 
-See [ADR-021](../architecture/adr-021-split-layout.md) for the rationale.
+See [FWADR-021](adrs/fwadr-021-split-layout.md) for the rationale.
 
 ---
 
@@ -124,7 +124,7 @@ No `NOTICE: flat layout detected` line = migration complete.
 
 ## Optional: track `$PROJECT_DIR` as its own git repo
 
-ADR-021 sanctions two modes for `$PROJECT_DIR` git tracking:
+FWADR-021 sanctions two modes for `$PROJECT_DIR` git tracking:
 
 - **Untracked (default, simpler).** `$PROJECT_DIR` has no `.git/`. Tracking material is plain files; plan-write visibility is via shared filesystem only. Fine for solo or single-machine multi-session work — and what you have after completing the steps above.
 - **Tracked (optional, full discipline).** `$PROJECT_DIR` is its own git repo with its own remote (a "project management" repo). Plan edits, ADRs, and tracking material are committed and pushed there. Gives full PLAN-WRITE DISCIPLINE concurrent-claim safety + durable plan history. Right for team work, multi-machine setups, or when plan history needs to outlive disk failures.
@@ -158,7 +158,7 @@ If one parent holds N code repos, add entries in `.env` for each after the migra
 DEFAULT_CODE_SUBDIR=api        # primary repo (used when W-item has no target-repo)
 ```
 
-In your plan's W-item files, add the optional frontmatter field for non-default repos (composes with the existing [ADR-020](../architecture/adr-020-yaml-frontmatter-w-items.md) shape):
+In your plan's W-item files, add the optional frontmatter field for non-default repos (composes with the existing [FWADR-020](adrs/fwadr-020-yaml-frontmatter-w-items.md) shape):
 
 ```yaml
 ---

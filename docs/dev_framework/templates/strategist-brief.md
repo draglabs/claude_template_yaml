@@ -4,7 +4,7 @@ Spawn when a session needs **bounded, write-capable doc work** — intake a tick
 
 This is the one sanctioned way to reach Strategist-surface *writes* from a subagent. The read-only consultants ([`doc-consultant-brief.md`](doc-consultant-brief.md), [`code-consultant-brief.md`](code-consultant-brief.md)) answer questions; this one changes files.
 
-**This is not "the Strategist role in a subagent."** The persistent Strategist ([`../strategist.md`](../strategist.md)) is a standing job description — audit, cross-reference, triage, verify, sweep. A subagent that loads that doc treats the job description as its task list and inflates a five-minute intake into a corpus-wide review that exhausts its window and returns nothing useful. **The spawned Strategist does NOT read `strategist.md`.** Its scope is this brief and nothing else. See [ADR-025](../../architecture/adr-025-named-deliverables.md).
+**This is not "the Strategist role in a subagent."** The persistent Strategist ([`../strategist.md`](../strategist.md)) is a standing job description — audit, cross-reference, triage, verify, sweep. A subagent that loads that doc treats the job description as its task list and inflates a five-minute intake into a corpus-wide review that exhausts its window and returns nothing useful. **The spawned Strategist does NOT read `strategist.md`.** Its scope is this brief and nothing else. See [FWADR-025](../adrs/fwadr-025-named-deliverables.md).
 
 ## When to spawn
 
@@ -71,7 +71,7 @@ Paste it. Do NOT make the subagent go find it.}}
    reconciliation, or a coherence pass. Do NOT "improve" adjacent
    content you notice in passing — note it in Observations instead.
 
-4. **Do not spawn subagents.** Peer-dispatch constraint (ADR-013). If
+4. **Do not spawn subagents.** Peer-dispatch constraint (FWADR-013). If
    you need something you cannot get, return a question.
 
 5. **Do not commit or push.** You write files; the spawning session owns
@@ -99,7 +99,7 @@ Keep the response under 15 lines. Do not narrate your process.
 
 ## Plan-file writes: the spawning session must close the commit
 
-**Read this before briefing a spawn that touches `plan.md` or a W-item file.** Plan-write commit semantics are **mode-dependent** ([`../developer.md`](../developer.md) §"Working directory: `$CODE_ROOT`", [ADR-021](../../architecture/adr-021-split-layout.md)):
+**Read this before briefing a spawn that touches `plan.md` or a W-item file.** Plan-write commit semantics are **mode-dependent** ([`../developer.md`](../developer.md) §"Working directory: `$CODE_ROOT`", [FWADR-021](../adrs/fwadr-021-split-layout.md)):
 
 - **Untracked parent (default)** — `$PROJECT_DIR` is not a git repo. Plan edits are file-only writes; concurrent sessions see them through the shared filesystem. The subagent's write is complete on return. Nothing further needed.
 - **Tracked parent, or flat layout** — plan edits must **commit + push** to be visible to sibling sessions. That is what PLAN-WRITE DISCIPLINE's concurrent-claim safety depends on.

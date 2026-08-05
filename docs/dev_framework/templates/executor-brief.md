@@ -2,9 +2,9 @@
 
 Copy, fill in brackets, paste as the Agent tool's `prompt` argument. Do NOT set `isolation: "worktree"` on the Agent tool call — the Orchestrator pre-creates the worktree explicitly off `origin/dev` and passes the path in this brief. The tool's built-in isolation machinery is bypassed on purpose so the branch base is a literal command-line argument, not a thing to remember.
 
-Under peer dispatch, the Executor is a single-cycle writer: it reads, writes, commits, and returns. It does NOT spawn Reviewer, QA, or Integrator-QA — the Orchestrator owns those peer calls. Iteration happens at the Orchestrator level: if the Reviewer blocks, QA fails, or Integrator-QA files a claim / surfaces a failure, the Orchestrator runs a retry cycle — continuing the same Executor via SendMessage, or dispatching a fresh Executor with the concerns as sharpened context ([ADR-022](../../architecture/adr-022-runtime-recalibration.md)). See [`../session-policy.md`](../session-policy.md) §"Dispatch flow" for the full model.
+Under peer dispatch, the Executor is a single-cycle writer: it reads, writes, commits, and returns. It does NOT spawn Reviewer, QA, or Integrator-QA — the Orchestrator owns those peer calls. Iteration happens at the Orchestrator level: if the Reviewer blocks, QA fails, or Integrator-QA files a claim / surfaces a failure, the Orchestrator runs a retry cycle — continuing the same Executor via SendMessage, or dispatching a fresh Executor with the concerns as sharpened context ([FWADR-022](../adrs/fwadr-022-runtime-recalibration.md)). See [`../session-policy.md`](../session-policy.md) §"Dispatch flow" for the full model.
 
-**Mode awareness.** This brief is used for both per-task mode (sequential W-items, Reviewer and optional QA peer gates after return — ADR-013) and batch mode (parallel-safe W-items, Integrator-QA absorbs per-W-item Reviewer and pre-merge QA — ADR-016). The writing discipline is identical across both modes; what changes is which peer gate reads your work after return. In batch mode, your self-test and self-check are higher-stakes because the Integrator-QA is the single end-of-batch quality gate — don't return on a hopeful self-assessment.
+**Mode awareness.** This brief is used for both per-task mode (sequential W-items, Reviewer and optional QA peer gates after return — FWADR-013) and batch mode (parallel-safe W-items, Integrator-QA absorbs per-W-item Reviewer and pre-merge QA — FWADR-016). The writing discipline is identical across both modes; what changes is which peer gate reads your work after return. In batch mode, your self-test and self-check are higher-stakes because the Integrator-QA is the single end-of-batch quality gate — don't return on a hopeful self-assessment.
 
 ```
 ## {{W-id}} — {{title}}
@@ -49,14 +49,14 @@ STEP 1 — Orient. Read in this order:
      enforcement starts with you.
   2. docs/framework_exceptions/dev_framework_exceptions.md (in full) — any
      project-level deviations from the standard SOP.
-  3. The W-item SOW. Path depends on plan format (per ADR-017):
+  3. The W-item SOW. Path depends on plan format (per FWADR-017):
        - Folder format: docs/execution-plans/<plan>/w-{{id}}.md (the
          W-item file — YAML frontmatter for structural metadata under
-         ADR-020 [touches, references, parallel-safe], plus prose body:
-         High level, Contingencies). Pre-ADR-020 plans use a prose
+         FWADR-020 [touches, references, parallel-safe], plus prose body:
+         High level, Contingencies). Pre-FWADR-020 plans use a prose
          "## Execution notes" section instead of frontmatter; both
          shapes are valid during soft migration.
-       - Single-file format (pre-ADR-017):
+       - Single-file format (pre-FWADR-017):
          docs/execution-plans/<active-plan>.md §{{W-id}} (the per-W-item
          section inline on the plan).
      The Orchestrator's brief above already pasted "What", "Acceptance
@@ -97,16 +97,16 @@ STEP 3 — Write.
 
 ## Files you will touch
 {{paste `touches` list verbatim from the W-item file's YAML frontmatter
-  (ADR-020); for pre-ADR-020 plans, paste from the `**Touches:**` prose
+  (FWADR-020); for pre-FWADR-020 plans, paste from the `**Touches:**` prose
   line under `## Execution notes`. The Reviewer will run
   `scripts/check-touches.sh` against this list as a mechanical scope
   check — modifications outside it are flagged as scope creep.}}
 
 ## References (read-only orientation; do NOT modify)
 {{paste `references` list verbatim from the W-item file's YAML frontmatter
-  (ADR-020) — entries with `path` + optional `lines` + optional `purpose`,
+  (FWADR-020) — entries with `path` + optional `lines` + optional `purpose`,
   e.g. `path: src/legacy/admin_helper/routes.py`, `lines: "120-280"`,
-  `purpose: auth middleware pattern`. For pre-ADR-020 plans, paste from
+  `purpose: auth middleware pattern`. For pre-FWADR-020 plans, paste from
   the `**References:**` prose line. Present on port / migration / refactor
   W-items where pre-existing structure needs to be understood before
   writing. Omit this section entirely if the W-item has no references.}}

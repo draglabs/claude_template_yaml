@@ -4,7 +4,7 @@ How to keep the doc surface manageable as the project evolves. Every doc added t
 
 ## Project layout
 
-The framework supports two directory structures. Understanding which one your project uses determines what `$CODE_ROOT` means in every role doc and brief. See [ADR-021](../architecture/adr-021-split-layout.md) for the decision record.
+The framework supports two directory structures. Understanding which one your project uses determines what `$CODE_ROOT` means in every role doc and brief. See [FWADR-021](adrs/fwadr-021-split-layout.md) for the decision record.
 
 ### Split layout (canonical)
 
@@ -23,7 +23,7 @@ $PROJECT_DIR/           ← invoke claude from here
 
 `$CODE_ROOT = $PROJECT_DIR/$CODE_SUBDIR`
 
-For **multi-repo projects** (N code repos under one parent), W-item files set an optional `target-repo: <subdir>` field in their YAML frontmatter (per [ADR-020](../architecture/adr-020-yaml-frontmatter-w-items.md)). `$CODE_ROOT = $PROJECT_DIR/$TARGET_REPO`, defaulting to `$PROJECT_DIR/$DEFAULT_CODE_SUBDIR` when `target-repo` is unset.
+For **multi-repo projects** (N code repos under one parent), W-item files set an optional `target-repo: <subdir>` field in their YAML frontmatter (per [FWADR-020](adrs/fwadr-020-yaml-frontmatter-w-items.md)). `$CODE_ROOT = $PROJECT_DIR/$TARGET_REPO`, defaulting to `$PROJECT_DIR/$DEFAULT_CODE_SUBDIR` when `target-repo` is unset.
 
 ### Flat layout (legacy)
 
@@ -31,7 +31,7 @@ Project dir == git root. `$CODE_ROOT == $PROJECT_DIR`. The sync hook emits a mig
 
 ### `$PROJECT_DIR` git tracking is optional
 
-Under split layout, the parent directory is **not required to be a git repo**. Two sanctioned modes ([ADR-021](../architecture/adr-021-split-layout.md)):
+Under split layout, the parent directory is **not required to be a git repo**. Two sanctioned modes ([FWADR-021](adrs/fwadr-021-split-layout.md)):
 
 - **Untracked parent (default):** plain files for CLAUDE.md / docs / .claude. Plan-write visibility is via shared filesystem only — concurrent sessions see plan.md edits immediately, but the push-then-fail collision guard is unavailable. Sufficient for solo or single-machine multi-session work.
 - **Tracked parent (optional):** `$PROJECT_DIR` is its own git repo with its own remote. Plan edits commit + push there. Full PLAN-WRITE DISCIPLINE concurrent-claim safety + durable plan history; right for team work or multi-machine setups.
@@ -47,7 +47,7 @@ Code-side git operations (`git push origin dev`, `git push origin main`) ALWAYS 
 | Developer (Default) | `$CODE_ROOT` | Coding happens here; plan lives at `$PROJECT_DIR/docs/` |
 | Developer (Parallel) | `/tmp/worktrees/<project>/<branch>` | `<project>` = `basename $CODE_ROOT` |
 | Executor | `/tmp/worktrees/<project>/<branch>` | Same slug convention |
-| Researcher | `$CODE_ROOT` (feature branch off `dev`) | Writes fenced to `RESEARCHER_SCOPE_DIR` + data carve-outs; checked by `scripts/check-researcher-scope.sh` (ADR-024) |
+| Researcher | `$CODE_ROOT` (feature branch off `dev`) | Writes fenced to `RESEARCHER_SCOPE_DIR` + data carve-outs; checked by `scripts/check-researcher-scope.sh` (FWADR-024) |
 | Template Developer | `$PROJECT_DIR` (template only) | Template has no `$CODE_ROOT` |
 
 Git commands run from `$CODE_ROOT` (or a worktree rooted there). Plan and doc writes run from `$PROJECT_DIR`.
@@ -87,27 +87,27 @@ Each persistent instance reads its role doc at session start. No instance reads 
 
 | Instance | Reads at session start |
 |----------|----------------------|
-| **Orchestrator** | `docs/dev_framework/session-policy.md` + active execution plan index (`plan.md` under ADR-017 folder layout; the single plan file under pre-ADR-017 layout) |
+| **Orchestrator** | `docs/dev_framework/session-policy.md` + active execution plan index (`plan.md` under FWADR-017 folder layout; the single plan file under pre-FWADR-017 layout) |
 | **Strategist** | `docs/dev_framework/strategist.md` + planning docs (plan, roadmap, future-directions). Does NOT load `docs/dev_framework/coding-standards.md` or project `src/` — code questions go through a Code Consultant subagent |
 | **Designer** | `docs/dev_framework/designer.md` + existing UI components (read, not load) |
-| **Developer** ([ADR-018](../architecture/adr-018-developer-role.md)) — both Default and Parallel invocations | `docs/dev_framework/developer.md` + `docs/dev_framework/coding-standards.md` + active plan's `plan.md`. **Loads `coding-standards.md` at session start** — unlike Orchestrator/Strategist, the Developer writes code, and standards must be available without a Layer 2 round-trip. W-item files load on demand. Both invocations share Layer 1; they diverge only at the working-directory + bootstrap-scan steps (Default in main checkout, Parallel in a worktree) |
-| **Researcher** ([ADR-024](../architecture/adr-024-researcher-role.md)) — optional, per-project | `docs/dev_framework/researcher.md` + the project's Researcher parameters entry in `dev_framework_exceptions.md` + the acquisition-doctrine reading list and hunt surfaces that entry names. Does NOT load `coding-standards.md` (barely writes code; the scope check gates its merges) and does NOT load app/api source (the API is an opaque contract — see `researcher.md` §"Hard fences") |
-| **Curator** ([ADR-026](../architecture/adr-026-curator-role.md)) | `docs/dev_framework/curator.md` + `docs/framework_exceptions/dev_framework_exceptions.md` + the output of `./scripts/doc_churn_audit.sh`. **Deliberately does NOT preload `docs/architecture/` or `docs/execution-plans/`** — the audit script's whole purpose is to identify the handful of documents worth opening, so loading the corpus would defeat it. Does NOT load `coding-standards.md` or project `src/` |
+| **Developer** ([FWADR-018](adrs/fwadr-018-developer-role.md)) — both Default and Parallel invocations | `docs/dev_framework/developer.md` + `docs/dev_framework/coding-standards.md` + active plan's `plan.md`. **Loads `coding-standards.md` at session start** — unlike Orchestrator/Strategist, the Developer writes code, and standards must be available without a Layer 2 round-trip. W-item files load on demand. Both invocations share Layer 1; they diverge only at the working-directory + bootstrap-scan steps (Default in main checkout, Parallel in a worktree) |
+| **Researcher** ([FWADR-024](adrs/fwadr-024-researcher-role.md)) — optional, per-project | `docs/dev_framework/researcher.md` + the project's Researcher parameters entry in `dev_framework_exceptions.md` + the acquisition-doctrine reading list and hunt surfaces that entry names. Does NOT load `coding-standards.md` (barely writes code; the scope check gates its merges) and does NOT load app/api source (the API is an opaque contract — see `researcher.md` §"Hard fences") |
+| **Curator** ([FWADR-026](adrs/fwadr-026-curator-role.md)) | `docs/dev_framework/curator.md` + `docs/framework_exceptions/dev_framework_exceptions.md` + the output of `./scripts/doc_churn_audit.sh`. **Deliberately does NOT preload `docs/architecture/` or `docs/execution-plans/`** — the audit script's whole purpose is to identify the handful of documents worth opening, so loading the corpus would defeat it. Does NOT load `coding-standards.md` or project `src/` |
 | **Template Developer** | `docs/dev_framework/template-developer.md` + `docs/dev_framework/dev_framework.md`. Template-repo-only; specific role docs / ADRs / hook scripts load on demand (Layer 2). Does NOT load project `src/` (template has none) or `coding-standards.md` |
 
 **Why code-level docs are not in Layer 1 for Orchestrator / Strategist.** Code-quality rules (TDD, no hardcoded values, fail loudly) are enforced at the subagent layer when those roles drive work, not by the Orchestrator or Strategist directly. Keeping `coding-standards.md` out of their Layer 1 preserves context for decision-making and plan-keeping. The Executor loads the doc to write correctly; the Reviewer loads it to enforce. **The Developer is an exception** — it writes code in the user loop and needs standards available for in-flight self-checks before the spawned Reviewer subagent runs the code-review gate. The role's net Layer 1 weight stays bounded because Developer doesn't load planning docs (Strategist's load) or `dev_framework.md` (Template Developer's load).
 
-**Peer-dispatch and Orchestrator context.** Under peer dispatch (see `docs/dev_framework/session-policy.md` §"Dispatch flow"), the Orchestrator dispatches Executor, Reviewer, and QA as peers and reads their structured returns directly. Executors return code-only packages (SHA, diff summary, files touched, lessons — roughly 10 lines). Reviewer verdicts are larger (per-question answers, concerns with file:line citations — typically 30–60 lines on a clean ship, more on a block). QA returns per-criterion results with evidence. Over a long phase, the Orchestrator's context grows linearly with the number of W-items processed, bounded by the structured shape of the returns — not by the size of the diffs (the Orchestrator does not open diffs or source files directly). If the Orchestrator ever finds itself opening `src/` to "help" a stumped Executor, that's a policy violation — dispatch another Executor with a sharpened brief instead. See [ADR-013](../architecture/adr-013-peer-dispatch.md) for why the prior "sub-sub-agent" A2 model was retired.
+**Peer-dispatch and Orchestrator context.** Under peer dispatch (see `docs/dev_framework/session-policy.md` §"Dispatch flow"), the Orchestrator dispatches Executor, Reviewer, and QA as peers and reads their structured returns directly. Executors return code-only packages (SHA, diff summary, files touched, lessons — roughly 10 lines). Reviewer verdicts are larger (per-question answers, concerns with file:line citations — typically 30–60 lines on a clean ship, more on a block). QA returns per-criterion results with evidence. Over a long phase, the Orchestrator's context grows linearly with the number of W-items processed, bounded by the structured shape of the returns — not by the size of the diffs (the Orchestrator does not open diffs or source files directly). If the Orchestrator ever finds itself opening `src/` to "help" a stumped Executor, that's a policy violation — dispatch another Executor with a sharpened brief instead. See [FWADR-013](adrs/fwadr-013-peer-dispatch.md) for why the prior "sub-sub-agent" A2 model was retired.
 
 ### Layer 2 — Loaded on demand
 
 Reference material pulled only when actively needed for a specific task.
 
 - `docs/dev_framework/coding-standards.md` — loaded by Executor, Reviewer, and Integrator-QA subagents at spawn (Step 1 / Step 0 of their briefs)
-- `docs/dev_framework/templates/*` — briefing templates, loaded when spawning a subagent. Note `strategist-brief.md` (bounded doc work, ADR-025) is the only write-capable non-code subagent; the spawned agent must NOT load `strategist.md`, whose standing job description would inflate a bounded task. In particular: `reviewer-brief.md` for sequential-mode per-task review, `integrator-qa-brief.md` for batch-mode end-of-batch integration + review + test + fix (ADR-016), `qa-brief.md` for phase-exit and post-promotion live-environment passes.
-- **W-item SOW files** (ADR-017 folder layout: `docs/execution-plans/<plan>/w-<id>.md`; pre-ADR-017: per-W-item section inline on the plan) — loaded ON DEMAND by the Orchestrator when filling a dispatch brief, by the Executor at STEP 1, by the Reviewer when reading acceptance, and by the Integrator-QA when scanning the batch. Never preloaded at session start; this is the load-bearing part of the folder structure — per-dispatch context is bounded by the W-item, not the phase.
+- `docs/dev_framework/templates/*` — briefing templates, loaded when spawning a subagent. Note `strategist-brief.md` (bounded doc work, FWADR-025) is the only write-capable non-code subagent; the spawned agent must NOT load `strategist.md`, whose standing job description would inflate a bounded task. In particular: `reviewer-brief.md` for sequential-mode per-task review, `integrator-qa-brief.md` for batch-mode end-of-batch integration + review + test + fix (FWADR-016), `qa-brief.md` for phase-exit and post-promotion live-environment passes.
+- **W-item SOW files** (FWADR-017 folder layout: `docs/execution-plans/<plan>/w-<id>.md`; pre-FWADR-017: per-W-item section inline on the plan) — loaded ON DEMAND by the Orchestrator when filling a dispatch brief, by the Executor at STEP 1, by the Reviewer when reading acceptance, and by the Integrator-QA when scanning the batch. Never preloaded at session start; this is the load-bearing part of the folder structure — per-dispatch context is bounded by the W-item, not the phase.
 - `docs/execution-plans/<plan>/claims.md` (folder layout) — loaded by the Orchestrator only during STEP 0 reconciliation of `held` items, and by the Strategist during claim triage. Filed by the Integrator-QA. Other roles do not read it.
-- **Operational docs** (runbooks, SOPs, operator checklists) — a Strategist artifact class ([ADR-025](../architecture/adr-025-named-deliverables.md)); project-chosen location, no framework-imposed path. Written and read ON DEMAND, never at session start. A sibling runbook the user points at is read as reference when authoring a new one.
+- **Operational docs** (runbooks, SOPs, operator checklists) — a Strategist artifact class ([FWADR-025](adrs/fwadr-025-named-deliverables.md)); project-chosen location, no framework-imposed path. Written and read ON DEMAND, never at session start. A sibling runbook the user points at is read as reference when authoring a new one.
 - `docs/framework_exceptions/execution-incidents.md` — loaded when a process violation occurs
 - `docs/archive/*` — closed phases, loaded only for historical reference
 - `references/` — external repos, loaded when cross-referencing
@@ -124,7 +124,7 @@ Target context costs for session-start reading:
 |-------|--------|------------|
 | Layer 0 (CLAUDE.md) | < 100 lines | Strategist reviews any CLAUDE.md edit for bloat |
 | Layer 1 (role doc + standards) | < 200 lines per role | Strategist reviews at phase boundaries |
-| Layer 1 (active execution plan index) | < 150 lines | Plans that exceed this should be split. Under the ADR-017 folder layout this is `plan.md` (the index) only; W-item SOW files (≤200 lines each) load on demand at Layer 2. |
+| Layer 1 (active execution plan index) | < 150 lines | Plans that exceed this should be split. Under the FWADR-017 folder layout this is `plan.md` (the index) only; W-item SOW files (≤200 lines each) load on demand at Layer 2. |
 
 **If the combined Layer 0 + Layer 1 for any role exceeds ~400 lines, something must be archived, condensed, or moved to Layer 2.**
 
@@ -133,12 +133,12 @@ Target context costs for session-start reading:
 When a phase or execution plan is complete:
 
 1. Move the plan to `docs/archive/`.
-   - Folder layout (ADR-017): `mv docs/execution-plans/exec-phase-1 docs/archive/` — single move; the folder (`plan.md` + W-item files + `claims.md`) preserves intact.
+   - Folder layout (FWADR-017): `mv docs/execution-plans/exec-phase-1 docs/archive/` — single move; the folder (`plan.md` + W-item files + `claims.md`) preserves intact.
    - Single-file layout: add `## Status: CLOSED` header to the plan, then `mv docs/execution-plans/exec-phase-1.md docs/archive/`.
 2. Remove it from CLAUDE.md's reading order if it was the active-plan pointer.
 3. The Strategist keeps a one-line summary in `docs/archive/README.md` for historical reference.
 
-**Superseded ADRs archive the same way.** `docs/archive/` is not plan-only. When an ADR is superseded or deprecated, it moves out of `docs/architecture/` into `docs/archive/` in the same commit as its successor — steps in [`../archive/README.md`](../archive/README.md) §"Superseded ADRs". Leaving it in place is a permanent Layer 2 cost: every grep, every audit, and every targeted architecture read pays for a decision that is no longer true, and the directory can only grow. Proposed by the [Curator](curator.md) ([ADR-026](../architecture/adr-026-curator-role.md)), confirmed per item by the user. Note this applies only when the decision genuinely *changed* — an ADR whose wording or binding force was wrong gets rewritten or detuned in place instead, and stays where it is.
+**Superseded ADRs archive the same way.** `docs/archive/` is not plan-only. When an ADR is superseded or deprecated, it moves out of `docs/architecture/` into `docs/archive/` in the same commit as its successor — steps in [`../archive/README.md`](../archive/README.md) §"Superseded ADRs". Leaving it in place is a permanent Layer 2 cost: every grep, every audit, and every targeted architecture read pays for a decision that is no longer true, and the directory can only grow. Proposed by the [Curator](curator.md) ([FWADR-026](adrs/fwadr-026-curator-role.md)), confirmed per item by the user. Note this applies only when the decision genuinely *changed* — an ADR whose wording or binding force was wrong gets rewritten or detuned in place instead, and stays where it is.
 
 **Closed phases are never in the session-start reading list.** If a session needs historical context, it loads from the archive on demand.
 
@@ -147,12 +147,12 @@ When a phase or execution plan is complete:
 ```
 docs/archive/
   README.md              # one-line summaries of each archived plan
-  exec-phase-1/          # closed plan, folder layout (ADR-017)
+  exec-phase-1/          # closed plan, folder layout (FWADR-017)
     plan.md
     w-a1.md
     ...
     claims.md
-  exec-phase-2.md        # closed plan, single-file layout (pre-ADR-017)
+  exec-phase-2.md        # closed plan, single-file layout (pre-FWADR-017)
   ...
 ```
 

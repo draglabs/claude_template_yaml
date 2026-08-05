@@ -8,13 +8,13 @@ mockups/dist/
 .claude/settings.local.json
 .local/
 
-# --- Product repo mount points (split layout, ADR-021) ----------------------
+# --- Product repo mount points (split layout, FWADR-021) ----------------------
 # This framework directory is the TRACKED PARENT: it holds CLAUDE.md, docs/,
 # .claude/ and the planning corpus. Each product lives in its OWN git repo,
 # cloned into one of the mount points below. $CODE_ROOT = <parent>/<mount>.
 #
 #   majorrepo/    primary product repo   (DEFAULT_CODE_SUBDIR in .env)
-#   minorrepo/    secondary service/tool (W-item `target-repo:` per ADR-020)
+#   minorrepo/    secondary service/tool (W-item `target-repo:` per FWADR-020)
 #   mkt_website/  marketing site         (separate deploy cadence from product)
 #
 # The parent must never track their contents — a nested repo would otherwise be

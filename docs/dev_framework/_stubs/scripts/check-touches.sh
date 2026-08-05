@@ -21,7 +21,7 @@
 #   2 — usage error, missing file, or no YAML frontmatter / no `touches`
 #       field. The Reviewer falls back to manual judgment in this case.
 #
-# Canonical doctrine: docs/architecture/adr-020-yaml-frontmatter-w-items.md
+# Canonical doctrine: docs/dev_framework/adrs/fwadr-020-yaml-frontmatter-w-items.md
 
 set -euo pipefail
 

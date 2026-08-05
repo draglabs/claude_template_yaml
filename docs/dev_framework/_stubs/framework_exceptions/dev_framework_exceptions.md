@@ -4,7 +4,7 @@
 
 **Owner:** the project's Strategist. The Strategist adds entries; other agents read them.
 
-**Directory note — `fwreq-*.md` files are the Curator's, not the Strategist's.** This directory holds two independently-owned surfaces. The Strategist owns this file plus `process-exceptions.md` and `execution-incidents.md`. The [Curator](../dev_framework/curator.md) owns `fwreq-NNN-<slug>.md` framework-update requests ([ADR-026](../architecture/adr-026-curator-role.md)) and touches nothing else here; the Strategist does not edit `fwreq-*`. Those requests route straight to the user, who carries them to the Template Developer — they are not Strategist-triaged.
+**Directory note — `fwreq-*.md` files are the Curator's, not the Strategist's.** This directory holds two independently-owned surfaces. The Strategist owns this file plus `process-exceptions.md` and `execution-incidents.md`. The [Curator](../dev_framework/curator.md) owns `fwreq-NNN-<slug>.md` framework-update requests ([FWADR-026](../dev_framework/adrs/fwadr-026-curator-role.md)) and touches nothing else here; the Strategist does not edit `fwreq-*`. Those requests route straight to the user, who carries them to the Template Developer — they are not Strategist-triaged.
 
 **Read at session start by:** every role, as part of Layer 0 (linked from CLAUDE.md). Every agent that loads CLAUDE.md also loads this file. That's a context budget cost; keep it minimal.
 

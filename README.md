@@ -44,9 +44,9 @@ If your project currently uses flat layout (project dir == git root), see [`docs
 | `docs/dev_framework/dev_framework.md` | SOP overview and agent stack |
 | `docs/dev_framework/context-management.md` | Layered context loading + `$CODE_ROOT` |
 | `docs/dev_framework/migration-guide-split-layout.md` | Migrate flat → split layout |
-| `docs/architecture/adr-021-split-layout.md` | Layout convention decision record |
-| `docs/architecture/adr-020-yaml-frontmatter-w-items.md` | W-item file shape (YAML frontmatter) |
-| `docs/architecture/adr-019-dev-slots-and-deploy-stubs.md` | Dev slot registry + deploy script stubs |
+| `docs/dev_framework/adrs/fwadr-021-split-layout.md` | Layout convention decision record |
+| `docs/dev_framework/adrs/fwadr-020-yaml-frontmatter-w-items.md` | W-item file shape (YAML frontmatter) |
+| `docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md` | Dev slot registry + deploy script stubs |
 
 ## Framework sync
 

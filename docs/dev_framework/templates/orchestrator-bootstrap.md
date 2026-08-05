@@ -15,13 +15,13 @@ STEP 5 merge-to-dev, STEP 3B.5 batch ledger update, STEP 6 phase-exit
 promotion).
 
   PLAN PATH RESOLUTION (set in STEP 1 by format detection):
-    - New format (ADR-017 folder): the index lives at
+    - New format (FWADR-017 folder): the index lives at
       docs/execution-plans/<plan-slug>/plan.md. Per-W-item SOW lives
       in docs/execution-plans/<plan-slug>/w-<id>.md (you read these
       on demand to fill in dispatch briefs; you do NOT write to them).
       Integration claims live in docs/execution-plans/<plan-slug>/claims.md
       (the Integrator-QA and Strategist write that file; you do not).
-    - Old format (single-file, pre-ADR-017): the plan lives at
+    - Old format (single-file, pre-FWADR-017): the plan lives at
       docs/execution-plans/<plan-slug>.md. All Status, summary table,
       Notes, and Integration claims live inline in that one file.
   Below, "the plan" / "<active-plan>" in commit commands resolves to
@@ -60,12 +60,12 @@ promotion).
   dependent action is always: "the plan update is a real commit on
   dev, verified by git log -1."
 
-  MULTI-WRITER NOTE (ADR-017 + ADR-018): The Orchestrator is no longer
+  MULTI-WRITER NOTE (FWADR-017 + FWADR-018): The Orchestrator is no longer
   the only Status writer. The Integrator-QA writes `in_progress → held`
   atomically with filing an IC-NNN claim (touches plan.md AND claims.md
   in one commit). The Strategist writes `held → in_progress`
   (approve/modify) and `held → blocked` (reject) atomically with claim
-  disposition. The Developer (ADR-018) writes the Developer-mode
+  disposition. The Developer (FWADR-018) writes the Developer-mode
   lifecycle including `in_progress → code_review` and
   `code_review → done` for items it has claimed. PLAN-WRITE DISCIPLINE
   applies at all four write sites; each agent's brief / role doc
@@ -86,11 +86,11 @@ STEP 0 — Detect plan format, then reconcile the status ledger.
     (e.g., "exec-phase-1"). Determine which layout it uses:
 
       if test -f docs/execution-plans/<plan-slug>/plan.md; then
-        FORMAT=folder        # ADR-017
+        FORMAT=folder        # FWADR-017
         PLAN_PATH=docs/execution-plans/<plan-slug>/plan.md
         CLAIMS_PATH=docs/execution-plans/<plan-slug>/claims.md
       elif test -f docs/execution-plans/<plan-slug>.md; then
-        FORMAT=single-file   # pre-ADR-017
+        FORMAT=single-file   # pre-FWADR-017
         PLAN_PATH=docs/execution-plans/<plan-slug>.md
         CLAIMS_PATH=$PLAN_PATH   # claims live inline under the
                                   # "## Integration claims" sections
@@ -148,12 +148,12 @@ STEP 0 — Detect plan format, then reconcile the status ledger.
 
   CHECK 1 — Summary-table drift (OLD-FORMAT PLANS ONLY).
     Applies only when STEP 0 PRELUDE format detection resolves the active plan
-    to the pre-ADR-017 single-file layout (docs/execution-plans/<plan>.md
+    to the pre-FWADR-017 single-file layout (docs/execution-plans/<plan>.md
     with a top-of-file summary table AND per-W-item Status fields). The
     summary table and per-W-item Status must match — scan both and flag
     any row where they disagree.
 
-    Under the new folder format (ADR-017) Status appears once on the
+    Under the new folder format (FWADR-017) Status appears once on the
     index, so summary-table drift is structurally impossible. SKIP
     THIS CHECK for folder-format plans.
 
@@ -289,7 +289,7 @@ STEP 2 — Report back with:
      format you read each candidate W-item's file on demand to confirm
      its Parallel-safe field; under single-file format you read the
      per-W-item section inline.
-  b. Dispatch mode: sequential (per-task, ADR-013) or batch (ADR-016).
+  b. Dispatch mode: sequential (per-task, FWADR-013) or batch (FWADR-016).
      Batch mode applies when the reported unit has ≥2 parallel-safe
      items; otherwise sequential.
   c. Your understanding of the acceptance criteria for each item, in your
@@ -365,7 +365,7 @@ STEP 3 — Dispatch the Executor.
   SPAWN the Executor via the Agent tool with these parameters:
     - subagent_type: "general-purpose"  (only documented option)
     - model: <the work-tier model — resolve per session-policy §"Model
-      tiers" (ADR-022) and set EXPLICITLY; subagents inherit the session
+      tiers" (FWADR-022) and set EXPLICITLY; subagents inherit the session
       model by default, and an unset model on a top-tier session burns
       top-tier tokens on writer work>
     - prompt: <filled-in executor-brief.md>
@@ -393,7 +393,7 @@ STEP 4 — Run the peer gates.
       - model: <the top-tier model — inherit the session model when this
         session itself runs top tier (omit the param), else set the
         top-tier model explicitly. Invariant: the review gate runs at a
-        tier ≥ the tier that wrote the code (ADR-022)>
+        tier ≥ the tier that wrote the code (FWADR-022)>
       - isolation: omit              (Reviewers don't need worktrees —
                                       they read the Executor's worktree
                                       path passed in the brief)
@@ -478,7 +478,7 @@ STEP 4 — Run the peer gates.
 
     IF retries_used <= retry_cap:
       Run one Executor fix cycle. Two mechanisms — route mechanically
-      per session-policy §"Orchestrator-owned retry mechanics" (ADR-022):
+      per session-policy §"Orchestrator-owned retry mechanics" (FWADR-022):
 
       CONTINUATION (default). Use when ALL of:
         - the blocking concern is execution-level (Reviewer verdict
@@ -564,7 +564,7 @@ STEP 5 — Merge + push + ledger update + auto-advance.
        ```
 
        Model lines record the ACTUAL models you resolved at spawn time
-       (ADR-022) — never template names. A trailer naming a model the
+       (FWADR-022) — never template names. A trailer naming a model the
        agent didn't run on is a ledger that lies.
 
        Lessons learned is REQUIRED. If the Executor didn't include them
@@ -611,7 +611,7 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
   Applies when STEP 2 reported a batch of ≥2 Parallel-safe: true W-items
   whose `Blocked by` entries (on the index) are all done/shipped and
   none are blocked by an open Integration claim. See session-policy.md
-  §"Batch mode" and ADR-016.
+  §"Batch mode" and FWADR-016.
 
   STEP 3B.1 — Pre-create one worktree per item.
 
@@ -704,7 +704,7 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
     Verdict: `partial`
       → Integrator-QA merged some items; others are HELD by open
         Integration claims (IC-NNN) it filed.
-      → IMPORTANT (ADR-017): the Integrator-QA already flipped
+      → IMPORTANT (FWADR-017): the Integrator-QA already flipped
         held items' Status from `in_progress` to `held` on the index
         AND wrote IC-NNN entries to claims.md (folder format) or the
         plan's inline claims section (single-file format), atomically
@@ -819,7 +819,7 @@ HARD RULES:
 - You run every peer call yourself — Executor, Reviewer, QA. Under peer
   dispatch, subagents cannot spawn other subagents. If you catch a
   subagent claiming it "spawned" another subagent, that's a fabrication
-  (see ADR-013).
+  (see FWADR-013).
 - Main only moves at STEP 6 or under emergency bypass. Never per-W-item.
 - 🔍 spikes are a research exception: you run them directly, 2h max, no
   Executor, no diff.

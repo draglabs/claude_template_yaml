@@ -1,4 +1,4 @@
-# ADR-017: Plan-folder restructure with single-source Status
+# FWADR-017: Plan-folder restructure with single-source Status
 
 **Status:** accepted
 **Date:** 2026-04-24
@@ -13,7 +13,7 @@ This shape has two structural problems:
 1. **Status is duplicated** — once in the summary table, once on each W-item. Updating one and forgetting the other produces a stale ledger that lies. The Orchestrator's bootstrap STEP 0 CHECK 1 ("summary-table drift") exists exactly to detect this drift after the fact, which is itself an admission that the structure invites it. The doctrine the framework holds — *eliminate drift bait, don't check for it* — was being violated at a load-bearing surface.
 2. **Plans grow to hundreds of lines.** An adopting project reported plans reaching 600+ lines. Every agent dispatched against the plan loads the full file even when it only needs one W-item's acceptance criteria. Context budget waste compounds across a phase. Plans were exceeding the 150-line/15-W-item limit in `execution-plans/README.md` regularly, suggesting either the limit was wrong for real work or the structure couldn't accommodate it.
 
-ADR-016 added Integration claims as inline sections on the plan file, which compounds the size problem and embeds another mutable surface inside the same file as the W-item ledger.
+FWADR-016 added Integration claims as inline sections on the plan file, which compounds the size problem and embeds another mutable surface inside the same file as the W-item ledger.
 
 ## Decision
 
@@ -47,7 +47,7 @@ The H1 of the file is just the W-id (e.g. `# W-A1`). Title lives on the index ta
 
 ### Claims file
 
-Integration claims (IC-NNN, ADR-016) move from inline on the plan file into a dedicated `claims.md` in the plan folder. The index links to it. The shape, blocking semantics, and triage protocol from ADR-016 carry over unchanged — only the file location changes.
+Integration claims (IC-NNN, FWADR-016) move from inline on the plan file into a dedicated `claims.md` in the plan folder. The index links to it. The shape, blocking semantics, and triage protocol from FWADR-016 carry over unchanged — only the file location changes.
 
 ### State machine: add `held`
 
@@ -60,11 +60,11 @@ pending → in_progress → blocked / done / shipped
                    → blocked (claim reject)
 ```
 
-A W-item is `held` when an open Integration claim names it. Held items have a branch that exists; the branch is preserved during the hold (no Executor activity). This eliminates the ambiguity ADR-016 left in place — under that ADR a claim-held item stayed at `in_progress` with a Notes line, leaving the Status field misleading. Under ADR-017 the field reflects actual state.
+A W-item is `held` when an open Integration claim names it. Held items have a branch that exists; the branch is preserved during the hold (no Executor activity). This eliminates the ambiguity FWADR-016 left in place — under that ADR a claim-held item stayed at `in_progress` with a Notes line, leaving the Status field misleading. Under FWADR-017 the field reflects actual state.
 
 ### Status-write authority follows trigger-agent atomicity
 
-PLAN-WRITE DISCIPLINE (commits 6963426 / c2d3b1a) was originally Orchestrator-only because the Orchestrator was the sole Status writer. Under ADR-017, three agents write Status in different transitions:
+PLAN-WRITE DISCIPLINE (commits 6963426 / c2d3b1a) was originally Orchestrator-only because the Orchestrator was the sole Status writer. Under FWADR-017, three agents write Status in different transitions:
 
 - **Orchestrator** — owns most transitions: `pending → in_progress` (dispatch), `in_progress → done` (merge), `in_progress → blocked` (stumped/integration-failure), `done → shipped` (phase-exit), and `blocked → in_progress` (re-dispatch).
 - **Integrator-QA** — owns `in_progress → held`, written atomically with the IC-NNN claim filing in `claims.md`. One commit, two file writes (claims.md + plan.md).
@@ -74,12 +74,12 @@ PLAN-WRITE DISCIPLINE applies at all three write sites, not just the Orchestrato
 
 ### Soft migration
 
-Adopter plans that predate ADR-017 are single-file `<plan>.md`. They continue to work. The Orchestrator's STEP 0 PRELUDE detects format before any reconciliation:
+Adopter plans that predate FWADR-017 are single-file `<plan>.md`. They continue to work. The Orchestrator's STEP 0 PRELUDE detects format before any reconciliation:
 
 - `docs/execution-plans/<plan>/plan.md` exists → new format (folder). Read the index for ledger; read W-item files on demand.
-- `docs/execution-plans/<plan>.md` exists (and no folder of same name) → old format. Read as before — single file, summary table + per-W-item Status, ADR-013/016 flow unchanged.
+- `docs/execution-plans/<plan>.md` exists (and no folder of same name) → old format. Read as before — single file, summary table + per-W-item Status, FWADR-013/016 flow unchanged.
 
-Both formats are supported during transition. Strategists migrate plans on a schedule that suits the project; the framework does not force migration. New plans drafted after ADR-017 use the folder structure by default.
+Both formats are supported during transition. Strategists migrate plans on a schedule that suits the project; the framework does not force migration. New plans drafted after FWADR-017 use the folder structure by default.
 
 ### Archival
 
@@ -109,7 +109,7 @@ Single move, all artifacts preserved. The plan-folder structure is the same in `
 
 **What this does NOT do:**
 
-- **Does not change ADR-013 or ADR-016 dispatch flow.** Per-task and batch modes both still apply. Sequential-mode peer chain unchanged. Batch-mode Integrator-QA unchanged. Only the *plan storage shape* and the *Status state machine* change.
+- **Does not change FWADR-013 or FWADR-016 dispatch flow.** Per-task and batch modes both still apply. Sequential-mode peer chain unchanged. Batch-mode Integrator-QA unchanged. Only the *plan storage shape* and the *Status state machine* change.
 - **Does not change retry caps, phase-exit QA, or post-promotion smoke.** Those flows reference Status and the plan path; both work unchanged once the path-detection step routes correctly.
 - **Does not change role boundaries.** Strategist drafts plans, Orchestrator dispatches, Integrator-QA integrates, Reviewer reviews per-task. The new write authorities (Integrator on `held`-entry, Strategist on `held`-exit) are scoped narrowly to claim-driven transitions; routine Status flips remain the Orchestrator's.
 - **Does not delete or migrate adopter plans.** Soft migration means existing single-file plans keep working. Strategists migrate on their own schedule.
@@ -126,7 +126,7 @@ Single move, all artifacts preserved. The plan-folder structure is the same in `
 
 - `docs/execution-plans/README.md` documents the new folder structure (index + W-item files + claims file) and the soft-migration rule (both formats supported, format detection in bootstrap).
 - `docs/execution-plans/README.md` Status state machine includes `held`, with transitions named and write-authority annotated per agent.
-- `docs/architecture/adr-016-batch-mode-integrator-qa.md` updated to point at `claims.md` (not inline-on-plan) for claim location.
+- `docs/dev_framework/adrs/fwadr-016-batch-mode-integrator-qa.md` updated to point at `claims.md` (not inline-on-plan) for claim location.
 - `docs/dev_framework/templates/orchestrator-bootstrap.md` STEP 0 PRELUDE routes by format detection (before reconciliation); STEP 0 CHECK 1 conditional on single-file format; new CHECK 6 covers `held` items (must have an open IC-NNN); plan-write sites use new path conventions.
 - `docs/dev_framework/templates/integrator-qa-brief.md` claim-filing step writes `claims.md` and flips index Status to `held` atomically; PLAN-WRITE DISCIPLINE inlined.
 - `docs/dev_framework/strategist.md` claim disposition flips index Status `held → in_progress / blocked` atomically; PLAN-WRITE DISCIPLINE inlined.
@@ -138,14 +138,14 @@ Single move, all artifacts preserved. The plan-folder structure is the same in `
 
 ## Revision (v1.1, 2026-05-01) — Dependency data joins the index
 
-**Problem.** The Parallel Developer's bootstrap (ADR-018) had to read multiple W-item files at scan time to detect non-competing items, because the data needed for collision detection (`Touches`, `Depends on`, parallel-safe surfaces) lived only on the W-item files. Reading N W-item files on every Parallel Dev boot defeated the context-budget rationale for the index/SOW split that this ADR established. Worse, once read, those files couldn't be selectively evicted from the persistent session — `/compact` is whole-session and lossy. So the data leaked into the working session and polluted downstream coding work.
+**Problem.** The Parallel Developer's bootstrap (FWADR-018) had to read multiple W-item files at scan time to detect non-competing items, because the data needed for collision detection (`Touches`, `Depends on`, parallel-safe surfaces) lived only on the W-item files. Reading N W-item files on every Parallel Dev boot defeated the context-budget rationale for the index/SOW split that this ADR established. Worse, once read, those files couldn't be selectively evicted from the persistent session — `/compact` is whole-session and lossy. So the data leaked into the working session and polluted downstream coding work.
 
 **Decision.** Extend this ADR's single-source doctrine to dependency data. Effective immediately:
 
 - The **`Blocked by`** column on the summary table is the single source of dependency data. Comma-separated W-ids that must reach `done` or `shipped` before the item is eligible to claim, or `—` when none.
 - The **`Depends on`** field on the W-item file is **removed**. The "High level" section of a W-item file now has two fields: `What` and `Acceptance criteria`. Dependency information is read from the index alone.
 - The **stream-letter convention** on W-ids becomes load-bearing for Parallel Developer's non-competing scan: items in the same stream (same letter) are assumed to share a code-path area and are skipped against claimed items; items in different streams are assumed non-competing. The convention is enforced by Strategist discipline — named-gap statement in `execution-plans/README.md` §"Index fields" on W-id.
-- **`Parallel-safe` is unchanged in semantics but narrowed in scope** — it gates Orchestrator batch-mode dispatch (ADR-016) only. Parallel Developer (ADR-018) does NOT use this field. The asymmetry is intentional and documented in `execution-plans/README.md` §"Parallel-safe field".
+- **`Parallel-safe` is unchanged in semantics but narrowed in scope** — it gates Orchestrator batch-mode dispatch (FWADR-016) only. Parallel Developer (FWADR-018) does NOT use this field. The asymmetry is intentional and documented in `execution-plans/README.md` §"Parallel-safe field".
 
 **Surfaces updated:** lines 36 (summary-table column list) and 42 (W-item file "High level" enumeration) above are superseded by this Revision. The current canonical specification lives in `execution-plans/README.md` (summary table example, Index fields, W-item file fields), `dev_framework/developer.md` §"Non-competing scan", and `dev_framework/strategist.md` (where Strategist authors `Blocked by` and the stream-letter convention).
 
