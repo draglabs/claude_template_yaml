@@ -176,6 +176,55 @@ for subdir in "$PROJECT_DIR"/*/; do
 done
 
 # ---------------------------------------------------------------------------
+# 4c. Register the userlog UserPromptSubmit hook in the adopter's
+#     .claude/settings.json. The hook SCRIPT (log-user-message.sh) rides
+#     step 4's .claude/hooks/ sync; its REGISTRATION does not, because
+#     settings.json is adopter-owned and deliberately not synced. Injecting it
+#     here — from a hook that already runs on every SessionStart in every
+#     adopter — is the only path that reaches EXISTING adopters, not just ones
+#     that copy .claude/ fresh. Idempotent (keyed on the script name), never
+#     touches permissions or other hooks, validates before replacing.
+#     Requires jq; warn + skip if absent.
+#     See docs/dev_framework/adrs/fwadr-029-userlog-hook.md.
+# ---------------------------------------------------------------------------
+
+USERLOG_SETTINGS="$PROJECT_DIR/.claude/settings.json"
+USERLOG_CMD='bash $CLAUDE_PROJECT_DIR/.claude/hooks/log-user-message.sh'
+
+if command -v jq >/dev/null 2>&1; then
+  mkdir -p "$PROJECT_DIR/.claude"
+  [[ -f "$USERLOG_SETTINGS" ]] || echo '{}' > "$USERLOG_SETTINGS"
+  # Inject only if no UserPromptSubmit hook already references the script.
+  if ! jq -e '(.hooks.UserPromptSubmit // [])
+                | any(.[]?; (.hooks // []) | any(.[]?; (.command // "") | contains("log-user-message.sh")))' \
+        "$USERLOG_SETTINGS" >/dev/null 2>&1; then
+    ul_tmp="$(mktemp)"
+    if jq --arg cmd "$USERLOG_CMD" '
+            .hooks = (.hooks // {})
+            | .hooks.UserPromptSubmit = (.hooks.UserPromptSubmit // [])
+            | .hooks.UserPromptSubmit += [ { "hooks": [ { "type": "command", "command": $cmd, "timeout": 10 } ] } ]
+          ' "$USERLOG_SETTINGS" > "$ul_tmp" 2>/dev/null && [[ -s "$ul_tmp" ]]; then
+      mv "$ul_tmp" "$USERLOG_SETTINGS"
+      echo "[sync-framework] registered userlog UserPromptSubmit hook in .claude/settings.json (FWADR-029)"
+    else
+      rm -f "$ul_tmp"
+      echo "[sync-framework] WARN: failed to register userlog hook in settings.json (FWADR-029)"
+    fi
+  fi
+else
+  echo "[sync-framework] WARN: jq not found — userlog hook not registered (FWADR-029); install jq or add the UserPromptSubmit hook to .claude/settings.json manually"
+fi
+
+# 4d. Keep userlog.md out of git where the parent tracks one — it records raw
+#     user input. Idempotent single-line append; only acts when a .gitignore
+#     already exists (never litters an untracked parent).
+USERLOG_GI="$PROJECT_DIR/.gitignore"
+if [[ -f "$USERLOG_GI" ]] && ! grep -qxF 'userlog.md' "$USERLOG_GI" 2>/dev/null; then
+  printf '\n# Local record of user prompts (FWADR-029); never tracked.\nuserlog.md\n' >> "$USERLOG_GI"
+  echo "[sync-framework] added userlog.md to .gitignore (FWADR-029)"
+fi
+
+# ---------------------------------------------------------------------------
 # 5. Initialize docs/framework_exceptions/ if missing.
 #    Idempotent: only creates files that don't exist. On repeat runs, leaves
 #    adopter's accumulated exceptions untouched.

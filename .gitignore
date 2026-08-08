@@ -8,6 +8,10 @@ mockups/dist/
 .claude/settings.local.json
 .local/
 
+# Local record of user prompts written by the userlog hook (FWADR-029). Records
+# raw user input; never tracked. Same line is ensured in adopters by sync.
+userlog.md
+
 # --- Product repo mount points (split layout, FWADR-021) ----------------------
 # This framework directory is the TRACKED PARENT: it holds CLAUDE.md, docs/,
 # .claude/ and the planning corpus. Each product lives in its OWN git repo,
