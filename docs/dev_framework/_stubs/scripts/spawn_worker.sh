@@ -16,6 +16,10 @@
 # Customized per project ONLY via .env (WORKER_TERMINAL) — the project path is
 # self-located, so there is no per-repo body to fill. macOS only.
 #
+# First run: macOS shows a one-time Automation prompt to let your terminal control
+# the target app — grant it, then spawns are instant. Run this from an interactive
+# terminal (a headless context can't answer that prompt; the AppleEvent times out).
+#
 # Dry run: WORKER_DRYRUN=1 spawn_worker.sh <name> [prompt]  — prints the plan,
 # opens nothing. Works on any platform (useful for testing).
 
@@ -81,19 +85,32 @@ if [[ -n "$DRYRUN" ]]; then
 fi
 
 # --- open the terminal --------------------------------------------------------
+# The osascript is wrapped in `with timeout` so a first run that hits the macOS
+# Automation-permission (TCC) prompt fails fast with guidance instead of hanging
+# the full 120s default AppleEvent timeout. On failure the launcher is kept so
+# the printed manual fallback works.
+open_rc=0
 case "$WORKER_TERMINAL" in
   iterm|iTerm|iterm2|iTerm2)
-    osascript <<OSA
-tell application "iTerm"
-  create window with default profile
-  tell current session of current window to write text "zsh '$LAUNCHER'"
-  activate
-end tell
+    osascript <<OSA || open_rc=$?
+with timeout of 30 seconds
+  tell application "iTerm"
+    create window with default profile
+    tell current session of current window to write text "zsh '$LAUNCHER'"
+    activate
+  end tell
+end timeout
 OSA
     ;;
   terminal|Terminal|terminal.app|Terminal.app)
-    osascript -e "tell application \"Terminal\" to do script \"zsh '$LAUNCHER'\""
-    osascript -e 'tell application "Terminal" to activate'
+    osascript <<OSA || open_rc=$?
+with timeout of 30 seconds
+  tell application "Terminal"
+    do script "zsh '$LAUNCHER'"
+    activate
+  end tell
+end timeout
+OSA
     ;;
   *)
     echo "spawn_worker.sh: unknown WORKER_TERMINAL='$WORKER_TERMINAL' (use 'iterm' or 'terminal')" >&2
@@ -101,5 +118,15 @@ OSA
     exit 2
     ;;
 esac
+
+if [[ "$open_rc" -ne 0 ]]; then
+  echo "spawn_worker.sh: could not drive $WORKER_TERMINAL via osascript (rc=$open_rc)." >&2
+  echo "  First run? Grant Automation permission and retry: System Settings → Privacy &" >&2
+  echo "  Security → Automation → allow your terminal to control $WORKER_TERMINAL." >&2
+  echo "  (An AppleEvent timeout / -1712 is almost always this; it also fails from a" >&2
+  echo "  non-interactive context that can't answer the prompt.)" >&2
+  echo "  Manual fallback — open a terminal and run:  zsh '$LAUNCHER'" >&2
+  exit 1
+fi
 
 echo "spawned worker '$NAME' in $WORKER_TERMINAL at $PROJECT_DIR (Remote Control enabled)"

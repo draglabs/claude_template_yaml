@@ -65,6 +65,14 @@ worker phone-reachable.
 
 - **macOS only** (osascript). On other platforms it prints the exact manual
   command and exits non-zero — a named gap, not a silent failure.
+- **First run needs macOS Automation (TCC) permission** to let the invoking
+  terminal control the target app; the initial spawn triggers a one-time "allow
+  control of iTerm2/Terminal" prompt. Grant it once, then spawns are instant.
+  From a non-interactive context that can't answer the prompt (e.g. a headless
+  agent Bash call), the AppleEvent times out — so `spawn_worker.sh` is run from
+  an interactive terminal, and the osascript is wrapped in `with timeout of 30
+  seconds` to fail fast with guidance rather than hang the 120s default. This was
+  found by a live smoke test; the dry run alone could not surface it.
 - **Copy-if-missing stub**, like the other dev-slot scripts (FWADR-019): existing
   adopters get it on next sync only if absent, so a future change to the script
   does not auto-propagate. Acceptable for an ops helper; consistent with the
