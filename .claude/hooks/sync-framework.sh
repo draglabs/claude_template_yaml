@@ -300,6 +300,7 @@ DEV_SLOT_STUBS=(
   "scripts/check-researcher-scope.sh"
   "scripts/doc_churn_audit.sh"
   "scripts/check-curator-scope.sh"
+  "scripts/spawn_worker.sh"
   "docs/dev/slots.yaml"
   ".env.example"
 )
