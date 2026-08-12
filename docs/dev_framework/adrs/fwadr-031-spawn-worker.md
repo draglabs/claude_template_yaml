@@ -86,3 +86,16 @@ worker phone-reachable.
 - **One worker per name.** Names are the operator's handle (`dev-auth`, `orch-1`);
   the script does not enforce uniqueness. Reusing a name just launches another
   session with the same display name.
+
+## Revision v1.1 (2026-08-11)
+
+The project directory is now located by **walking up from the script to the
+nearest ancestor that holds a `.env`**, rather than assuming "parent of
+`scripts/`". The worker launches there — the planning directory where `.env`,
+`CLAUDE.md`, and the planning git repo live (split layout, FWADR-021), which is
+also where `.env` must be sourced. This resolves correctly wherever the script
+sits (canonically `$PROJECT_DIR/scripts/`, but also the template's own
+`_stubs/scripts/`), falling back to the parent of `scripts/` only if no `.env` is
+found upward. Motivated by a spawned worker opening in `docs/dev_framework/_stubs`
+during testing instead of the project root — the old "parent of `scripts/`" rule
+was correct only for the canonical deploy location.

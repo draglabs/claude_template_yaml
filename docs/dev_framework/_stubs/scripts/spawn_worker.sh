@@ -13,8 +13,9 @@
 # so the worker joins your phone's session list. Sourcing .env also runs the
 # FWADR-030 git-auth wiring, so the worker's git is authenticated too.
 #
-# Customized per project ONLY via .env (WORKER_TERMINAL) — the project path is
-# self-located, so there is no per-repo body to fill. macOS only.
+# Customized per project ONLY via .env (WORKER_TERMINAL) — the project (planning)
+# dir is located by walking up to the nearest .env, so there is no per-repo body
+# to fill. macOS only.
 #
 # First run: macOS shows a one-time Automation prompt to let your terminal control
 # the target app — grant it, then spawns are instant. Run this from an interactive
@@ -25,9 +26,21 @@
 
 set -euo pipefail
 
-# --- locate the project root (this script lives at $PROJECT_DIR/scripts/) ------
+# --- locate the project (planning) directory ----------------------------------
+# The worker must launch where the project's .env and planning git repo live —
+# the parent tracking dir under split layout (FWADR-021), NOT the scripts/ folder.
+# Anchor on the .env: walk up from this script to the nearest ancestor that holds
+# a .env, and use that. This lands in the planning dir wherever the script sits
+# (canonically $PROJECT_DIR/scripts/, but also e.g. the template's _stubs/). Falls
+# back to the parent of scripts/ only if no .env is found upward.
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd -P)"
-PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+PROJECT_DIR=""
+_d="$SCRIPT_DIR"
+while [ "$_d" != "/" ]; do
+  if [ -f "$_d/.env" ]; then PROJECT_DIR="$_d"; break; fi
+  _d="$(dirname "$_d")"
+done
+[ -z "$PROJECT_DIR" ] && PROJECT_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
 
 # --- args ---------------------------------------------------------------------
 NAME="${1:-}"
