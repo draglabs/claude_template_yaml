@@ -17,6 +17,35 @@ PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
 PROJECT_DIR="$(cd "$PROJECT_DIR" 2>/dev/null && pwd -P)"
 
 # ---------------------------------------------------------------------------
+# 0. Launch-env binding check (FWADR-032).
+#    Hooks inherit Claude's process env. If a project .env that declares
+#    PROJECT_NAME exists but PROJECT_NAME is absent from this process env,
+#    Claude was launched without sourcing .env — so MCP credentials and the
+#    FWADR-030 git-auth auto-wire are dead for this whole session. Can't be
+#    repaired from here (env must precede the process): NOTICE + relaunch
+#    instruction. The grep guard keeps app-only .env files (no framework
+#    variables) from false-positiving.
+# ---------------------------------------------------------------------------
+
+ENV_CANDIDATE=""
+if [[ -f "$PROJECT_DIR/.env" ]]; then
+  ENV_CANDIDATE="$PROJECT_DIR/.env"
+else
+  for subdir in "$PROJECT_DIR"/*/; do
+    if [[ -d "$subdir/.git" && -f "$subdir/.env" ]]; then
+      ENV_CANDIDATE="$subdir/.env"
+      break
+    fi
+  done
+fi
+
+if [[ -n "$ENV_CANDIDATE" && -z "${PROJECT_NAME:-}" ]] \
+   && grep -qE '^PROJECT_NAME=' "$ENV_CANDIDATE" 2>/dev/null; then
+  echo "[sync-framework] NOTICE: Claude was launched WITHOUT sourcing $ENV_CANDIDATE — MCP credentials and git auth (FWADR-030) will NOT bind this session."
+  echo "[sync-framework] Fix: exit and relaunch via 'claude-env' (or 'claude-env-yolo' for permission-bypass). Launcher snippet: docs/dev_framework/_stubs/shell/claude-env.zsh (FWADR-032)."
+fi
+
+# ---------------------------------------------------------------------------
 # 1. Resolve template root, in this order:
 #    (a) CLAUDE_TEMPLATE_ROOT= line in $PROJECT_DIR/.env
 #    (b) CLAUDE_TEMPLATE_ROOT= line in any immediate subdir's .env that has .git/

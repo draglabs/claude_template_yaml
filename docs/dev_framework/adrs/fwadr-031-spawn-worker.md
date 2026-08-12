@@ -40,10 +40,12 @@ covers a role bootstrap (`"you are the Developer"`) or any task.
 Design choices:
 
 - **Self-contained, not dependent on the user's `claude-env`.** `claude-env` is a
-  personal shell function (in the user's `~/.zshrc`), not framework-synced, so an
-  adopter may not have it. The script reimplements its core (cd + `source .env`)
-  inline, which also runs the FWADR-030 git-auth wiring, so the worker's git is
-  authenticated like any `claude-env` session.
+  shell-rc function installed per machine (framework-shipped and confirmed at
+  first contact since [FWADR-032](fwadr-032-claude-env-launcher.md), but
+  installation remains opt-in), so an adopter may not have it. The script
+  reimplements its core (cd + `source .env`) inline, which also runs the
+  FWADR-030 git-auth wiring, so the worker's git is authenticated like any
+  `claude-env` session.
 - **Customized only via `.env`.** `WORKER_TERMINAL` (`iterm` default, or
   `terminal`) picks the terminal app; the project path is self-located from the
   script's own position. So the Strategist "customizes at setup" by setting one

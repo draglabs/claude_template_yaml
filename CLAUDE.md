@@ -101,11 +101,14 @@ The template root is resolved via `$PROJECT_DIR/.env` `CLAUDE_TEMPLATE_ROOT=` li
 
 ## MCP (.mcp.json)
 
-Claude Code expands env vars from its **own process env**, not `.env`. Export before starting:
+Claude Code expands env vars from its **own process env**, not `.env`. Launch via the **`claude-env` launcher pair** ([FWADR-032](docs/dev_framework/adrs/fwadr-032-claude-env-launcher.md)) — installed into your shell rc at first contact (Strategist interview Block 0), snippet at [`docs/dev_framework/_stubs/shell/claude-env.zsh`](docs/dev_framework/_stubs/shell/claude-env.zsh):
 
 ```bash
-set -a; source .env; set +a    # then run claude
+claude-env [dir]         # source .env, then claude (normal permission prompts)
+claude-env-yolo [dir]    # same, + --dangerously-skip-permissions
 ```
+
+Both refuse to launch without a `.env` in the target directory. Manual fallback: `set -a; source .env; set +a` then `claude`. Sessions launched bare get a `[sync-framework]` NOTICE at session start — MCP credentials and git auth ([FWADR-030](docs/dev_framework/adrs/fwadr-030-git-auth-recipe.md)) will not bind until relaunch.
 
 Docker MCP is local-only. Never point it at production. Treat MCP servers the same as any other runtime component — adding one counts as an architectural addition (see "Docs before code" above).
 
