@@ -39,7 +39,7 @@ Script is pure bash (no jq / python dependency) so it runs on any dev machine th
 **What this costs:**
 
 - ~50 lines of shell and ~15 lines of settings JSON added to every project that adopts the template.
-- A small startup delay at every session start while the hook runs. Bounded (script does no I/O beyond reading stdin).
+- A small startup delay at every session start while the hook runs. Originally the script did no I/O beyond reading stdin; Revision v1.1 adds one quiet `git fetch` per project repo (bounded by prompt/stall guards — see below).
 - The hook itself is English-only once it has injected — the agent still has to choose to obey. Acceptable because the injection happens at the one moment the agent is most likely to accept orientation instructions (immediately post-reset, before the agent has committed to any interpretation).
 
 **What this does NOT do:**
@@ -62,3 +62,32 @@ Script is pure bash (no jq / python dependency) so it runs on any dev machine th
 - Manual test recorded in the PR: run `/clear` in a session that adopts the template, verify the injected text appears in the next response's context.
 - Manual test recorded in the PR: trigger compaction (fill context near cap), verify `source: "compact"` branch fires.
 - `session-policy.md` gains a section documenting the hook and linking to this ADR, so adopters understand it's part of the SOP and not magic.
+
+## Revision v1.1 (2026-08-12) — code-repo staleness NOTICE
+
+Adopter field case (navy_exam_tutor EX-007): CI auto-promotion kept origin
+moving while a local checkout sat idle; an audit session reasoned from a tree
+87 commits behind origin and produced false conclusions ("uncommitted" work
+that had landed weeks earlier). The framework's only fetch step was
+`developer.md` lifecycle step 1, which covers the W-item claim path — ad-hoc
+diagnosis/audit sessions had no freshness mechanism at all. A stale tree is
+invisible precisely when it is misleading, so the session is the wrong actor
+to trigger its own fetch — same actor problem this ADR already solved for
+re-orientation.
+
+The hook now runs a staleness check for **every** session-start source, over
+the flat/tracked-parent repo (`$PROJECT_DIR/.git`) and every immediate
+subdirectory with `.git/` (split layout, multi-repo):
+
+- Quiet `git fetch --no-tags origin` per repo, guarded against hangs:
+  `GIT_TERMINAL_PROMPT=0` (a credential prompt fails instead of blocking —
+  relevant for sessions launched without `.env`, FWADR-032) and
+  `http.lowSpeedLimit/lowSpeedTime` (a stalled transfer aborts in ~10s).
+- Emits `[session-reorient] Code-repo staleness NOTICE` naming each repo whose
+  local `dev`/`main` trails its origin counterpart, with the commit count —
+  same pattern as the sync hook's flat-layout NOTICE.
+- A failed fetch reports "staleness UNKNOWN" for that repo rather than staying
+  silent — silence is indistinguishable from freshness, which is the exact
+  failure being fixed. Repos without an `origin` remote are skipped.
+- Everything is current → no output. Quiet means healthy. Soft-fail
+  throughout; the hook never blocks session start.

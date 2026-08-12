@@ -135,3 +135,51 @@ cat <<'EOF'
     tickets to define it first. Pausing a requested deliverable to do upstream
     work needs the user's explicit agreement — it turns one doc into a phase.
 EOF
+
+# Code-repo staleness check — runs for EVERY session-start source (FWADR-012
+# Revision v1.1). CI and auto-promotion keep origin moving while local
+# checkouts sit idle; a stale tree is misleading exactly when it looks normal
+# (field case: an audit session reasoned from a checkout 87 commits behind
+# origin and produced false conclusions). Quietly fetch each repo's origin,
+# then NOTICE when local dev/main trail their remotes. Soft-fail throughout:
+# a failed fetch reports "staleness UNKNOWN" (never blocks session start), and
+# GIT_TERMINAL_PROMPT=0 + http.lowSpeed* keep a dead network from hanging the
+# hook on a credential prompt or stalled transfer.
+
+PROJECT_DIR="${CLAUDE_PROJECT_DIR:-$(pwd)}"
+
+check_repo_staleness() {
+  local repo="$1" name branch behind
+  name="$(basename "$repo")"
+  [[ -d "$repo/.git" ]] || return 0
+  git -C "$repo" remote get-url origin >/dev/null 2>&1 || return 0
+  if ! GIT_TERMINAL_PROMPT=0 git -C "$repo" \
+       -c http.lowSpeedLimit=1 -c http.lowSpeedTime=10 \
+       fetch --quiet --no-tags origin 2>/dev/null; then
+    echo "  - $name: could not fetch origin (offline or unauthenticated) — staleness UNKNOWN; do not trust local branch freshness."
+    return 0
+  fi
+  for branch in dev main; do
+    git -C "$repo" rev-parse --verify -q "refs/heads/$branch" >/dev/null || continue
+    git -C "$repo" rev-parse --verify -q "refs/remotes/origin/$branch" >/dev/null || continue
+    behind="$(git -C "$repo" rev-list --count "refs/heads/$branch..refs/remotes/origin/$branch" 2>/dev/null)"
+    if [[ -n "$behind" && "$behind" -gt 0 ]]; then
+      echo "  - $name: local $branch is $behind commit(s) behind origin/$branch — fetch/pull before reasoning from this tree."
+    fi
+  done
+}
+
+STALENESS="$(
+  check_repo_staleness "$PROJECT_DIR"
+  for subdir in "$PROJECT_DIR"/*/; do
+    [[ -d "$subdir/.git" ]] && check_repo_staleness "${subdir%/}"
+  done
+)"
+
+if [[ -n "$STALENESS" ]]; then
+  cat <<EOF
+
+[session-reorient] Code-repo staleness NOTICE (origin fetched just now):
+$STALENESS
+EOF
+fi
