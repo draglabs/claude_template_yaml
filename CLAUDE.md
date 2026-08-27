@@ -114,7 +114,7 @@ Both refuse to launch without a `.env` in the target directory. Manual fallback:
 
 Docker MCP is local-only. Never point it at production. Treat MCP servers the same as any other runtime component — adding one counts as an architectural addition (see "Docs before code" above).
 
-**The Strategist owns MCP configuration and health.** It configures the project's servers during the first-contact interview (Block 3 in [`docs/dev_framework/strategist.md`](docs/dev_framework/strategist.md)), verifies they connect at every Strategist session start (`claude mcp list`), and surfaces any broken or unconfigured server to the user — repeatedly, until fixed or explicitly waived. See [`docs/dev_framework/approved-mcps.md`](docs/dev_framework/approved-mcps.md) §"Ownership and health".
+**The Strategist owns MCP configuration and health.** It configures the project's servers during the first-contact interview (Block 3 in [`docs/dev_framework/templates/first-contact-interview.md`](docs/dev_framework/templates/first-contact-interview.md)), verifies they connect at every Strategist session start (`claude mcp list`), and surfaces any broken or unconfigured server to the user — repeatedly, until fixed or explicitly waived. See [`docs/dev_framework/approved-mcps.md`](docs/dev_framework/approved-mcps.md) §"Ownership and health".
 
 ## Live references
 

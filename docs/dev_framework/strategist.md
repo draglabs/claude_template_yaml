@@ -9,8 +9,8 @@ The Strategist is a persistent Claude Code session (top tier — see [`session-p
 - **Writes operational docs (runbooks, procedures, checklists).** A first-class Strategist artifact class, distinct from planning docs: a *planning* doc says what will be built and why; an *operational* doc says how a human or agent performs a recurring procedure that already exists — orient, run, verify, recover. Runbooks, SOPs, and operator checklists are all this class. **Location is project-chosen** — the framework prescribes no `docs/runbooks/` convention; if the user names a path or an existing sibling document ("next to the other runbook"), that path is authoritative and is not a decision to re-open. A runbook that describes an agent operating a capability is a *description of an existing procedure*, not a proposal to expand scope — do not treat it as unplanned work, and do not answer a request for one by writing a constraint against the capability it documents.
 - **Maintains `dev_framework_exceptions.md`.** Records per-project deviations from the canonical framework SOP. Framework docs themselves (`session-policy.md`, the brief templates, `coding-standards.md`, `context-management.md`, etc.) are canonical — they get copy-pasted from the template on update and are NOT edited per-project. If a project needs to deviate, the Strategist records the deviation in `dev_framework_exceptions.md` with a mechanism; never by forking the framework docs.
 - **Audits and prunes template-artifact stubs.** Adopters inherit a set of placeholder docs from the template at initialization (e.g., `adr-000-starter-stub.md`, `stack.md`, `data-model.md`, `system-overview.md`, and any sample plan folder that came with the initial copy). These accumulate as cruft once the project has real content. At every phase boundary the Strategist walks the §"Stub audit" checklist below and removes / replaces / archives any artifact that no longer serves the project, while protecting items that ARE framework spec (the framework `README.md` files inside `docs/execution-plans/`, `docs/architecture/`, `docs/archive/`, and `references/` are framework reference material, not stubs — never delete them).
-- **Conducts the first-contact interview at project initialization.** Before any other role can do meaningful work, the Strategist runs a structured intake with the user that confirms the `claude-env` launcher is in the user's shell rc (Block 0 — [FWADR-032](adrs/fwadr-032-claude-env-launcher.md); bare-launched sessions never bind MCP credentials or git auth) and locks down the project's identity variables (`PROJECT_SUB`, `PROJECT_WEBSITE`, `PROJECT_PORTS`, `PROJECT_NAME`, `DEV_ENVIRONMENT_MODE`, `DEFAULT_CODE_SUBDIR`) and the dev-slot shape (HTTP surface y/n, secondary ports per slot). The answers land in **two surfaces, kept in sync**: `$PROJECT_DIR/.env` is the canonical machine-readable source (scripts source it), and CLAUDE.md is the human-readable mirror (agents + humans reading the doc see the inline bullets). `scripts/setup_dev_slots.sh` sources `.env` and halts if `PROJECT_SUB` or `PROJECT_PORTS` are still `PLACEHOLDER` — the Developer can't bring up a local runtime until the interview is done. Full question list and fill-format in §"First-contact interview" below.
-- **Owns project MCP configuration and health.** The Strategist is the single role responsible for the project's MCP servers: it fills `.mcp.json` at first contact (§"First-contact interview" Block 3), keeps every server documented ([`approved-mcps.md`](approved-mcps.md) for framework-shipped servers; `dev_framework_exceptions.md` §"Project MCPs" for adopter-added ones), and verifies servers actually connect at every Strategist session start (§"MCP health check" below). A broken, missing, or unconfigured server is surfaced to the user in the Strategist's first response of the session — with the fix path — and re-surfaced every session until it's fixed or the user explicitly waives it (record waivers in `dev_framework_exceptions.md`). Never silently work around a dead MCP; the Strategist's own code-awareness (GitNexus) depends on this surface being healthy.
+- **Conducts the first-contact interview at project initialization.** Before any other role can do meaningful work, the Strategist runs a structured intake with the user that confirms the `claude-env` launcher is in the user's shell rc (Block 0 — [FWADR-032](adrs/fwadr-032-claude-env-launcher.md); bare-launched sessions never bind MCP credentials or git auth) and locks down the project's identity variables (`PROJECT_SUB`, `PROJECT_WEBSITE`, `PROJECT_PORTS`, `PROJECT_NAME`, `DEV_ENVIRONMENT_MODE`, `DEFAULT_CODE_SUBDIR`) and the dev-slot shape (HTTP surface y/n, secondary ports per slot). The answers land in **two surfaces, kept in sync**: `$PROJECT_DIR/.env` is the canonical machine-readable source (scripts source it), and CLAUDE.md is the human-readable mirror (agents + humans reading the doc see the inline bullets). `scripts/setup_dev_slots.sh` sources `.env` and halts if `PROJECT_SUB` or `PROJECT_PORTS` are still `PLACEHOLDER` — the Developer can't bring up a local runtime until the interview is done. Full question list and fill-format in [`templates/first-contact-interview.md`](templates/first-contact-interview.md) (Layer 2 — load when running it; trigger in §"First-contact interview" below).
+- **Owns project MCP configuration and health.** The Strategist is the single role responsible for the project's MCP servers: it fills `.mcp.json` at first contact (Block 3 of [`templates/first-contact-interview.md`](templates/first-contact-interview.md)), keeps every server documented ([`approved-mcps.md`](approved-mcps.md) for framework-shipped servers; `dev_framework_exceptions.md` §"Project MCPs" for adopter-added ones), and verifies servers actually connect at every Strategist session start (§"MCP health check" below). A broken, missing, or unconfigured server is surfaced to the user in the Strategist's first response of the session — with the fix path — and re-surfaced every session until it's fixed or the user explicitly waives it (record waivers in `dev_framework_exceptions.md`). Never silently work around a dead MCP; the Strategist's own code-awareness (GitNexus) depends on this surface being healthy.
 - **Cross-references everything.** Runs alignment audits across the doc corpus. Catches stale status markers, broken links, naming drift, contradictions between docs, and premature completion claims. Naming drift includes **git-host drift**: docs, plans, or its own output saying "GitHub" where the project's git host is meant. Git policy is stated in git terms (branches, merges, PRs/MRs, labels), not host terms — see [`dev_framework.md`](dev_framework.md) §"Git-host neutrality"; host-specific commands are always qualified by `GIT_HOST`.
 - **Verifies phase completion via reports, not code reads.** When the Orchestrator claims a phase is done, the Strategist checks the QA report, CI status, and migration log. If it needs to verify a code-level claim, it spawns a Code Consultant subagent rather than reading `src/` itself.
 - **Designs roles and processes.** Defines how other agents operate — session policy, designer role, execution plan conventions.
@@ -175,86 +175,9 @@ Race-free shape: create a `planning/<topic>-amendment` branch off `dev`, edit th
 
 ## First-contact interview
 
-The Strategist's very first session on a fresh project (after the template has been initialized into a parent directory) runs a structured intake with the user. The goal: a confirmed `claude-env` launcher in the user's shell rc (Block 0), a filled `$PROJECT_DIR/.env`, a CLAUDE.md with no surviving `{{...}}` placeholders, a slots.yaml with the right shape, and a working `.mcp.json` (every server connected or explicitly waived) — BEFORE any other role does meaningful work or before the Developer runs `scripts/setup_dev_slots.sh`.
+The Strategist's very first session on a fresh project runs a structured intake with the user — BEFORE any other role does meaningful work. The goal: a confirmed `claude-env` launcher in the user's shell rc, a filled `$PROJECT_DIR/.env`, a CLAUDE.md with no surviving `{{...}}` placeholders, a slots.yaml with the right shape, and a working `.mcp.json` (every server connected or explicitly waived). Not optional: `scripts/setup_dev_slots.sh` halts on `PLACEHOLDER` values ([FWADR-019](adrs/fwadr-019-dev-slots-and-deploy-stubs.md) Revision v1.1), so the Developer can't bring up a runtime until this is done.
 
-This isn't optional — `scripts/setup_dev_slots.sh` sources `.env` and halts on `PLACEHOLDER` values for `PROJECT_SUB` or `PROJECT_PORTS` (see [FWADR-019](adrs/fwadr-019-dev-slots-and-deploy-stubs.md) Revision v1.1), so the Developer's first launch attempt will fail until the Strategist has done this.
-
-### Two surfaces, kept in sync
-
-Project variables live in **two places**:
-
-- **`$PROJECT_DIR/.env`** — canonical machine-readable source. Scripts source this file (single line `source .env` and they have everything). The framework ships `.env.example` as a starter; the adopter copies it to `.env` (gitignored) on first init and the Strategist fills the values.
-- **`CLAUDE.md`** — human-readable mirror. The inline `{{...}}` bullets get replaced with concrete values so humans and agents reading CLAUDE.md see the project identity at a glance.
-
-**The Strategist fills BOTH in the same interview pass**, value-by-value, atomically. Drift between the two is a bug the §"Stub audit" catches.
-
-### Question list
-
-Run through these in order. Each one fills both a `.env` variable and the corresponding CLAUDE.md surface. Don't accept "let's figure that out later" answers — that's how you end up with `{{sub}}` leaking into other sessions' chat output.
-
-**Block 0 — launch environment (fills the user's shell rc; [FWADR-032](adrs/fwadr-032-claude-env-launcher.md)):**
-
-Everything downstream assumes Claude Code was launched with `.env` in its process env — MCP credentials and the FWADR-030 git-auth auto-wire both silently fail otherwise. The canonical launch path is the `claude-env` launcher pair (snippet: [`_stubs/shell/claude-env.zsh`](_stubs/shell/claude-env.zsh)): `claude-env` (safe, normal permission prompts) and `claude-env-yolo` (adds `--dangerously-skip-permissions`). The choice between them is made at every launch by name — nothing stores a permission posture.
-
-| Question | Where it lands |
-|---|---|
-| Is the `claude-env` launcher installed in your shell rc? (With the user's go-ahead — the rc is outside the project tree — check: `grep -q 'claude-env' ~/.zshrc`.) If not: present both variants and ask which to install — safe only, or safe + yolo. Offer either a `source <path-to-snippet>` line or pasting the functions verbatim. | The user's shell rc (e.g. `~/.zshrc`), edited only on explicit approval. Never installed silently. |
-| Confirm the user knows the consequence of skipping: every session launched bare gets the sync hook's step-0 NOTICE (unbound MCP creds + git auth) until relaunched via `claude-env`. | Nowhere — this is the informed-decline path. The NOTICE is the standing enforcement. |
-
-**Block 1 — project identity (fills .env + CLAUDE.md outside the managed block):**
-
-| Question | `.env` variable | CLAUDE.md target |
-|---|---|---|
-| What is this project called? (slug) | `PROJECT_NAME=auto-portal` | `**{{project_name}}**` on the §"What this is" line |
-| One sentence: what does it do? | (no .env mirror) | `{{one-line description}}` on the same line |
-| What's the project subdomain? Examples: `auto`, `analytics`, `myapp`. Used in URLs like `<sub>.<website>.com` (prod) and `<slot>.<sub>.localhost` (dev). | `PROJECT_SUB=auto` | `{{sub}}` bullet |
-| What's the parent domain? Examples: `jumpermedia.co`, `draglabs.com`. | `PROJECT_WEBSITE=jumpermedia.co` | `{{website}}` bullet |
-| What port range should I allocate? Need at least 4 contiguous ports for dev slots, more if there are HTTP + DB + other services. Consider collisions with other projects on the same machine. | `PROJECT_PORTS=3050-3060` | `{{ports}}` bullet |
-| Local-hosted or remote-hosted dev environment? Local = dev runtimes on the user's machine. Remote = dev runtimes on a shared dev server. | `DEV_ENVIRONMENT_MODE=local-hosted` | `{{local-hosted \| remote-hosted}}` in §"Dev environment mode" |
-| Where is this repo hosted — GitHub, self-hosted GitLab, or something else? **Ask; never assume GitHub.** Users may run multiple hosts (e.g. GitHub for some projects, a private GitLab for others), and a repo created on the wrong host is expensive confusion. The answer determines the host CLI (`gh` vs `glab`), which MCP applies, and where PRs/MRs live. Self-hosted: also capture the base URL. | `GIT_HOST=gitlab` (+ `GIT_HOST_URL=https://...` if self-hosted) | `{{git_host}}` bullet |
-| Recommend enabling **host-side branch protection on `main`** (belt-and-braces over the FWADR-023 pre-push guard, which is machine-local): GitHub → repo Settings → Branches; GitLab → protected branches. For `GIT_HOST=other`, record whether an equivalent exists in `dev_framework_exceptions.md`. | (no .env mirror — configured on the git host) | (none) |
-| One-line current-status summary (can be "stub state, no work yet"). | (no .env mirror) | `{{current phase/status summary}}` on the **Status:** line |
-| Split layout: which subdirectory holds the primary code repo? | `DEFAULT_CODE_SUBDIR=my-repo` | (no CLAUDE.md mirror — `.env` only) |
-
-**Block 2 — dev-slot shape (fills slots.yaml + informs Developer / Reviewer):**
-
-| Question | Where it lands |
-|---|---|
-| Does this project expose an HTTP surface that needs Caddy routing? Most web apps: yes. CLI tools, libraries, headless scripts, data-pipeline jobs: no. | `setup_dev_slots.sh` asks this interactively and writes `http_surface: true \| false` (top-level in slots.yaml). If `false`, Caddy block generation is skipped; the Reviewer's QA-target MED rule no-ops. |
-| Does each slot need secondary ports for project services? Examples: per-slot Postgres for test isolation (`db: 5441` on dev1, `5442` on dev2, …), per-slot Redis, per-slot message-queue. | Project-managed: edit `extras: { db: ..., redis: ... }` under each slot in `slots.yaml` by hand after running `setup_dev_slots.sh`. The script prints the edit pattern but does NOT write extras. |
-
-**Block 3 — MCP servers (fills `.mcp.json` + the MCP roster docs):**
-
-| Question | Where it lands |
-|---|---|
-| Do the shipped defaults connect on this machine? (`.mcp.json` is seeded from `_stubs/.mcp.json` with docker + gitnexus.) Run `claude mcp list`; walk the gitnexus adopter-setup steps (Node ≥ 20, `gitnexus index .`, restart, verify). | Fixes land in `.mcp.json` (e.g. the nvm direct-binary path — see [`approved-mcps.md`](approved-mcps.md) §"gitnexus"). Anything still broken at interview end is reported to the user with the fix + restart instruction, and re-flagged by the session-start health check until resolved. |
-| Which project-specific MCP servers does this project need beyond the defaults? Examples: postgres/mysql for direct schema queries, a gitlab server when `GIT_HOST=gitlab` (the github MCP only applies to GitHub-hosted repos), slack for alerts, linear/jira if issues live off the git host. | Each addition follows [`approved-mcps.md`](approved-mcps.md) §"How to add a new MCP": `.mcp.json` entry + a doc entry in the same commit. In adopter repos the doc entry goes in `dev_framework_exceptions.md` §"Project MCPs" (NOT `approved-mcps.md` — that file is destructively synced). Credentials via env — remind the user that launching via `claude-env` (Block 0) is what binds them. |
-| Any shipped default this project will never use? | User waiver, recorded in `dev_framework_exceptions.md` so the health check stops flagging it. Remove the `.mcp.json` entry or leave it waived — user's call. |
-
-### Fill format for CLAUDE.md placeholders
-
-The template ships bullets in a "scaffolding" shape:
-```markdown
-- `{{sub}}` — this project's subdomain (e.g. `myapp`)
-- `{{ports}}` — local port range allocated to this project (e.g. `3050-3060` or `305*`); local dev runtimes ...
-```
-
-The Strategist replaces the `(e.g. \`...\`)` parenthetical with a concrete value bullet:
-```markdown
-- `{{sub}}` — this project's subdomain: `auto`
-- `{{ports}}` — local port range allocated to this project: 3050-3060; local dev runtimes ...
-```
-
-For `{{project_name}}` / `{{one-line description}}` / `{{current phase/status summary}}` / `{{local-hosted | remote-hosted}}`: replace the literal placeholder text with the value — these aren't parsed by scripts, just read by humans and agents reading CLAUDE.md.
-
-### When to run the interview
-
-- **Once, on the Strategist's very first session for a project.** This is part of "the first 30 minutes of a fresh project" — happens before any plan, before any ADR, before the Developer can bring up a runtime.
-- **Re-run partial intake when project identity changes** — domain rename, sub change, port-range collision discovered, HTTP surface added later. Update `.env`, CLAUDE.md, and `slots.yaml` together; commit; tell the user the new shape so they re-orient. Drift between `.env` and CLAUDE.md after such a change is the bug the stub-audit row catches.
-
-### Disposition
-
-Each interview answer is a small commit that touches both `.env` and CLAUDE.md (under flat / tracked-parent layout: one commit covering both files; under untracked-parent: just file edits, no commit). Group the interview into one commit (`chore: first-contact interview — project identity confirmed`); the dev-slot interactive setup (`./scripts/setup_dev_slots.sh` from `$PROJECT_DIR`) lands a second commit for slots.yaml.
+**Load [`templates/first-contact-interview.md`](templates/first-contact-interview.md) when running it** (Layer 2 — question Blocks 0–3, the two-surface `.env`↔CLAUDE.md fill rules, fill formats, and disposition). Run it **once** on the very first Strategist session; **re-run partial intake** when project identity changes (domain rename, sub change, port-range collision, HTTP surface added later) — updating `.env`, CLAUDE.md, and `slots.yaml` together.
 
 ---
 

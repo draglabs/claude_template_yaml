@@ -40,7 +40,8 @@ launch-without-env mechanically detected:
    Both refuse to launch when `$PWD` has no `.env` — fail loudly, never a
    half-bound session.
 
-2. **First-contact interview Block 0** (`strategist.md`): before Block 1, the
+2. **First-contact interview Block 0** (`templates/first-contact-interview.md`;
+   trigger in `strategist.md` §"First-contact interview"): before Block 1, the
    Strategist confirms the launcher is installed in the user's shell rc —
    presenting both variants and letting the user choose what to install (safe
    only, or both). Checking/editing `~/.zshrc` is outside the project tree, so
