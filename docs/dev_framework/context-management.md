@@ -79,7 +79,7 @@ Not every agent needs every doc. Context loads in layers — each agent reads on
 
 ### Layer 0 — Always loaded (every session)
 
-**Target: under 100 lines.**
+Weight is governed by the per-role load ratchet — see §"Doc weight budget".
 
 - `CLAUDE.md` — project identity, key rules, pointers to deeper docs. This is the only doc every session reads in full.
 
@@ -120,15 +120,18 @@ Reference material pulled only when actively needed for a specific task.
 
 ## Doc weight budget
 
-Target context costs for session-start reading:
+**Unit: words** (≈1.3–1.4 tokens per word for this prose). Line counts track how prose happens to be wrapped, not what a session pays, and the two diverge enough to invert rankings between the very docs a budget governs — so no framework budget is line-denominated ([FWADR-034](adrs/fwadr-034-doc-weight-ratchet.md)).
 
-| Layer | Target | Enforced by |
+**What is measured: per-role framework load** — the template-owned words a role reads at bootstrap: CLAUDE.md (Layer 0) plus that role's Layer 1 framework docs.
+
+**Who it constrains: the Template Developer.** The budget is an authoring ratchet against framework bloat; it never restricts an agent from reading its full operating contract. The canonical per-role caps live in ONE place — `scripts/check-doc-weight.sh` in the template repo, run on every template SessionStart — so the one role that can fix an overweight framework doc is the one that sees the violation, and prose never drifts from the numbers. Caps are set taut (measured reality + ~10%); raising one is a deliberate, diff-visible edit shipping in the same commit as the growth it licenses, with a one-line justification.
+
+Project-side artifacts keep their own structural limits, owned project-side (these bound the shape of template-shaped artifacts rather than measure framework load, and stay as their ADRs state them):
+
+| Artifact | Target | Enforced by |
 |-------|--------|------------|
-| Layer 0 (CLAUDE.md) | < 100 lines | Strategist reviews any CLAUDE.md edit for bloat |
-| Layer 1 (role doc + standards) | < 200 lines per role | Strategist reviews at phase boundaries |
-| Layer 1 (active execution plan index) | < 150 lines | Plans that exceed this should be split. Under the FWADR-017 folder layout this is `plan.md` (the index) only; W-item SOW files (≤200 lines each) load on demand at Layer 2. |
-
-**If the combined Layer 0 + Layer 1 for any role exceeds ~400 lines, something must be archived, condensed, or moved to Layer 2.**
+| Active execution plan index (`plan.md`) | < 150 lines — plans that exceed this should be split | Strategist review at phase boundaries |
+| W-item SOW files | ≤ 200 lines each ([FWADR-017](adrs/fwadr-017-plan-folder-restructure.md)); load on demand at Layer 2 | Strategist authoring; Reviewer reads per item |
 
 ## Phase archival
 

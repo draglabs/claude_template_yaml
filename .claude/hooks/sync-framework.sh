@@ -111,6 +111,11 @@ if [[ "$PROJECT_DIR" == "$TEMPLATE_ROOT" ]]; then
     "$PROJECT_DIR/scripts/check-framework-links.sh" \
       || echo "[sync-framework] WARN: framework link check FAILED — fix before committing (FWADR-028)."
   fi
+  # Template-only lint: per-role framework load vs caps (FWADR-034).
+  if [[ -x "$PROJECT_DIR/scripts/check-doc-weight.sh" ]]; then
+    "$PROJECT_DIR/scripts/check-doc-weight.sh" \
+      || echo "[sync-framework] WARN: doc weight check FAILED — compact or deliberately re-cap before committing (FWADR-034)."
+  fi
   exit 0
 fi
 
