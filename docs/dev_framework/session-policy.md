@@ -108,19 +108,7 @@ The Executor writes a new commit on top of the existing ones — **no rebase, no
 
 **History note.** Earlier framework versions mandated fresh dispatch exclusively because SendMessage was unavailable in the Claude Code CLI runtime (FWADR-013, verified 2026-04-23). The runtime now provides SendMessage; continuation-by-default is a deliberate choice, with fresh dispatch retained where independent judgment matters. See FWADR-022.
 
-### Escalation
-
-The Orchestrator relays to the user on:
-
-- Retry cap exhausted with an unresolved block or fail.
-- Executor returned "brief ambiguity at confirm" — no code produced, the brief needs judgment the Orchestrator can't provide.
-- A sensitive surface is implicated (auth, keys, billing, data migration) and the Reviewer flagged architectural concern.
-- A single W-item has consumed substantially more than its effort-estimate budget (> 50% over) in Orchestrator dispatch time.
-
-The Orchestrator does NOT escalate when:
-
-- All gates passed within the retry cap (user doesn't need to see the intermediate blocks).
-- One retry fixed the concern cleanly.
+Escalation triggers and non-triggers are stated once in §"When to escalate to the user".
 
 ## Batch mode
 
@@ -394,6 +382,7 @@ Every W-item merge to dev is automated (Orchestrator decides). Every promotion t
 The Orchestrator relays to the user when:
 
 - Retry cap exhausted on a W-item with an unresolved concern.
+- Executor returned "brief ambiguity at confirm" — no code produced, the brief needs judgment the Orchestrator can't provide.
 - A W-item returned with architectural ambiguity the Orchestrator cannot resolve (locked-decision collision, plan contradiction, scope ambiguity).
 - A sensitive surface (auth, keys, billing, data migration) surfaced a Reviewer concern the retry loop couldn't close.
 - A W-item consumed substantially more than the effort-estimate budget (> 50% over).
