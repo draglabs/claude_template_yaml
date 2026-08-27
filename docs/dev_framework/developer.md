@@ -15,7 +15,7 @@ All paths, git commands, and worktrees in this doc are relative to **`$CODE_ROOT
 - **Untracked parent (default):** `$PROJECT_DIR` is not a git repo. Plan edits are file-only writes; concurrent sessions see them via shared-filesystem visibility. No `git commit` / `git push` happens for plan.md changes.
 - **Tracked parent (optional):** `$PROJECT_DIR` is its own git repo. Plan edits commit + push to that repo for full PLAN-WRITE DISCIPLINE concurrent-claim safety + durable plan history.
 
-The lifecycle sequences below show the canonical pattern. The `git checkout dev && git pull origin dev` and `git push origin dev` steps operate on the CODE repo's `dev` branch (`$CODE_ROOT`) — these run in both modes for code-side state. Plan-write commits to `$PROJECT_DIR` are an additional step only under the tracked-parent mode (or under flat layout, where `plan.md` is part of `$CODE_ROOT` and gets captured by the code-side commit automatically).
+Code-side `git` steps (`checkout dev && pull`, `push origin dev`) run on `$CODE_ROOT` in both modes. How a plan edit is committed and made visible per mode is stated ONCE, in §"Plan-write discipline (Developer)" step 3 — lifecycle steps below point there rather than re-enumerating it.
 
 For multi-repo projects, check the W-item's `target-repo:` YAML frontmatter field before claiming — it may point to a different subdirectory than the default (per [FWADR-020](adrs/fwadr-020-yaml-frontmatter-w-items.md) frontmatter shape).
 
@@ -181,11 +181,7 @@ pending → in_progress → code_review → done → shipped
    #   "claimed by Parallel Developer ...").
    #   File-edit step works in all modes (flat / split untracked / split tracked).
 
-   # Commit the plan edit. The mode determines where:
-   #   Flat layout: plan.md IS inside $CODE_ROOT — commit + push on dev captures it.
-   #     git commit -m "Claim W-<id> (pending → in_progress)" && git push origin dev
-   #   Split, tracked parent: commit + push in $PROJECT_DIR's git repo (separate from $CODE_ROOT).
-   #   Split, untracked parent: no commit needed — filesystem-visibility carries the claim.
+   # Commit the plan edit per current mode — §"Plan-write discipline (Developer)" step 3.
    ```
 
    Then create the feature branch (Default) or worktree+branch (Parallel):
@@ -195,36 +191,9 @@ pending → in_progress → code_review → done → shipped
    Making the plan-write visible BEFORE branch/worktree creation makes the claim visible to concurrent sessions. In flat/tracked-parent modes PLAN-WRITE DISCIPLINE catches collisions at the push step (loser pulls + re-scans); in untracked-parent mode the collision guard is filesystem-visibility only (no push-then-fail). Branch/worktree creation is a separate concurrency check in all modes — `git` refuses duplicate branch names, providing belt-and-suspenders.
 3. **Code + commits.** Developer writes tests, code, commits on the W-item's branch. Applies the 80/20 confidence ladder at decision forks (consultant subagent → user; see §"Confidence-driven escalation"). Spawns analysis subagents freely for narrow research questions. The user is the test driver throughout `in_progress`.
 4. **User QA loop (within `in_progress`).** User runs the feature; Developer fixes; loop until user confirms it works. State stays at `in_progress`. No bounce, no separate `qa` state.
-5. **/compact + plan-write Status flip.** When user confirms, Developer optionally runs `/compact` to compress its session context (recommended, not strictly required). The plan-write — flipping Status `in_progress → code_review` and adding a Notes line — is made visible per current mode (see §"Working directory: $CODE_ROOT"); under flat/tracked-parent it commits + pushes via `dev`, under untracked-parent it's a file edit. Plan-writes never live on the feature branch (defeats visibility in all modes):
-   - **Parallel Dev:** `cd $CODE_ROOT` (leave the worktree; `$CODE_ROOT = $PROJECT_DIR/$DEFAULT_CODE_SUBDIR` under split layout). **Default Dev:** already at `$CODE_ROOT` from bootstrap.
-   - `git checkout dev && git pull origin dev` (code-side sync)
-   - Edit `plan.md` at `$PROJECT_DIR/docs/...` (file edit using full path)
-   - **Commit + push the plan edit per current mode** (see §"Working directory: $CODE_ROOT" → "Plan-write commit semantics"):
-     - Flat layout: commit + push on the code repo's `dev` (captures plan.md, which is inside `$CODE_ROOT`).
-     - Split + tracked parent: commit + push in the `$PROJECT_DIR` git repo.
-     - Split + untracked parent: file edit only — visibility comes from the shared filesystem.
-
-   Plan-writes are made visible to other sessions as fast as the current mode allows — `origin/dev` push for flat/tracked-parent, or shared-filesystem write for untracked-parent. Status updates must not be hidden inside a feature branch in any mode (defeats the visibility property).
-
-   **Parallel Dev:** return to the worktree (`cd /tmp/worktrees/<project>/w-<id>-<slug>`) before step 6 so subsequent feature-branch work touches the worktree's working tree, not the main checkout. Default Dev stays at `$CODE_ROOT`.
-6. **Sync feature with `dev`.** Switch back to the feature branch and rebase on the new `origin/dev`:
-   - Default Dev: `git checkout w-<id>/<slug>`
-   - Parallel Dev: `cd /tmp/worktrees/<project>/w-<id>-<slug>`
-   - `git fetch origin && git rebase origin/dev`
-
-   Outcomes:
-   - Up-to-date → no-op, continue.
-   - Behind → rebase replays this W-item's commits on top of `origin/dev`'s tip.
-   - Conflicts → surface to user, user resolves, then continue. The Reviewer will see the resolved state.
-
-   The rebased state is **local-only**. The feature branch is not pushed to `origin/<feature>` — the Reviewer reads from the local working directory (Default: main checkout; Parallel: worktree), so a force-push to update `origin/<feature>` would buy nothing and would conflict with the framework's destructive-ops doctrine. The eventual merge to `dev` (step 8 Ship path) is a clean fast-forward locally; only `dev` gets pushed.
-7. **Spawn Reviewer subagent on the local synced state.** Developer invokes the Reviewer brief (`docs/dev_framework/templates/reviewer-brief.md`) via the Agent tool. Brief inputs: branch name + head SHA (post-rebase, local), working directory path (Default Dev: main checkout; Parallel Dev: worktree path), W-item file path. Reviewer reads from the working-directory path per the brief's "Where to read from" section — never fetches `origin/<feature>`.
-8. **Reviewer outcome — three paths, all user-mediated.**
-   - **Ship** → On the feature branch (Default: main checkout; Parallel: still in the worktree), write the Implementation log on the W-item file and commit. Then switch to the code repo's `dev` for the merge: **Parallel Dev does `cd $CODE_ROOT` first** (leave the worktree); both Default and Parallel then run `git checkout dev && git pull origin dev`, `git merge --ff-only w-<id>/<slug>` (clean fast-forward, since pre-review sync put feature ahead of dev), `git push origin dev`. Then **plan-write Status flip per current mode** (see §"Working directory: $CODE_ROOT"): edit `plan.md` (Status `code_review → done`); commit + push for flat/tracked-parent, file-only for untracked-parent. The Implementation log lands on `dev` via the fast-forward but post-dates the Reviewer pass — it's metadata about the just-shipped work, not part of what was reviewed (no rule break: Reviewer doesn't audit the log). Run cleanup (see §"Cleanup at done-flip"): worktree remove (Parallel only), `git branch -d`, optional `git push origin --delete` (no-op if feature was never pushed).
-   - **Resolve** → Reviewer flagged concerns the user wants fixed. Plan-write flips Status `code_review → in_progress` (visibility per current mode — see §"Working directory: $CODE_ROOT"). Developer re-codes on the feature branch with concerns as input. After re-confirming via user QA loop, the Developer loops back to step 5 — re-/compact (optional), plan-write Status flip again, re-sync (in case `dev` advanced), re-spawn Reviewer.
-   - **Reconcile** → Reviewer returned a `doc-conflict`: the code does what the user asked and an ADR is stale. Do **not** re-code. Rewrite the ADR to state the decision that now holds, or ask the user if their intent isn't clear — see §"ADR conflict: reconcile, don't revert" ([FWADR-027](adrs/fwadr-027-living-architecture.md)). The ADR rewrite commits with the W-item; merge proceeds as in Ship. A `doc-conflict` alongside an otherwise-clean review is a `ship`, not a `block`.
-   - **Postpone** → Reviewer flagged concerns the user accepts as a known limitation. Implementation log includes a `**Postponed concerns:**` line naming the concerns + why they're being deferred + where they'll be addressed (follow-up W-item id, or `tracked as known limitation`). Merge proceeds as in Ship; plan.md Status flip to `done` (visibility per current mode). Open a follow-up W-item if the postponed concern is anything beyond a true known-limitation.
-9. **Phase exit.** When all items in the phase are `done`, user authorizes promotion. Developer promotes `dev → main`, flips `done → shipped` (one commit) for each item.
+5. **Code-review handoff.** When the user confirms the feature works: optional `/compact`, plan-write Status flip `in_progress → code_review` (per §"Plan-write discipline (Developer)"), local rebase-sync of the feature branch onto `origin/dev`, then spawn the Reviewer subagent on the local synced state. Full operational steps — including the Parallel-Dev worktree choreography and the no-force-push rule — in §"Code review (sync, then spawned Reviewer subagent)".
+6. **Reviewer outcome — Ship / Resolve / Reconcile / Postpone**, all user-mediated. The four paths, the merge + Implementation-log mechanics, and cleanup are stated once in §"Code review" step 5 and §"Cleanup at done-flip"; the Reconcile path's ADR-rewrite authority is §"ADR conflict: reconcile, don't revert".
+7. **Phase exit.** When all items in the phase are `done`, user authorizes promotion. Developer promotes `dev → main`, flips `done → shipped` (one commit) for each item.
 
 ## ADR conflict: reconcile, don't revert
 
@@ -289,7 +258,7 @@ User has confirmed behavior. The remaining gate is independent code-quality revi
 
 **Rules:**
 - `/compact` (recommended) before the plan-write — collapses the QA-loop journey from session memory; the working log preserves the durable chronological record.
-- Plan-write Status flip `in_progress → code_review` is made visible per current layout mode (see §"Working directory: $CODE_ROOT" and §"Plan-write discipline (Developer)"): commit + push for flat / split-tracked-parent; file-only edit for split-untracked-parent. Plan-writes never go on the feature branch.
+- Plan-write Status flip `in_progress → code_review`, made visible per current mode (§"Plan-write discipline (Developer)" step 3). Plan-writes never go on the feature branch.
 - Sync the feature branch / worktree with `origin/dev` via rebase locally. Don't force-push `origin/<feature>`.
 - Spawn the Reviewer subagent on the local synced state per [`templates/reviewer-brief.md`](templates/reviewer-brief.md). The Reviewer does **not** read the working log — it reads the diff + W-item file + `coding-standards.md`. Working log is Developer working memory, not part of the code-review surface.
 - Four outcomes — Ship, Resolve, Reconcile, Postpone — all user-mediated. Operational detail in §"Code review (sync, then spawned Reviewer subagent)."
@@ -324,12 +293,11 @@ When the user confirms the feature works, coding is complete but the code-review
 
 1. **/compact (recommended).** Developer runs `/compact` to compress its session context — the journey of getting here (debug iterations, consultant calls, abandoned approaches) collapses into a summary. Keeps the persistent session tight for the next W-item. Optional, not required for correctness.
 
-2. **Status flip — visibility per current mode.** Plan-writes must be visible to other sessions; they must NOT live on the feature branch (defeats visibility). Mechanism varies by mode (see §"Working directory: $CODE_ROOT"):
+2. **Status flip — visibility per current mode.** Plan-writes must be visible to other sessions; they must NOT live on the feature branch (defeats visibility).
    - **Parallel Dev:** `cd $CODE_ROOT` (leave the worktree). **Default Dev:** already at `$CODE_ROOT` from bootstrap.
    - `git checkout dev && git pull origin dev` (code-side sync, all modes)
    - Edit `plan.md` at `$PROJECT_DIR/docs/...` (Status `in_progress → code_review` + Notes line)
-   - **Flat / split-tracked-parent:** `git commit -m "W-<id>: in_progress → code_review"` then `git push origin dev` (flat: commits plan.md via code repo; tracked parent: commit in `$PROJECT_DIR` git repo instead).
-   - **Split, untracked parent:** file edit only — visibility carried by the shared filesystem.
+   - Commit + make visible per current mode — §"Plan-write discipline (Developer)" step 3.
 
 3. **Sync feature with `dev`.** Switch back to the feature branch / worktree and rebase on the new `origin/dev`:
    - Default: `git checkout w-<id>/<slug>`
@@ -350,7 +318,7 @@ When the user confirms the feature works, coding is complete but the code-review
    - The Reviewer loads `coding-standards.md` itself, reads the diff against `origin/dev` (which it can fetch — only `dev` needs to be on origin, not `<feature>`), and reads codebase context from the working-directory path it was given.
 
 5. **Reviewer outcome.** Three paths, all user-mediated:
-   - **Ship** → On the feature branch: write Implementation log on W-item file, commit. Switch to `dev` in the code repo: `git checkout dev`, `git merge --ff-only w-<id>/<slug>` (clean fast-forward, since pre-review sync put feature ahead of dev), `git push origin dev`. Then plan-write Status flip `code_review → done` per current mode (see §"Working directory: $CODE_ROOT"): edit plan.md; commit + push for flat/tracked-parent, file-only for untracked-parent. Cleanup runs after the push/edit completes (see §"Cleanup at done-flip").
+   - **Ship** → On the feature branch: write Implementation log on W-item file, commit. (The log lands on `dev` via the fast-forward but post-dates the Reviewer pass — it's metadata about the just-shipped work, not part of what was reviewed; no rule break, the Reviewer doesn't audit the log.) Switch to `dev` in the code repo: `git checkout dev`, `git merge --ff-only w-<id>/<slug>` (clean fast-forward, since pre-review sync put feature ahead of dev), `git push origin dev`. Then plan-write Status flip `code_review → done` per current mode (§"Plan-write discipline (Developer)" step 3). Cleanup runs after the push/edit completes (see §"Cleanup at done-flip").
    - **Resolve** → Reviewer flagged concerns the user wants fixed before merging. Plan-write flips Status `code_review → in_progress` (visibility per current mode). Developer re-codes on the feature branch with concerns as input. After re-confirming via the user QA loop, the Developer loops back to step 2 — plan-write Status flip again, re-sync (in case dev advanced again during the rework), re-spawn the Reviewer.
    - **Reconcile** → Reviewer returned a `doc-conflict`: the code does what the user asked and an ADR is stale. Do **not** re-code. Rewrite the ADR to state the decision that now holds, or ask the user if their intent isn't clear — see §"ADR conflict: reconcile, don't revert" ([FWADR-027](adrs/fwadr-027-living-architecture.md)). The ADR rewrite commits with the W-item; merge proceeds as in Ship. A `doc-conflict` alongside an otherwise-clean review is a `ship`, not a `block`.
    - **Postpone** → Reviewer flagged concerns the user accepts as a known limitation. Implementation log includes a `**Postponed concerns:**` line naming the concerns + why they're being deferred + where they'll be addressed (follow-up W-item id, or `tracked as known limitation`). A Notes line on the plan also names the postpone. Merge proceeds as in Ship (feature → dev fast-forward + push of dev + plan.md Status flip per current mode). Open a follow-up W-item if the postponed concern is anything beyond a true known-limitation.
