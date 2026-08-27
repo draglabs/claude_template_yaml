@@ -53,8 +53,10 @@ check_role() {
 }
 
 # Role                          cap    Layer 1 framework docs
-check_role "Developer"          13500  developer.md coding-standards.md
-check_role "Strategist"         11000  strategist.md
+# Developer + Strategist caps re-tautened 2026-08-27 after the FWADR-034
+# compaction review (F1-F3, F5) — measured 11,595 / 8,814 + ~8% headroom.
+check_role "Developer"          12500  developer.md coding-standards.md
+check_role "Strategist"          9500  strategist.md
 check_role "Orchestrator"        9000  session-policy.md
 check_role "Template Developer"  7000  template-developer.md dev_framework.md
 check_role "Curator"             5500  curator.md
