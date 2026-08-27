@@ -59,6 +59,8 @@ DEFAULT_CODE_SUBDIR=my-repo-slug    # primary code repo (required for split layo
 CLAUDE_TEMPLATE_ROOT=/path/to/...   # framework sync source (optional; sibling fallback exists)
 ```
 
+**Scope rule ([FWADR-033](adrs/fwadr-033-env-scope-rule.md)):** the parent `.env` is the *operator* env — framework vars, host tokens, MCP credentials; it is sourced wholesale into every agent session. App runtime secrets (database URLs, API keys) live in the *app* env at `$CODE_ROOT/.env`, per code repo, never at the parent. The `.env.<subdir>` symlinks the sync hook maintains at the parent are read conveniences, never sourced.
+
 ---
 
 ## The problem

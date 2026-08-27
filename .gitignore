@@ -1,6 +1,9 @@
 node_modules/
 .env
-.env.local
+# App-env visibility links + local env variants (FWADR-033); never tracked.
+# .env.example is the committed starter and stays tracked via the carve-out.
+.env.*
+!.env.example
 references/
 mockups/node_modules/
 mockups/dist/

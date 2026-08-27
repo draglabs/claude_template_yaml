@@ -110,6 +110,8 @@ claude-env-yolo [dir]    # same, + --dangerously-skip-permissions
 
 Both refuse to launch without a `.env` in the target directory. Manual fallback: `set -a; source .env; set +a` then `claude`. Sessions launched bare get a `[sync-framework]` NOTICE at session start — MCP credentials and git auth ([FWADR-030](docs/dev_framework/adrs/fwadr-030-git-auth-recipe.md)) will not bind until relaunch.
 
+**Env scope ([FWADR-033](docs/dev_framework/adrs/fwadr-033-env-scope-rule.md)):** `$PROJECT_DIR/.env` is the **operator env** — framework identity, host tokens, MCP credentials; sourced wholesale at launch, ambient in every session and worker. App runtime secrets (database URLs, API keys) live in the **app env** at `$CODE_ROOT/.env` per code repo, never at the parent. Litmus: belongs in the deployed container's environment → app env; consumed by the tooling around the code → operator env. The pre-push guard blocks pushes that track a `.env`; session-start sync maintains `.env.<subdir>` read-convenience links at the parent (never sourced).
+
 Docker MCP is local-only. Never point it at production. Treat MCP servers the same as any other runtime component — adding one counts as an architectural addition (see "Docs before code" above).
 
 **The Strategist owns MCP configuration and health.** It configures the project's servers during the first-contact interview (Block 3 in [`docs/dev_framework/strategist.md`](docs/dev_framework/strategist.md)), verifies they connect at every Strategist session start (`claude mcp list`), and surfaces any broken or unconfigured server to the user — repeatedly, until fixed or explicitly waived. See [`docs/dev_framework/approved-mcps.md`](docs/dev_framework/approved-mcps.md) §"Ownership and health".

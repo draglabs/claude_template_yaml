@@ -96,3 +96,7 @@ variable already set in the environment, which catches exactly this mistake.
 - `session-policy.md` §"Promotion commit", §"Phase exit gate" step 7, and
   §"Emergency bypass" step 1 now route through the script; the English rule
   and its mechanism ship together in this change.
+- **The guard file has since gained a second check** — refusing pushes whose
+  ref tips track a committed `.env` ([FWADR-033](fwadr-033-env-scope-rule.md)).
+  `FRAMEWORK_ALLOW_MAIN_PUSH` bypasses only the main-ref check, never the env
+  check. Installation and the never-overwrite rule are unchanged.

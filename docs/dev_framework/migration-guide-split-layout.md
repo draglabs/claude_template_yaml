@@ -81,10 +81,9 @@ DEFAULT_CODE_SUBDIR=my-repo-slug
 CLAUDE_TEMPLATE_ROOT=/path/to/claude_template_yaml
 ```
 
-If your code repo has its own `.env` for runtime secrets (database URLs, API keys, etc.), you have two options:
+If your code repo has its own `.env` for runtime secrets (database URLs, API keys, etc.), keep the two files separate — this is the scope rule of [FWADR-033](adrs/fwadr-033-env-scope-rule.md), not a preference. The parent `.env` is the **operator env** (framework vars, host tokens, MCP credentials); it is sourced wholesale into every agent session, MCP server, and spawned worker, so app secrets never go there. Each code repo's `.env` is the **app env** — what its runtime reads, gitignored in that repo (the framework pre-push guard blocks any push that tracks a `.env`).
 
-- **Separate files (recommended):** parent `.env` holds only framework vars; code repo `.env` holds runtime secrets. Both exist independently.
-- **Symlink bridge:** `ln -s my-repo-slug/.env .env` at the parent, so a single `.env` serves both. The sync hook also resolves `CLAUDE_TEMPLATE_ROOT` from the code subdir's `.env` directly as of this ADR, so the symlink is optional if your `CLAUDE_TEMPLATE_ROOT=` line lives inside the code repo.
+Do NOT symlink the code repo's `.env` to the parent as `.env` (an earlier revision of this guide offered that as a "symlink bridge") — a single file serving both planes puts app secrets in the widest-exposure surface. The need it served is gone: the sync hook resolves `CLAUDE_TEMPLATE_ROOT` from the code subdir's `.env` directly. For visibility the reverse link is sanctioned and automatic — session-start sync maintains `.env.<subdir>` → `<subdir>/.env` read-convenience links at the parent, never sourced by anything.
 
 ### 5. Update CLAUDE.md for the new layout
 

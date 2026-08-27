@@ -262,7 +262,8 @@ SHA="$(git -C "$CODE_PATH_RESOLVED" rev-parse --short HEAD 2>/dev/null || echo u
 # ---------------------------------------------------------------------------
 # .env handling (worktree case)
 # ---------------------------------------------------------------------------
-# Canonical app .env (NOT the project-parent .env sourced above) lives at the
+# Canonical app .env (NOT the project-parent .env sourced above — two-tier env
+# model, FWADR-033) lives at the
 # main checkout: $PROJECT_DIR/$DEFAULT_CODE_SUBDIR/.env. Worktrees don't carry
 # gitignored files, so a fresh worktree won't have its own .env — symlink it
 # from the canonical location if absent. Projects without an app .env will

@@ -254,6 +254,71 @@ if [[ -f "$USERLOG_GI" ]] && ! grep -qxF 'userlog.md' "$USERLOG_GI" 2>/dev/null;
 fi
 
 # ---------------------------------------------------------------------------
+# 4e. Tracked-.env detection (FWADR-033). App runtime secrets never belong in
+#     git. The pre-push guard (4b) blocks NEW escapes; this NOTICE covers what
+#     prevention can't: a .env committed before the guard existed, or a repo
+#     whose adopter-owned pre-push blocked guard installation. Detection only —
+#     un-tracking is the human's act.
+# ---------------------------------------------------------------------------
+
+check_tracked_env() {
+  local repo="$1"
+  [[ -d "$repo/.git" ]] || return 0
+  local tracked
+  tracked="$(git -C "$repo" ls-files 2>/dev/null | grep -E '(^|/)\.env$' | head -5)"
+  if [[ -n "$tracked" ]]; then
+    echo "[sync-framework] NOTICE: $(basename "$repo") TRACKS a committed .env — app secrets never belong in git (FWADR-033): $(echo "$tracked" | tr '\n' ' ')"
+    echo "[sync-framework]   Fix: git rm --cached <path>; add '.env' to .gitignore; commit. Earlier history still holds it — rotate any real secrets."
+  fi
+}
+
+check_tracked_env "$PROJECT_DIR"
+for subdir in "$PROJECT_DIR"/*/; do
+  [[ -d "$subdir/.git" ]] && check_tracked_env "${subdir%/}"
+done
+
+# ---------------------------------------------------------------------------
+# 4f. App-env visibility symlinks (FWADR-033). For each immediate-subdir repo
+#     with an app .env, maintain $PROJECT_DIR/.env.<subdir> → <subdir>/.env so
+#     all env values are inspectable from the planning directory. Read/edit
+#     convenience ONLY — claude-env sources $PWD/.env and nothing else, so the
+#     links change what the operator can SEE, never what any process sources.
+#     Created when the target exists, re-pointed if wrong, removed when
+#     dangling; a regular file squatting the name is warned about, not touched.
+# ---------------------------------------------------------------------------
+
+for subdir in "$PROJECT_DIR"/*/; do
+  [[ -d "$subdir/.git" ]] || continue
+  sub="$(basename "${subdir%/}")"
+  link="$PROJECT_DIR/.env.$sub"
+  target="$sub/.env"   # relative, so the link survives a parent-dir move
+  if [[ -f "${subdir%/}/.env" ]]; then
+    if [[ -L "$link" ]]; then
+      if [[ "$(readlink "$link")" != "$target" ]]; then
+        rm -f "$link" && ln -s "$target" "$link" \
+          && echo "[sync-framework] visibility link re-pointed: .env.$sub → $target (FWADR-033)"
+      fi
+    elif [[ -e "$link" ]]; then
+      echo "[sync-framework] WARN: $link exists and is not a symlink — visibility link not created (FWADR-033)"
+    else
+      ln -s "$target" "$link" \
+        && echo "[sync-framework] visibility link created: .env.$sub → $target (FWADR-033)"
+    fi
+  elif [[ -L "$link" && "$(readlink "$link")" == "$target" ]]; then
+    rm -f "$link" \
+      && echo "[sync-framework] removed dangling visibility link .env.$sub (FWADR-033)"
+  fi
+done
+
+# Keep the visibility links (and any local .env variants) out of git where the
+# parent tracks one; .env.example stays tracked via the carve-out. Same
+# guarded-append pattern as 4d.
+if [[ -f "$USERLOG_GI" ]] && ! grep -qxF '.env.*' "$USERLOG_GI" 2>/dev/null; then
+  printf '\n# App-env visibility links + local env variants (FWADR-033); never tracked.\n.env.*\n!.env.example\n' >> "$USERLOG_GI"
+  echo "[sync-framework] added .env.* (with !.env.example carve-out) to .gitignore (FWADR-033)"
+fi
+
+# ---------------------------------------------------------------------------
 # 5. Initialize docs/framework_exceptions/ if missing.
 #    Idempotent: only creates files that don't exist. On repeat runs, leaves
 #    adopter's accumulated exceptions untouched.
