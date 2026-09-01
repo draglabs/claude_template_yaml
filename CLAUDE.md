@@ -106,6 +106,8 @@ Claude Code expands env vars from its **own process env**, not `.env`. Launch vi
 ```bash
 claude-env [dir]         # source .env, then claude (normal permission prompts)
 claude-env-yolo [dir]    # same, + --dangerously-skip-permissions
+load-env [dir]           # source .env into the current shell, NO claude launch
+                         # (manual script runs, git auth in a bare terminal)
 ```
 
 Both refuse to launch without a `.env` in the target directory. Manual fallback: `set -a; source .env; set +a` then `claude`. Sessions launched bare get a `[sync-framework]` NOTICE at session start — MCP credentials and git auth ([FWADR-030](docs/dev_framework/adrs/fwadr-030-git-auth-recipe.md)) will not bind until relaunch.

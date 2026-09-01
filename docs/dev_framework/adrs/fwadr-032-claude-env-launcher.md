@@ -32,13 +32,16 @@ launch-without-env mechanically detected:
    `docs/dev_framework/_stubs/shell/claude-env.zsh` (rides the wholesale
    `docs/dev_framework/` sync; deliberately NOT in the `DEV_SLOT_STUBS`
    copy-to-project list — it installs into the user's shell rc, per machine,
-   not into a project tree). Two **named variants**, choice made at every
+   not into a project tree). Three **named variants**, choice made at every
    launch by name, zero stored state:
    - `claude-env [dir]` — safe: normal permission prompts.
    - `claude-env-yolo [dir]` — adds `--dangerously-skip-permissions`.
+   - `load-env [dir]` — sources `.env` into the current shell, launches
+     nothing: for manual framework-script runs and FWADR-030 git auth in a
+     bare terminal. Permission-neutral; installs with either launch variant.
 
-   Both refuse to launch when `$PWD` has no `.env` — fail loudly, never a
-   half-bound session.
+   All three refuse to act when the target directory has no `.env` — fail
+   loudly, never a half-bound session or shell.
 
 2. **First-contact interview Block 0** (`templates/first-contact-interview.md`;
    trigger in `strategist.md` §"First-contact interview"): before Block 1, the

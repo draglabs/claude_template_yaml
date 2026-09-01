@@ -34,11 +34,11 @@ Run through these in order. Each one fills both a `.env` variable and the corres
 
 **Block 0 — launch environment (fills the user's shell rc; [FWADR-032](../adrs/fwadr-032-claude-env-launcher.md)):**
 
-Everything downstream assumes Claude Code was launched with `.env` in its process env — MCP credentials and the FWADR-030 git-auth auto-wire both silently fail otherwise. The canonical launch path is the `claude-env` launcher pair (snippet: [`../_stubs/shell/claude-env.zsh`](../_stubs/shell/claude-env.zsh)): `claude-env` (safe, normal permission prompts) and `claude-env-yolo` (adds `--dangerously-skip-permissions`). The choice between them is made at every launch by name — nothing stores a permission posture.
+Everything downstream assumes Claude Code was launched with `.env` in its process env — MCP credentials and the FWADR-030 git-auth auto-wire both silently fail otherwise. The canonical launch path is the `claude-env` launcher set (snippet: [`../_stubs/shell/claude-env.zsh`](../_stubs/shell/claude-env.zsh)): `claude-env` (safe, normal permission prompts), `claude-env-yolo` (adds `--dangerously-skip-permissions`), and `load-env` (sources `.env` into the current shell with NO claude launch — for running framework scripts by hand or getting git auth in a bare terminal). The permission choice is made at every launch by name — nothing stores a permission posture.
 
 | Question | Where it lands |
 |---|---|
-| Is the `claude-env` launcher installed in your shell rc? (With the user's go-ahead — the rc is outside the project tree — check: `grep -q 'claude-env' ~/.zshrc`.) If not: present both variants and ask which to install — safe only, or safe + yolo. Offer either a `source <path-to-snippet>` line or pasting the functions verbatim. | The user's shell rc (e.g. `~/.zshrc`), edited only on explicit approval. Never installed silently. |
+| Is the `claude-env` launcher installed in your shell rc? (With the user's go-ahead — the rc is outside the project tree — check: `grep -q 'claude-env' ~/.zshrc`.) If not: present the variants and ask which to install — safe only, or safe + yolo; `load-env` is permission-neutral and comes with either choice. Offer either a `source <path-to-snippet>` line or pasting the functions verbatim. | The user's shell rc (e.g. `~/.zshrc`), edited only on explicit approval. Never installed silently. |
 | Confirm the user knows the consequence of skipping: every session launched bare gets the sync hook's step-0 NOTICE (unbound MCP creds + git auth) until relaunched via `claude-env`. | Nowhere — this is the informed-decline path. The NOTICE is the standing enforcement. |
 
 **Block 1 — project identity (fills .env + CLAUDE.md outside the managed block):**
