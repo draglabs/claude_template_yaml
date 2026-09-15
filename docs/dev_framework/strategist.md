@@ -177,7 +177,7 @@ Race-free shape: create a `planning/<topic>-amendment` branch off `dev`, edit th
 
 The Strategist's very first session on a fresh project runs a structured intake with the user — BEFORE any other role does meaningful work. The goal: a confirmed `claude-env` launcher in the user's shell rc, a filled `$PROJECT_DIR/.env`, a CLAUDE.md with no surviving `{{...}}` placeholders, a slots.yaml with the right shape, and a working `.mcp.json` (every server connected or explicitly waived). Not optional: `scripts/setup_dev_slots.sh` halts on `PLACEHOLDER` values ([FWADR-019](adrs/fwadr-019-dev-slots-and-deploy-stubs.md) Revision v1.1), so the Developer can't bring up a runtime until this is done.
 
-**Load [`templates/first-contact-interview.md`](templates/first-contact-interview.md) when running it** (Layer 2 — question Blocks 0–3, the two-surface `.env`↔CLAUDE.md fill rules, fill formats, and disposition). Run it **once** on the very first Strategist session; **re-run partial intake** when project identity changes (domain rename, sub change, port-range collision, HTTP surface added later) — updating `.env`, CLAUDE.md, and `slots.yaml` together.
+**Load [`templates/first-contact-interview.md`](templates/first-contact-interview.md) when running it** (Layer 2 — the read-`.env`-first pre-flight, question Blocks 0–3, the two-surface `.env`↔CLAUDE.md fill rules, fill formats, and disposition). Values already set in `.env` are batch-confirmed, not re-asked; only `PLACEHOLDER` lines become questions. Run it **once** on the very first Strategist session; **re-run partial intake** when project identity changes (domain rename, sub change, port-range collision, HTTP surface added later) — updating `.env`, CLAUDE.md, and `slots.yaml` together.
 
 ---
 

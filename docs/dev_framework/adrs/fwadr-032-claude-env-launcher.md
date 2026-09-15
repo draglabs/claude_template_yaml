@@ -79,3 +79,20 @@ launch-without-env mechanically detected:
 - **`--dangerously-skip-permissions` stays a user-facing choice**, made
   per-launch by function name — the framework never defaults anyone into
   bypass mode, and no `.env` flag can silently flip a project into it.
+
+## Revision (v1.1) — 2026-09-15: launcher seeds `.env` from `.env.example`
+
+Field experience from a fresh adopter on 2026-09-15: the Strategist's first-contact interview opened on a two-line, hand-written `.env` (a token and one variable nothing reads) and had to ask every identity question from scratch. The user's question — "what could I put in `.env` up front so the interview doesn't have to ask?" — was already answered by `.env.example`; the adopter simply never received it as `.env`. Three defects compounded:
+
+1. **Chicken-and-egg at launch.** The launcher refused to start without `.env`, but the only thing that seeded `.env.example` into the project was the sync hook, which runs inside a session. The user wrote a minimal `.env` by hand to get past the launcher, and that file is what the interview found.
+2. **README quick start taught the two-line file** (create `.env` with `DEFAULT_CODE_SUBDIR` and `CLAUDE_TEMPLATE_ROOT`) and omitted `.env.example` from the copy list.
+3. **The interview had no pre-flight.** It ran the question list in order regardless of what `.env` already held.
+
+**Decision.** Close the gap at the earliest mechanical point, never by writing into an existing `.env`:
+
+- **`_claude_env_source` seeds.** When `.env` is absent and `.env.example` is present, the launcher copies the starter to `.env`, prints "fill the MINIMUM TO BOOT block, then relaunch", and still refuses to launch. An existing `.env` is never touched. The installer sources the adopter's synced snippet by path, so this propagates on the next sync plus a new shell.
+- **`.env.example` leads with a `MINIMUM TO BOOT` block** — the eight variables every role needs (`PROJECT_NAME`, `PROJECT_SUB`, `PROJECT_WEBSITE`, `PROJECT_PORTS`, `DEV_ENVIRONMENT_MODE`, `GIT_HOST`, the host token, `DEFAULT_CODE_SUBDIR`) — with everything else under "Optional". `DEFAULT_CODE_SUBDIR` moved up from the split-layout section; `CLAUDE_TEMPLATE_ROOT` stays optional.
+- **The interview reads `.env` first** (`templates/first-contact-interview.md` §"Pre-flight"): set values are batch-confirmed in one table, `PLACEHOLDER`/empty lines are the only questions, and variables missing from a hand-written file are appended from `.env.example` rather than the file being replaced.
+- **README quick start** copies `.env.example`, fills the MINIMUM TO BOOT block, and launches via `claude-env`, not bare `claude`.
+
+**Consequences.** A fully filled `.env` turns Block 1 of the interview into one confirmation. The launcher gains a write (one `cp`, only when no `.env` exists), which is the first time it touches the filesystem; the guard is "absent target, present source" and nothing else. Coherence surfaces in this change: the shell stub, `.env.example`, the interview template, `strategist.md` §"First-contact interview", `README.md`, and this revision.

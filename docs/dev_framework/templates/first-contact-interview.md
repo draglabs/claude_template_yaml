@@ -28,9 +28,21 @@ Project variables live in **two places**:
 
 **The Strategist fills BOTH in the same interview pass**, value-by-value, atomically. Drift between the two is a bug the [`strategist.md`](../strategist.md) §"Stub audit" catches.
 
+## Pre-flight: read `.env` before asking anything
+
+The `claude-env` launcher seeds `.env` from `.env.example` on the first launch in a fresh project ([FWADR-032](../adrs/fwadr-032-claude-env-launcher.md) Revision v1.1), and users are told to fill the **MINIMUM TO BOOT** block before the first session. So the interview starts by reading, not asking:
+
+1. `grep -E '^[A-Z_]+=' $PROJECT_DIR/.env` — every framework variable, with its current value. Do not print token values back.
+2. **Set values** (not `PLACEHOLDER`, not empty) are answers. Present them in one table — variable, value, the CLAUDE.md surface it fills — and ask for a single yes/no confirmation of the batch. Correct individual rows only if the user objects.
+3. **`PLACEHOLDER` or empty values** in the MINIMUM TO BOOT block are the questions. Ask only those, in the Block 1 order below.
+4. **Variables missing from the file entirely** mean `.env` was hand-written rather than seeded. Append the missing lines from `.env.example` (never overwrite what is there), then treat them as `PLACEHOLDER`.
+5. Block 0 (launcher) and Blocks 2–3 (slots, MCP) still run — `.env` cannot pre-answer those. Block 0 is one question when `.env` was launcher-seeded: the seed proves the launcher is installed.
+
+A fully filled `.env` turns Block 1 into a single confirmation. That is the intended path.
+
 ## Question list
 
-Run through these in order. Each one fills both a `.env` variable and the corresponding CLAUDE.md surface. Don't accept "let's figure that out later" answers — that's how you end up with `{{sub}}` leaking into other sessions' chat output.
+Run through these in order, skipping any row the pre-flight already confirmed. Each one fills both a `.env` variable and the corresponding CLAUDE.md surface. Don't accept "let's figure that out later" answers — that's how you end up with `{{sub}}` leaking into other sessions' chat output.
 
 **Block 0 — launch environment (fills the user's shell rc; [FWADR-032](../adrs/fwadr-032-claude-env-launcher.md)):**
 

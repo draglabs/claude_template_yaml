@@ -12,8 +12,11 @@
 # .env only executes when .env is sourced. Launching bare `claude` inside a
 # project therefore silently unbinds API keys, MCP credentials, and git auth.
 # These launchers make sourcing .env an inseparable part of the launch, and
-# refuse to start without one. The session-start sync hook emits a NOTICE when
-# it detects a session that was launched unbound.
+# refuse to start without one. On a fresh adopter (no .env, but a synced
+# .env.example) they seed .env from the starter and stop, so the first-contact
+# interview begins from a complete file rather than a hand-written stub. The
+# session-start sync hook emits a NOTICE when it detects a session that was
+# launched unbound.
 #
 # Three named variants — the choice is made at every launch by name (FWADR-032):
 #   claude-env       [dir]  → source .env, launch claude (normal permission prompts)
@@ -30,6 +33,16 @@ _claude_env_source() {
     }
   fi
   if [ ! -f .env ]; then
+    if [ -f .env.example ]; then
+      # First launch in a fresh adopter: seed .env from the framework starter so
+      # the Strategist's first-contact interview finds every variable present
+      # and only has to ask about the PLACEHOLDER lines. Never overwrites an
+      # existing .env; still refuses to launch until the file has been filled.
+      cp .env.example .env
+      echo "claude-env: no .env in $PWD — seeded one from .env.example." >&2
+      echo "            Fill the PLACEHOLDER lines in the MINIMUM TO BOOT block, then relaunch." >&2
+      return 1
+    fi
     echo "❌ claude-env: no .env in $PWD — refusing without project env." >&2
     return 1
   fi

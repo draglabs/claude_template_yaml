@@ -15,7 +15,7 @@ $PROJECT_DIR/
   CLAUDE.md
   .claude/
   docs/
-  .env              ← DEFAULT_CODE_SUBDIR=<repo-slug>, CLAUDE_TEMPLATE_ROOT=...
+  .env              ← copied from .env.example; MINIMUM TO BOOT block filled
   <repo-slug>/      ← git root; name matches GitHub repo slug
     src/
     .git/
@@ -31,10 +31,10 @@ If your project currently uses flat layout (project dir == git root), see [`docs
 
 1. Create your project's parent directory.
 2. Clone your code repo as a subdirectory named after your GitHub slug.
-3. Copy `CLAUDE.md`, `.claude/`, `docs/`, and `.mcp.json` from this template to the parent.
-4. Create `$PROJECT_DIR/.env` with `DEFAULT_CODE_SUBDIR` and `CLAUDE_TEMPLATE_ROOT`.
-5. Invoke Claude Code from the parent: `cd $PROJECT_DIR && claude`.
-6. Declare a role to bootstrap: `"you are the Strategist"`.
+3. Copy `CLAUDE.md`, `.claude/`, `docs/`, `.mcp.json`, and `docs/dev_framework/_stubs/.env.example` (as `.env.example`) from this template to the parent.
+4. Copy `.env.example` to `.env` and fill the **MINIMUM TO BOOT** block (project name, sub, website, ports, dev mode, git host + token, code subdir). Set `CLAUDE_TEMPLATE_ROOT` too if this template is not a sibling directory. The `claude-env` launcher does the copy for you if you skip this step, then stops so you can fill it.
+5. Launch Claude Code from the parent via the launcher: `claude-env $PROJECT_DIR` (install once with `docs/dev_framework/_stubs/shell/install-claude-env.sh`; a bare `claude` launch never binds MCP credentials or git auth).
+6. Declare a role to bootstrap: `"you are the Strategist"`. Its first-contact interview reads `.env` first and only asks about lines still at `PLACEHOLDER`.
 
 ## Key docs
 
