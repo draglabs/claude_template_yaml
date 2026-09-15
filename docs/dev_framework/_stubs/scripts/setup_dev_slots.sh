@@ -13,8 +13,12 @@
 #      slots.yaml; gates Caddy block generation).
 #   3. Pick a base port within PROJECT_PORTS (validated to fit 4 slots).
 #   4. Write hostnames + ports into docs/dev/slots.yaml.
-#   5. If http_surface=true: generate Caddyfile block per slot, optionally
-#      append/update in user's Caddyfile with begin/end markers.
+#   5. Generate a Caddyfile block and (with confirmation) append/update it
+#      between begin/end markers. The BEGIN line carries a ledger header
+#      (PORTS=<PROJECT_PORTS> PROJECT=<name> DIR=<path>) that
+#      scripts/port_ledger.sh reads, so the Caddyfile doubles as the
+#      machine-wide port ledger. http_surface=false projects get a
+#      comment-only block (Caddy ignores it) so they appear in the ledger too.
 #   6. Print the extras: {} edit pattern for projects with secondary ports
 #      (DB, cache, queue). extras stay project-managed — this script does
 #      NOT write them.
@@ -127,6 +131,22 @@ echo ""
 echo "Project: $SUB (from \$PROJECT_SUB)"
 echo "Confirmed port range: $PORT_LOW-$PORT_HIGH (from \$PROJECT_PORTS)"
 
+# ---------- Ledger check: does this range collide with another project? ----------
+# port_ledger.sh reads the machine-wide Caddyfile. Our own block (a re-run) is
+# ignored; anything else overlapping is a real collision — surfaced, not fatal,
+# because the fix is a Strategist .env edit, not something this script decides.
+LEDGER="$(dirname "$0")/port_ledger.sh"
+if [[ -x "$LEDGER" ]]; then
+  if ! "$LEDGER" --check "$PORT_LOW-$PORT_HIGH" --ignore "${SUB}-dev-slots"; then
+    echo ""
+    echo "WARNING: PROJECT_PORTS=$PORT_LOW-$PORT_HIGH overlaps another project on this machine (see above)."
+    echo "Recommended: stop, have the Strategist move PROJECT_PORTS in $ENV_FILE to the free range"
+    echo "port_ledger.sh proposed, then re-run. Continuing writes a colliding block."
+    read -r -p "Continue anyway? [y/N] " OVERLAP_OK
+    [[ "$OVERLAP_OK" == "y" || "$OVERLAP_OK" == "Y" ]] || { echo "Aborted."; exit 1; }
+  fi
+fi
+
 # ---------- HTTP surface question ----------
 echo ""
 echo "Does this project expose an HTTP surface that needs Caddy routing?"
@@ -134,7 +154,8 @@ echo "  Examples of yes: web app, API server, admin UI."
 echo "  Examples of no:  CLI tool, library, headless data pipeline."
 echo "If yes, this script generates Caddyfile blocks routing"
 echo "<slot>.${SUB}.localhost → localhost:<port> per slot."
-echo "If no, slots still get ports assigned but no Caddy blocks are written."
+echo "If no, slots still get ports assigned and a comment-only ledger block is"
+echo "written to the Caddyfile (so scripts/port_ledger.sh sees this project's range)."
 read -r -p "HTTP surface? [Y/n] " HTTP_ANSWER
 case "${HTTP_ANSWER:-y}" in
   y|Y|yes|Yes|YES) HTTP_SURFACE=true ;;
@@ -195,70 +216,81 @@ ruby -e '
 mv "$TMP_SLOTS" "$SLOTS_FILE"
 echo "Wrote $SLOTS_FILE"
 
-# ---------- Caddy block (only if HTTP surface) ----------
-if [[ "$HTTP_SURFACE" == "true" ]]; then
-  CADDY_BLOCK="$(mktemp)"
-  {
-    echo "# BEGIN ${SUB}-dev-slots (managed by scripts/setup_dev_slots.sh)"
+# ---------- Caddy block (always written: routes if HTTP, ledger-only if not) ----------
+# The BEGIN line is the ledger header port_ledger.sh parses. DIR is last because
+# paths may contain spaces; PROJECT falls back to the sub when PROJECT_NAME is
+# still PLACEHOLDER.
+LEDGER_PROJECT="${PROJECT_NAME:-$SUB}"
+[[ "$LEDGER_PROJECT" == "PLACEHOLDER" ]] && LEDGER_PROJECT="$SUB"
+CADDY_BLOCK="$(mktemp)"
+{
+  echo "# BEGIN ${SUB}-dev-slots (managed by scripts/setup_dev_slots.sh) PORTS=${PORT_LOW}-${PORT_HIGH} PROJECT=${LEDGER_PROJECT} DIR=${PWD}"
+  if [[ "$HTTP_SURFACE" == "true" ]]; then
     for i in 0 1 2 3; do
       echo "${SLOTS[$i]}.${SUB}.localhost {"
       echo "    reverse_proxy localhost:${PORTS[$i]}"
       echo "}"
     done
-    echo "# END ${SUB}-dev-slots"
-  } > "$CADDY_BLOCK"
-
-  echo ""
-  echo "Proposed Caddyfile block:"
-  echo "---"
-  cat "$CADDY_BLOCK"
-  echo "---"
-
-  # Detect Caddyfile path
-  CADDY_CANDIDATES=(
-    "/opt/homebrew/etc/Caddyfile"
-    "/usr/local/etc/Caddyfile"
-    "/etc/caddy/Caddyfile"
-    "$HOME/Caddyfile"
-  )
-  CADDY_DEFAULT=""
-  for cand in "${CADDY_CANDIDATES[@]}"; do
-    if [[ -f "$cand" ]]; then
-      CADDY_DEFAULT="$cand"
-      break
-    fi
-  done
-  CADDY_DEFAULT="${CADDY_DEFAULT:-$HOME/Caddyfile}"
-
-  read -r -p "Caddyfile path [${CADDY_DEFAULT}]: " CADDY_PATH
-  CADDY_PATH="${CADDY_PATH:-$CADDY_DEFAULT}"
-
-  read -r -p "Append the block to ${CADDY_PATH}? [y/N] " WRITE_CADDY
-  if [[ "$WRITE_CADDY" == "y" || "$WRITE_CADDY" == "Y" ]]; then
-    # If markers exist, replace between them. Else append.
-    if [[ -f "$CADDY_PATH" ]] && grep -q "^# BEGIN ${SUB}-dev-slots" "$CADDY_PATH"; then
-      TMP_CADDY="$(mktemp)"
-      awk -v block_file="$CADDY_BLOCK" -v marker="${SUB}-dev-slots" '
-        $0 ~ "^# BEGIN " marker { in_block=1; while ((getline line < block_file) > 0) print line; next }
-        $0 ~ "^# END " marker { in_block=0; next }
-        !in_block { print }
-      ' "$CADDY_PATH" > "$TMP_CADDY"
-      cp "$TMP_CADDY" "$CADDY_PATH"
-      rm -f "$TMP_CADDY"
-      echo "Updated existing block in $CADDY_PATH"
-    else
-      [[ -f "$CADDY_PATH" ]] && printf "\n" >> "$CADDY_PATH"
-      cat "$CADDY_BLOCK" >> "$CADDY_PATH"
-      echo "Appended block to $CADDY_PATH"
-    fi
   else
-    echo "Skipped Caddyfile write — paste the block above into ${CADDY_PATH} manually."
+    echo "# ledger-only: no HTTP surface; slots dev0-dev3 on ports ${PORTS[0]}-${PORTS[3]}"
   fi
-  rm -f "$CADDY_BLOCK"
+  echo "# END ${SUB}-dev-slots"
+} > "$CADDY_BLOCK"
+
+echo ""
+if [[ "$HTTP_SURFACE" == "true" ]]; then
+  echo "Proposed Caddyfile block (routes + ledger header):"
 else
-  echo ""
-  echo "Skipped Caddyfile generation (http_surface=false)."
+  echo "Proposed Caddyfile block (ledger header only — comments, Caddy ignores them;"
+  echo "this is how non-HTTP projects reserve their range for scripts/port_ledger.sh):"
 fi
+echo "---"
+cat "$CADDY_BLOCK"
+echo "---"
+
+# Detect Caddyfile path
+CADDY_CANDIDATES=(
+  "/opt/homebrew/etc/Caddyfile"
+  "/usr/local/etc/Caddyfile"
+  "/etc/caddy/Caddyfile"
+  "$HOME/Caddyfile"
+)
+CADDY_DEFAULT=""
+for cand in "${CADDY_CANDIDATES[@]}"; do
+  if [[ -f "$cand" ]]; then
+    CADDY_DEFAULT="$cand"
+    break
+  fi
+done
+CADDY_DEFAULT="${CADDY_DEFAULT:-$HOME/Caddyfile}"
+
+read -r -p "Caddyfile path [${CADDY_DEFAULT}]: " CADDY_PATH
+CADDY_PATH="${CADDY_PATH:-$CADDY_DEFAULT}"
+
+read -r -p "Append the block to ${CADDY_PATH}? [y/N] " WRITE_CADDY
+if [[ "$WRITE_CADDY" == "y" || "$WRITE_CADDY" == "Y" ]]; then
+  # If markers exist, replace between them. Else append. Marker match is
+  # whole-word so "auto-dev-slots" never swallows "auto-dev-slots-x".
+  if [[ -f "$CADDY_PATH" ]] && grep -qE "^# BEGIN ${SUB}-dev-slots( |$)" "$CADDY_PATH"; then
+    TMP_CADDY="$(mktemp)"
+    awk -v block_file="$CADDY_BLOCK" -v marker="${SUB}-dev-slots" '
+      $0 ~ "^# BEGIN " marker "( |$)" { in_block=1; while ((getline line < block_file) > 0) print line; next }
+      $0 ~ "^# END " marker "( |$)" { in_block=0; next }
+      !in_block { print }
+    ' "$CADDY_PATH" > "$TMP_CADDY"
+    cp "$TMP_CADDY" "$CADDY_PATH"
+    rm -f "$TMP_CADDY"
+    echo "Updated existing block in $CADDY_PATH"
+  else
+    [[ -f "$CADDY_PATH" ]] && printf "\n" >> "$CADDY_PATH"
+    cat "$CADDY_BLOCK" >> "$CADDY_PATH"
+    echo "Appended block to $CADDY_PATH"
+  fi
+else
+  echo "Skipped Caddyfile write — paste the block above into ${CADDY_PATH} manually"
+  echo "(without it, scripts/port_ledger.sh on this machine will not see this project's range)."
+fi
+rm -f "$CADDY_BLOCK"
 
 # ---------- Suggest extras{} for projects with secondary ports ----------
 echo ""
@@ -294,6 +326,7 @@ if [[ "$HTTP_SURFACE" == "true" ]]; then
   echo "             the PROJECT-SPECIFIC LAUNCH BODY section)"
   echo "  4. Add .local/ to .gitignore if not already there."
 else
+  echo "  (No Caddy reload needed — the block written is comments only.)"
   echo "  1. Add per-slot extras{} to $SLOTS_FILE if needed (see suggestion above)."
   echo "  2. Fill in the PROJECT-SPECIFIC LAUNCH BODY in scripts/launch_local.sh."
   echo "  3. Verify: ./scripts/launch_local.sh dev0 (will exit 1 until launch body is filled)."

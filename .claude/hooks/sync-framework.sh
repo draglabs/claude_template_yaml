@@ -384,6 +384,8 @@ fi
 #         docs/dev/slots.yaml.
 #       - Reviewer-side mechanical scope check (FWADR-020):
 #         check-touches.sh — generic, no project-specific body to fill.
+#       - Machine-wide dev-port ledger (FWADR-019 Revision v1.3):
+#         port_ledger.sh — reads the Caddyfile; --propose feeds the interview.
 #       - Project variables starter (FWADR-019 Revision v1.1):
 #         .env.example — committed template; adopter copies to .env (gitignored)
 #         and fills in. Strategist owns the values per first-contact interview.
@@ -400,6 +402,7 @@ DEV_SLOT_STUBS=(
   "scripts/doc_churn_audit.sh"
   "scripts/check-curator-scope.sh"
   "scripts/spawn_worker.sh"
+  "scripts/port_ledger.sh"
   "docs/dev/slots.yaml"
   ".env.example"
 )
