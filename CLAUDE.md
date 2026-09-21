@@ -70,6 +70,10 @@ Bias-correction:
 - Confidence is self-rated. If you'd default to "this is obviously right," double-check; same false-high mode as the 80/20 ladder.
 - If you frame the choice as "right way vs hack," you're probably missing a middle. Pause and look for one before presenting — binary forks are usually unimagined alternatives. Some are genuinely two-way; most aren't.
 
+## Asking questions
+
+When one message asks the user more than one question — a numbered list, a batch confirmation, an interview block, a multi-item `AskUserQuestion` — the **last item is always "Anything else?"**. It is an open slot: the user answers the numbered items and drops extra context, corrections, or a tangent into that slot in the same reply, instead of having to interrupt the flow to volunteer it. Treat whatever lands there as first-class input, not an aside. Single questions and yes/no confirmations don't need it. English-only rule by nature (a conversational habit, not a checkable artifact); the session-reorient hook re-injects it on every context reset.
+
 ## Branch model
 
 Feature branches merge to **`dev`**, dev promotes to **`main`** at phase boundaries. Full flow in [`docs/dev_framework/session-policy.md`](docs/dev_framework/session-policy.md) §"Branching and isolation" and [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md).

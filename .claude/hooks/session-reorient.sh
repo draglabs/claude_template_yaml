@@ -136,6 +136,18 @@ cat <<'EOF'
     work needs the user's explicit agreement — it turns one doc into a phase.
 EOF
 
+# Multi-part questions end with an open slot — emitted for EVERY source.
+# English-only convention from CLAUDE.md §"Asking questions"; this reminder is
+# its only mechanism, so it rides every reset alongside the doctrine reloads.
+cat <<'EOF'
+
+[session-reorient] Multi-part questions end with "Anything else?".
+  - Whenever one message asks the user more than one question, the last item
+    is "Anything else?" — an open slot for extra context in the same reply.
+    Whatever lands there is first-class input. Single questions and yes/no
+    confirmations are exempt.
+EOF
+
 # Code-repo staleness check — runs for EVERY session-start source (FWADR-012
 # Revision v1.1). CI and auto-promotion keep origin moving while local
 # checkouts sit idle; a stale tree is misleading exactly when it looks normal
