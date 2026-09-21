@@ -4,7 +4,7 @@
 # RESEARCHER_SCOPE_DIR or named in RESEARCHER_DATA_CARVEOUTS.
 #
 # Usage (run from $PROJECT_DIR, per FWADR-021 script placement doctrine):
-#   ./scripts/check-researcher-scope.sh [<base-ref>]     # default: origin/dev
+#   ./scripts/check-researcher-scope.sh [<base-ref>]     # default: origin/$INTEGRATION_BRANCH (dev | main per GIT_FLOW)
 #
 # Reads from $PROJECT_DIR/.env:
 #   RESEARCHER_SCOPE_DIR      — the one directory the Researcher may modify
@@ -22,7 +22,7 @@
 
 set -euo pipefail
 
-BASE_REF="${1:-origin/dev}"
+BASE_REF="${1:-origin/${INTEGRATION_BRANCH:-dev}}"
 
 env_val() {
   grep -E "^$1=" .env 2>/dev/null | head -1 | cut -d= -f2- \

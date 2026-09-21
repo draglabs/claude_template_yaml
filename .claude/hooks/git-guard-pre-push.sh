@@ -3,10 +3,16 @@
 #
 # Git pre-push hook enforcing two framework rules at the push boundary:
 #
-#   1. MAIN GUARD (FWADR-023): blocks any push that updates refs/heads/main
-#      unless FRAMEWORK_ALLOW_MAIN_PUSH=1 is set in the environment. The only
-#      sanctioned setter of that variable is scripts/promote_dev_to_main.sh
-#      (phase-exit promotion and, with --bypass, the emergency-bypass path).
+#   1. RELEASE GUARD (FWADR-023, mode-aware per FWADR-035): blocks any push
+#      that updates the project's RELEASE REF unless FRAMEWORK_ALLOW_MAIN_PUSH=1
+#      is set in the environment. Which ref that is depends on GIT_FLOW:
+#        dev-main (default) → refs/heads/main      (promotion merge)
+#        trunk              → refs/tags/v*         (release tag; main is the
+#                                                   trunk and pushes freely)
+#      The only sanctioned setter of that variable is
+#      scripts/promote_dev_to_main.sh (phase-exit release and, with --bypass,
+#      the emergency path). GIT_FLOW is read from the process env, else from
+#      $PROJECT_DIR/.env (repo root under flat layout, its parent under split).
 #   2. ENV GUARD (FWADR-033): blocks any push whose ref tips track a file
 #      named `.env` (any depth). App runtime secrets never belong in git.
 #      FRAMEWORK_ALLOW_MAIN_PUSH does NOT bypass this check — there is no
@@ -29,14 +35,31 @@
 
 ZERO_SHA="0000000000000000000000000000000000000000"
 
+# Resolve GIT_FLOW (FWADR-035). Worktrees share the main repo's hooks, so use
+# the common git dir to find the repo root, then look for .env there (flat
+# layout) or one level up (split layout, $PROJECT_DIR/.env).
+if [[ -z "${GIT_FLOW:-}" ]]; then
+  repo_root="$(cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .git)/.." 2>/dev/null && pwd)"
+  for envf in "$repo_root/.env" "$repo_root/../.env"; do
+    if [[ -f "$envf" ]] && grep -qE '^GIT_FLOW=' "$envf" 2>/dev/null; then
+      GIT_FLOW="$(grep -E '^GIT_FLOW=' "$envf" | head -1 | cut -d= -f2- | tr -d '"'"'"'"' )"
+      break
+    fi
+  done
+fi
+[[ "${GIT_FLOW:-}" == "trunk" ]] || GIT_FLOW="dev-main"
+
 # stdin: one line per ref being pushed: <local ref> <local sha> <remote ref> <remote sha>
 blocked_refs=""
 env_hits=""
 while read -r local_ref local_sha remote_ref remote_sha; do
   [[ -z "$remote_ref" ]] && continue
 
-  if [[ "$remote_ref" == "refs/heads/main" && "${FRAMEWORK_ALLOW_MAIN_PUSH:-}" != "1" ]]; then
-    blocked_refs+="$remote_ref"$'\n'
+  if [[ "${FRAMEWORK_ALLOW_MAIN_PUSH:-}" != "1" ]]; then
+    case "$GIT_FLOW" in
+      trunk)    [[ "$remote_ref" == refs/tags/v* ]]        && blocked_refs+="$remote_ref"$'\n' ;;
+      dev-main) [[ "$remote_ref" == "refs/heads/main" ]]   && blocked_refs+="$remote_ref"$'\n' ;;
+    esac
   fi
 
   # Env guard: skip deletions (no local objects to inspect). Tip tree only —
@@ -68,11 +91,25 @@ EOF
 fi
 
 if [[ -n "$blocked_refs" ]]; then
-  cat >&2 <<'EOF'
+  if [[ "$GIT_FLOW" == "trunk" ]]; then
+    cat >&2 <<'EOF'
+[push-guard] BLOCKED: this push creates or moves a release tag (v*).
+
+  GIT_FLOW=trunk: main is the trunk and pushes freely; PRODUCTION is
+  released by a v* tag, which only moves at phase exit through the
+  sanctioned script (it verifies the tag sits on the pushed head of main):
+
+    ./scripts/promote_dev_to_main.sh v<X.Y.Z>            # phase-exit release
+    ./scripts/promote_dev_to_main.sh v<X.Y.Z> --bypass   # emergency release
+
+  run from $PROJECT_DIR. See docs/dev_framework/adrs/fwadr-023-main-push-guard.md.
+EOF
+  else
+    cat >&2 <<'EOF'
 [push-guard] BLOCKED: this push updates main.
 
-  main only moves at phase-exit promotion (or explicit emergency bypass),
-  and only through the sanctioned script:
+  GIT_FLOW=dev-main: main only moves at phase-exit promotion (or explicit
+  emergency bypass), and only through the sanctioned script:
 
     ./scripts/promote_dev_to_main.sh            # phase-exit promotion
     ./scripts/promote_dev_to_main.sh --bypass   # emergency bypass ([bypass] commit)
@@ -80,6 +117,7 @@ if [[ -n "$blocked_refs" ]]; then
   run from $PROJECT_DIR. Feature work merges to dev, never to main.
   See docs/dev_framework/adrs/fwadr-023-main-push-guard.md.
 EOF
+  fi
   exit 1
 fi
 

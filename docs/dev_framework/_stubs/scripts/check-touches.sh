@@ -12,7 +12,7 @@
 #   cd /tmp/worktrees/myproj/w-a1-auth
 #   /path/to/scripts/check-touches.sh \
 #     docs/execution-plans/exec-phase-1/w-a1.md \
-#     origin/dev
+#     origin/${INTEGRATION_BRANCH}   (dev | main per GIT_FLOW)
 #
 # Exit codes:
 #   0 — every modified file is within `touches`.

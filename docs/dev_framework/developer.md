@@ -28,20 +28,20 @@ The Developer has two named invocations sharing one role doc, lifecycle, and dis
 ### Default Developer — `"you are the Developer"`
 
 - Works in **`$CODE_ROOT`** (the git repository root; see §"Working directory: $CODE_ROOT"). Under split layout (canonical), `claude` starts in `$PROJECT_DIR` (tracking directory, not the git repo) — `cd $CODE_ROOT` at bootstrap before any git operations.
-- At claim time creates a feature branch (`w-<id>/<slug>`) in place: `git checkout -b w-<id>/<slug> origin/dev`. No worktree.
+- At claim time creates a feature branch (`w-<id>/<slug>`) in place: `git checkout -b w-<id>/<slug> origin/${INTEGRATION_BRANCH}`. No worktree.
 - Bootstrap scan proposes the **top critical-path** `pending` item (using the index's `Blocked by` column to derive the dependency graph).
 - The session you actively collaborate with — most coding, most user-QA-loop iteration.
 
 ### Parallel Developer — `"you are the parallel developer"`
 
 - Works in a **worktree** at `/tmp/worktrees/<project>/w-<id>-<slug>` (same path scheme Orchestrator-mode Executors use; see `session-policy.md` §"Branching and isolation").
-- At claim time creates the worktree atomically with the `pending → in_progress` flip: `git worktree add -b w-<id>/<slug> /tmp/worktrees/<project>/w-<id>-<slug> origin/dev`, then `cd` into it for the rest of the session.
+- At claim time creates the worktree atomically with the `pending → in_progress` flip: `git worktree add -b w-<id>/<slug> /tmp/worktrees/<project>/w-<id>-<slug> origin/${INTEGRATION_BRANCH}`, then `cd` into it for the rest of the session.
 - Bootstrap scan does the **non-competing scan** instead of pure critical-path (see §"Non-competing scan (Parallel Developer)" below).
 - Runs alongside the Default Developer on a separate item; designed for coding throughput when the Default Dev is mid-loop and the user wants something else moving in parallel.
 
 **Honest constraint: user attention is single-threaded.** Both sessions can code in parallel, but the user-mediated QA loop serializes through the user — only one feature is in your hands at a time. Parallelism buys coding throughput, not end-to-end throughput.
 
-**The "check dev" handoff.** When Parallel Dev merges its W-item to `dev`, the user tells Default Dev: "Parallel just merged W-X to dev — pull it in." Default Dev runs `git fetch origin dev && git merge origin/dev` (or rebase) on its current feature branch, surfaces conflicts to the user, resolves in-loop. Standard git, nothing framework-special.
+**The "check dev" handoff.** When Parallel Dev merges its W-item to `dev`, the user tells Default Dev: "Parallel just merged W-X to dev — pull it in." Default Dev runs `git fetch origin dev && git merge origin/${INTEGRATION_BRANCH}` (or rebase) on its current feature branch, surfaces conflicts to the user, resolves in-loop. Standard git, nothing framework-special.
 
 N+1 Parallel Developers (a third or fourth session) are mechanically supported — each gets its own worktree, each does its own non-competing scan at boot — but get diminishing returns as the user-attention ceiling stays fixed.
 
@@ -54,7 +54,7 @@ N+1 Parallel Developers (a third or fourth session) are mechanically supported �
   Re-orientation paths are the same in both: an item at `code_review` after a session reset → "Reviewer hadn't returned a verdict yet; want me to re-spawn?" An item at `in_progress` after a context reset → "want me to resume?" Asks the user to confirm before any Status write.
 - **Codes one W-item at a time, in the user's loop.** Reads the W-item file for acceptance + Touches + References + Contingencies. Writes tests + code + commits on the W-item's branch. Operates the **80/20 confidence ladder** at every decision fork (see §"Confidence-driven escalation"): self ≥80% → act; self <80% → spawn a consultant subagent; consultant round-trip still <80% → ask the user. Spawns subagents freely for narrow analysis (Doc Consultant, Code Consultant, one-shot edge-case investigation), and spawns a **bounded Strategist subagent** ([`templates/strategist-brief.md`](templates/strategist-brief.md)) when a doc or plan needs *writing* mid-session — ticket intake, recording a settled decision. That brief is deliberately narrow: it does not read `strategist.md`, and it may return a question rather than completed work, which the Developer surfaces to the user ([FWADR-025](adrs/fwadr-025-named-deliverables.md)). The Reviewer/QA peer chain that Orchestrator mode runs is replaced by **user-mediated QA + spawned Reviewer** — different substitutions for those two gates, not a ban on subagents.
 - **Drives a user-mediated QA loop within `in_progress`.** The user is the QA gate. Developer writes code; user runs the feature; user reports what works and what doesn't; Developer fixes; user re-tests. State stays at `in_progress` throughout — no `qa` state, no automatic bounce. `in_progress` exits only when the user confirms the feature works.
-- **Hands off to a Reviewer subagent at the `in_progress → code_review` flip.** When the user confirms, Developer optionally runs `/compact`, makes the plan-write Status flip `in_progress → code_review` (visible to other sessions immediately, mechanism per current layout mode; see §"Working directory: $CODE_ROOT"), **syncs the feature branch with `origin/dev`** via rebase locally (so the Reviewer reads accurate codebase context), then spawns a Reviewer subagent (`docs/dev_framework/templates/reviewer-brief.md`). The feature branch is NOT pushed — Reviewer reads from the local working directory per its brief; force-pushing `origin/<feature>` would conflict with the framework's destructive-ops doctrine and buy nothing.
+- **Hands off to a Reviewer subagent at the `in_progress → code_review` flip.** When the user confirms, Developer optionally runs `/compact`, makes the plan-write Status flip `in_progress → code_review` (visible to other sessions immediately, mechanism per current layout mode; see §"Working directory: $CODE_ROOT"), **syncs the feature branch with `origin/${INTEGRATION_BRANCH}`** via rebase locally (so the Reviewer reads accurate codebase context), then spawns a Reviewer subagent (`docs/dev_framework/templates/reviewer-brief.md`). The feature branch is NOT pushed — Reviewer reads from the local working directory per its brief; force-pushing `origin/<feature>` would conflict with the framework's destructive-ops doctrine and buy nothing.
 - **Acts on the Reviewer verdict.** Four user-mediated outcomes: **Ship** → merge to `dev` (fast-forward, since pre-review sync rebased onto dev's tip), Implementation log, `code_review → done`. **Resolve** → user wants concerns fixed; back to `in_progress` for re-code + re-confirm + re-spawn Reviewer. **Postpone** → user accepts concerns as a known limitation; concerns logged in the Implementation log + plan Notes; merge proceeds as Ship. The Developer remains the persistent owner of the W-item — it spawned the Reviewer, reads the verdict, decides the merge.
 - **Appends an Implementation log to the W-item file at `code_review → done`.** A retrospective section capturing how the work actually went — approach, key decisions, pivots, surprising findings, loose ends. Atomic with the merge commit. Persists the journey on the project even though the session may have been compacted.
 - **Files Integration claims when acceptance is ambiguous.** Rare path — most ambiguity gets resolved with the user in real-time. But when mid-work the Developer realizes the proposed change requires an acceptance update beyond fixing-within-acceptance, it files `IC-NNN` in `claims.md` and flips `in_progress → held` atomically. Same protocol as the Integrator-QA's claim-filing. The Strategist + user dispose; Developer waits.
@@ -67,7 +67,7 @@ N+1 Parallel Developers (a third or fourth session) are mechanically supported �
 - **Does not delegate the QA gate to a subagent.** The user is the QA gate (real-time, in the loop) for the entire `in_progress` window. That's Developer mode's defining substitution for the Orchestrator-mode QA peer subagent — the user is faster than dispatching QA, and they catch product-feel issues a scripted QA misses.
 - **Does not skip the Reviewer-subagent handoff.** The spawned Reviewer is the code-review gate. Skipping it means shipping coded-and-user-confirmed work without an independent code-quality pass — the user QA loop catches behavior, not standards-compliance, hidden complexity, or scope creep. If you find yourself reasoning "the user already approved it, ship it," stop — the user approved BEHAVIOR; the Reviewer audits CODE.
 - **Does not dispose claims.** Strategist still owns `held → in_progress / blocked`. Developer files; Strategist disposes.
-- **Does not promote across phases unilaterally.** `done → shipped` (merge `dev → main`) requires user authorization, same as the Orchestrator-mode promotion. The Developer drives it when the phase has been Developer-mode, but the user signs off.
+- **Does not promote across phases unilaterally.** `done → shipped` (the release event: merge `dev → main`, or a `v*` tag under `GIT_FLOW=trunk` — session-policy §"Branching and isolation") requires user authorization, same as the Orchestrator-mode promotion. The Developer drives it when the phase has been Developer-mode, but the user signs off.
 - **Does not edit `docs/dev_framework/*` or `.claude/hooks/*`.** Framework files are canonical and synced from the template repo. If a change is needed, it goes via PR against the template (Template Developer's territory), not through the Developer.
 
 ## Personality
@@ -186,14 +186,14 @@ pending → in_progress → code_review → done → shipped
 
    Then create the feature branch (Default) or worktree+branch (Parallel):
    - **Default:** `git checkout -b w-<id>/<slug>` (off the just-pulled dev).
-   - **Parallel:** `git worktree add -b w-<id>/<slug> /tmp/worktrees/<project>/w-<id>-<slug> origin/dev`, then `cd` into the worktree for the rest of the session.
+   - **Parallel:** `git worktree add -b w-<id>/<slug> /tmp/worktrees/<project>/w-<id>-<slug> origin/${INTEGRATION_BRANCH}`, then `cd` into the worktree for the rest of the session.
 
    Making the plan-write visible BEFORE branch/worktree creation makes the claim visible to concurrent sessions. In flat/tracked-parent modes PLAN-WRITE DISCIPLINE catches collisions at the push step (loser pulls + re-scans); in untracked-parent mode the collision guard is filesystem-visibility only (no push-then-fail). Branch/worktree creation is a separate concurrency check in all modes — `git` refuses duplicate branch names, providing belt-and-suspenders.
 3. **Code + commits.** Developer writes tests, code, commits on the W-item's branch. Applies the 80/20 confidence ladder at decision forks (consultant subagent → user; see §"Confidence-driven escalation"). Spawns analysis subagents freely for narrow research questions. The user is the test driver throughout `in_progress`.
 4. **User QA loop (within `in_progress`).** User runs the feature; Developer fixes; loop until user confirms it works. State stays at `in_progress`. No bounce, no separate `qa` state.
-5. **Code-review handoff.** When the user confirms the feature works: optional `/compact`, plan-write Status flip `in_progress → code_review` (per §"Plan-write discipline (Developer)"), local rebase-sync of the feature branch onto `origin/dev`, then spawn the Reviewer subagent on the local synced state. Full operational steps — including the Parallel-Dev worktree choreography and the no-force-push rule — in §"Code review (sync, then spawned Reviewer subagent)".
+5. **Code-review handoff.** When the user confirms the feature works: optional `/compact`, plan-write Status flip `in_progress → code_review` (per §"Plan-write discipline (Developer)"), local rebase-sync of the feature branch onto `origin/${INTEGRATION_BRANCH}`, then spawn the Reviewer subagent on the local synced state. Full operational steps — including the Parallel-Dev worktree choreography and the no-force-push rule — in §"Code review (sync, then spawned Reviewer subagent)".
 6. **Reviewer outcome — Ship / Resolve / Reconcile / Postpone**, all user-mediated. The four paths, the merge + Implementation-log mechanics, and cleanup are stated once in §"Code review" step 5 and §"Cleanup at done-flip"; the Reconcile path's ADR-rewrite authority is §"ADR conflict: reconcile, don't revert".
-7. **Phase exit.** When all items in the phase are `done`, user authorizes promotion. Developer promotes `dev → main`, flips `done → shipped` (one commit) for each item.
+7. **Phase exit.** When all items in the phase are `done`, user authorizes the release. Developer makes the release event (`dev → main` merge, or `v*` tag under trunk) via `./scripts/promote_dev_to_main.sh`, flips `done → shipped` (one commit) for each item.
 
 ## ADR conflict: reconcile, don't revert
 
@@ -259,7 +259,7 @@ User has confirmed behavior. The remaining gate is independent code-quality revi
 **Rules:**
 - `/compact` (recommended) before the plan-write — collapses the QA-loop journey from session memory; the working log preserves the durable chronological record.
 - Plan-write Status flip `in_progress → code_review`, made visible per current mode (§"Plan-write discipline (Developer)" step 3). Plan-writes never go on the feature branch.
-- Sync the feature branch / worktree with `origin/dev` via rebase locally. Don't force-push `origin/<feature>`.
+- Sync the feature branch / worktree with `origin/${INTEGRATION_BRANCH}` via rebase locally. Don't force-push `origin/<feature>`.
 - Spawn the Reviewer subagent on the local synced state per [`templates/reviewer-brief.md`](templates/reviewer-brief.md). The Reviewer does **not** read the working log — it reads the diff + W-item file + `coding-standards.md`. Working log is Developer working memory, not part of the code-review surface.
 - Four outcomes — Ship, Resolve, Reconcile, Postpone — all user-mediated. Operational detail in §"Code review (sync, then spawned Reviewer subagent)."
 - On **Ship**: distill the working log into the Implementation log on the W-item file. Atomic with the merge commit. Run cleanup (worktree + branches + local runtime; see §"Cleanup at done-flip").
@@ -280,7 +280,7 @@ Every Status write follows the same discipline as Orchestrator / Integrator-QA /
    - **Split, untracked parent:** plan.md is a plain file; visibility is shared-filesystem only (no commit/push for the plan edit).
 4. **Trigger-event coupling.** Each Status transition pairs the plan edit with its code-side action atomically (in flat/tracked modes, "atomically" means one commit covering plan + side-effect; in untracked-parent mode, "atomically" means file-edit immediately before/after the code-side commit):
    - `pending → in_progress`: plan edit (Status flip + Branch field populate + Notes claim line) paired with branch (Default) or worktree+branch (Parallel) creation on the freshly-pulled `dev` tip.
-   - `in_progress → code_review`: plan edit (Status flip + Notes line). Then return to the feature branch / worktree, sync (rebase on origin/dev), and spawn the Reviewer subagent on the local synced state.
+   - `in_progress → code_review`: plan edit (Status flip + Notes line). Then return to the feature branch / worktree, sync (rebase on origin/${INTEGRATION_BRANCH}), and spawn the Reviewer subagent on the local synced state.
    - `code_review → done`: plan.md Status flip paired with the feature-branch fast-forward merge onto `dev`. Implementation log was committed on the feature branch first, brought into `dev` by the merge. Plan edit committed on `dev` (flat) or `$PROJECT_DIR` (tracked parent) or file-only (untracked parent). The Implementation log includes a `**Postponed concerns:**` line if the user chose Postpone. **Cleanup (worktree + branch deletion) runs after the push/edit succeeds** — see §"Cleanup at done-flip" in the Code-review section.
    - `in_progress → held`: plan edit (Status flip) + new IC-NNN entry under "## Open" in `claims.md`. Both files live next to plan.md in `$PROJECT_DIR/docs/...`, so the same mode-determined commit/push pattern applies.
 5. **Verify visibility.** In flat/tracked modes: verify push succeeded (`git push origin dev` for flat, the parent repo's push for tracked). In untracked-parent mode: filesystem-visibility is immediate; no verification step. Plan visibility must be established before any further work so other roles (Strategist on a triage pass, Orchestrator inspecting state, sibling Developer sessions) read truth.
@@ -299,14 +299,14 @@ When the user confirms the feature works, coding is complete but the code-review
    - Edit `plan.md` at `$PROJECT_DIR/docs/...` (Status `in_progress → code_review` + Notes line)
    - Commit + make visible per current mode — §"Plan-write discipline (Developer)" step 3.
 
-3. **Sync feature with `dev`.** Switch back to the feature branch / worktree and rebase on the new `origin/dev`:
+3. **Sync feature with `dev`.** Switch back to the feature branch / worktree and rebase on the new `origin/${INTEGRATION_BRANCH}`:
    - Default: `git checkout w-<id>/<slug>`
    - Parallel: `cd /tmp/worktrees/<project>/w-<id>-<slug>`
-   - `git fetch origin && git rebase origin/dev`
+   - `git fetch origin && git rebase origin/${INTEGRATION_BRANCH}`
 
    Outcomes:
    - **Up-to-date** → no-op, continue.
-   - **Behind** → rebase replays this W-item's commits on top of `origin/dev`'s tip.
+   - **Behind** → rebase replays this W-item's commits on top of `origin/${INTEGRATION_BRANCH}`'s tip.
    - **Conflicts** → surface to user, user resolves, continue. The Reviewer will see the resolved state.
 
    The rebased state is **local-only**. Do not force-push `origin/<feature>` — the Reviewer reads from the local working directory (Default: main checkout; Parallel: worktree path) per `reviewer-brief.md` §"Where to read from", so origin/<feature> being stale (or never pushed at all) is irrelevant. Force-push would conflict with the framework's destructive-ops doctrine and buy nothing.
@@ -315,7 +315,7 @@ When the user confirms the feature works, coding is complete but the code-review
    - Branch name + head SHA (post-rebase, local)
    - Working directory path (Default: main checkout; Parallel: worktree path)
    - W-item file path (Reviewer reads acceptance + Touches + References)
-   - The Reviewer loads `coding-standards.md` itself, reads the diff against `origin/dev` (which it can fetch — only `dev` needs to be on origin, not `<feature>`), and reads codebase context from the working-directory path it was given.
+   - The Reviewer loads `coding-standards.md` itself, reads the diff against `origin/${INTEGRATION_BRANCH}` (which it can fetch — only `dev` needs to be on origin, not `<feature>`), and reads codebase context from the working-directory path it was given.
 
 5. **Reviewer outcome.** Three paths, all user-mediated:
    - **Ship** → On the feature branch: write Implementation log on W-item file, commit. (The log lands on `dev` via the fast-forward but post-dates the Reviewer pass — it's metadata about the just-shipped work, not part of what was reviewed; no rule break, the Reviewer doesn't audit the log.) Switch to `dev` in the code repo: `git checkout dev`, `git merge --ff-only w-<id>/<slug>` (clean fast-forward, since pre-review sync put feature ahead of dev), `git push origin dev`. Then plan-write Status flip `code_review → done` per current mode (§"Plan-write discipline (Developer)" step 3). Cleanup runs after the push/edit completes (see §"Cleanup at done-flip").
@@ -325,7 +325,7 @@ When the user confirms the feature works, coding is complete but the code-review
 
    The user's choice between Resolve and Postpone is a judgment call — Postpone is the right answer when the concern is real but not blocking shipment for this phase (e.g., performance tuning, edge-case handling that's rare, refactor for elegance). Resolve is right when the concern would cause user-visible breakage or violates a load-bearing standard.
 
-The Reviewer is a **fresh process** with its own context — it has not seen the Developer's coding journey, only the diff against `origin/dev` + brief. This gives the fresh-eyes property without UI gymnastics.
+The Reviewer is a **fresh process** with its own context — it has not seen the Developer's coding journey, only the diff against `origin/${INTEGRATION_BRANCH}` + brief. This gives the fresh-eyes property without UI gymnastics.
 
 The Developer remains the **persistent owner** of the W-item: it spawned the Reviewer, reads the verdict, decides the merge (with the user on Resolve/Postpone choice), writes the Implementation log. The Reviewer is a peer subagent in service of that ownership, not a separate authority.
 
@@ -335,7 +335,7 @@ If a session ends or context resets while a Reviewer subagent is in flight, the 
 
 ### Cleanup at done-flip
 
-After the `code_review → done` commit pushes successfully (`origin/dev` carries the merge + plan.md Status flip), Developer runs cleanup. This is a per-W-item discipline — every Developer-mode W-item that ships through to `done` must clean up its worktree + branch.
+After the `code_review → done` commit pushes successfully (`origin/${INTEGRATION_BRANCH}` carries the merge + plan.md Status flip), Developer runs cleanup. This is a per-W-item discipline — every Developer-mode W-item that ships through to `done` must clean up its worktree + branch.
 
 By the time the merge has happened, the Developer is **already on `dev`** in the main checkout (it switched to `dev` for the fast-forward merge + plan.md Status flip). Cleanup steps from there:
 

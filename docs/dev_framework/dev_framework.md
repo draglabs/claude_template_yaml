@@ -134,14 +134,14 @@ feature  ──▶  dev  ──(phase exit + user authorizes)──▶  main
      (local or remote)                          (always CI-deployed)
 ```
 
-Feature branches merge to `dev` per W-item (Orchestrator decision). Dev promotes to `main` only at phase-exit, gated by QA against `{{sub}}.dev.{{website}}.com` and explicit user authorization. See [`session-policy.md`](session-policy.md) §"Branching and isolation" and §"Phase exit gate."
+Feature branches merge to the integration branch per W-item (Orchestrator decision) — `dev` under `GIT_FLOW=dev-main`, `main` under `GIT_FLOW=trunk` ([FWADR-035](adrs/fwadr-035-git-flow-mode.md); set at the first-contact interview). Production moves only at phase-exit, gated by QA against `{{sub}}.dev.{{website}}.com` and explicit user authorization: a promotion merge `dev → main`, or a `v*` release tag under trunk. See [`session-policy.md`](session-policy.md) §"Branching and isolation" and §"Phase exit gate."
 
-Pushing `main` is mechanically blocked by a git pre-push guard installed on every SessionStart sync ([FWADR-023](adrs/fwadr-023-main-push-guard.md)); the only sanctioned push path is `scripts/promote_dev_to_main.sh` (default = phase-exit promotion, `--bypass` = emergency path).
+Pushing the release ref (`main`, or `v*` tags under trunk) is mechanically blocked by a git pre-push guard installed on every SessionStart sync ([FWADR-023](adrs/fwadr-023-main-push-guard.md)); the only sanctioned push path is `scripts/promote_dev_to_main.sh` (default = phase-exit release, `--bypass` = emergency path).
 
 ## Two process rules (every session)
 
 1. **Docs before code — for *additions*.** Architectural additions get documented by the Strategist and merged before the Orchestrator dispatches implementation. Enforced at the merge boundary by the Reviewer (`block` if no matching doc) and at the phase boundary by the Strategist's alignment audit. **This does NOT make an existing ADR outrank a live instruction from you.** When your instruction conflicts with an accepted ADR, the resolution is *doc-follows-instruction*: the deviation is recorded on the W-item, the review gate reports `doc-conflict` rather than blocking, and the ADR is **rewritten** (never appended to) to state the decision that now holds — or escalated to you if your intent isn't clear. The ADR log is living architecture, not doctrine ([FWADR-027](adrs/fwadr-027-living-architecture.md)).
-2. **CI-only deploys to production.** Production changes land via `git push origin main` → CI. Never from a laptop. Never via `docker exec`. Dev environment behavior depends on mode — see [`dev-environment.md`](dev-environment.md).
+2. **CI-only deploys to production.** Production changes land via the release push (`main` under dev-main, a `v*` tag under trunk) → CI. Never from a laptop. Never via `docker exec`. Dev environment behavior depends on mode — see [`dev-environment.md`](dev-environment.md).
 
 Code-level rules (TDD, no hardcoded lifecycle values, fail loudly) live in [`coding-standards.md`](coding-standards.md) and are enforced by the Executor (writing) and Reviewer (checking) subagent briefs. The Orchestrator and Strategist do NOT load that doc — they delegate enforcement to the subagent layer.
 

@@ -196,10 +196,10 @@ STEP 0 — Detect plan format, then reconcile the status ledger.
     without cleaning up.
 
   CHECK 5 — Wrong-base detection.
-    For every w-* branch, compute its base against origin/dev:
-      git merge-base <branch> origin/dev
-    Then verify that merge-base is an ancestor of origin/dev:
-      git merge-base --is-ancestor $(git merge-base <branch> origin/dev) origin/dev
+    For every w-* branch, compute its base against origin/${INTEGRATION_BRANCH}:
+      git merge-base <branch> origin/${INTEGRATION_BRANCH}
+    Then verify that merge-base is an ancestor of origin/${INTEGRATION_BRANCH}:
+      git merge-base --is-ancestor $(git merge-base <branch> origin/${INTEGRATION_BRANCH}) origin/${INTEGRATION_BRANCH}
     If that check fails, the branch was cut from the wrong base —
     typically main, a stale local dev, or a detached HEAD. Report
     wrong-base branches as a DISTINCT category because the remediation
@@ -234,7 +234,7 @@ STEP 0 — Detect plan format, then reconcile the status ledger.
 
     Wrong-base branches (CHECK 5 — remediation is rebase-onto-dev or
     re-cut):
-      - w-a1/scaffold-monolith: base is main, not origin/dev.
+      - w-a1/scaffold-monolith: base is main, not origin/${INTEGRATION_BRANCH}.
       <list, or "none">
 
     === end ===
@@ -314,7 +314,7 @@ STEP 3 — Dispatch the Executor.
   (Sequential mode — for a single W-item, or Parallel-safe: false / unset.
    For batch mode, see STEP 3B after STEP 5.)
 
-  BRANCHING: You pre-create the worktree explicitly off origin/dev, then
+  BRANCHING: You pre-create the worktree explicitly off origin/${INTEGRATION_BRANCH}, then
   pass the path to the Executor. Do NOT use the Agent tool's
   isolation: "worktree" flag — that flag creates its own worktree from
   the parent session's HEAD, which is the exact bug we're preventing.
@@ -322,7 +322,7 @@ STEP 3 — Dispatch the Executor.
 
   Commands, in this order:
     git fetch origin dev
-    git worktree add -b w-<id>/<slug> <worktree-path> origin/dev
+    git worktree add -b w-<id>/<slug> <worktree-path> origin/${INTEGRATION_BRANCH}
 
   Where <worktree-path> is a path OUTSIDE the main working tree —
   typically /tmp/worktrees/<project>/w-<id>-<slug> or a sibling dir.
@@ -617,7 +617,7 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
 
     For each W-id in the batch:
       git fetch origin dev
-      git worktree add -b w-<id>/<slug> <worktree-path> origin/dev
+      git worktree add -b w-<id>/<slug> <worktree-path> origin/${INTEGRATION_BRANCH}
 
     Paths must be distinct — typically /tmp/worktrees/<project>/w-<id>-<slug>.
     Do NOT use the Agent tool's isolation flag (same reason as STEP 3).
@@ -769,16 +769,20 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
       git push origin dev
     Same relay pattern as STEP 5 step 5 for Reviewer/QA.
 
-STEP 6 — Phase exit + promotion to main (when all W-items complete).
+STEP 6 — Phase exit + release (when all W-items complete).
 
-  This is the single point where main moves. Not per-W-item; per-phase.
+  This is the single point where production moves. Not per-W-item; per-phase.
+  The release event depends on GIT_FLOW (.env; session-policy §"Branching
+  and isolation"): dev-main = promotion merge dev → main; trunk = annotated
+  v<X.Y.Z> tag on the pushed head of main. $INTEGRATION_BRANCH is dev or
+  main accordingly.
 
   1. Confirm every W-item has Status = `done` (no outstanding pending /
      in_progress / held / blocked). If anything is open, resolve first.
      A `held` item at phase boundary means an open IC-NNN claim is
      unresolved — coordinate with the Strategist before promoting.
-  2. Confirm dev-branch CI is green (remote-hosted) or dev stack healthy
-     (local-hosted).
+  2. Confirm integration-branch CI is green (remote-hosted) or dev stack
+     healthy (local-hosted).
   3. Spawn a QA subagent against {{sub}}.dev.{{website}}.com using
      qa-brief.md with Spawned by: Orchestrator (phase exit). Pass every
      exit criterion as an acceptance bullet. This is the same peer-dispatch
@@ -789,17 +793,24 @@ STEP 6 — Phase exit + promotion to main (when all W-items complete).
      a. Read $PLAN_PATH fresh first (syncs the Edit tool's hash —
         prevents stale-read failure; see PLAN-WRITE DISCIPLINE), then
         flip every phase W-item Status from `done` to `shipped`. Under
-        single-file format keep summary table matched. Commit on dev:
+        single-file format keep summary table matched. Commit on the
+        integration branch:
           git add $PLAN_PATH
           git commit -m "Phase <name>: all W-items → shipped"
-          git push origin dev
+          git push origin $INTEGRATION_BRANCH
         Verify per PLAN-WRITE DISCIPLINE. If the promotion-ledger flip
-        didn't land, DO NOT proceed to the dev → main merge below —
-        re-apply or surface first.
-     b. Merge dev → main with the Promotion commit shape:
-          git checkout main && git merge --no-ff dev
-        (--no-ff keeps the phase boundary visible in main history)
-     c. Push main: `git push origin main`. Production CI deploys.
+        didn't land, DO NOT proceed to the release below — re-apply or
+        surface first.
+     b. Make the release event with the Promotion commit shape:
+          dev-main:  git checkout main && git merge --no-ff dev
+                     (--no-ff keeps the phase boundary visible in main history)
+          trunk:     git tag -a v<X.Y.Z> -m "Release v<X.Y.Z>: <phase> complete" ...
+                     (on HEAD of main, which step 5a just pushed)
+     c. Push it via the sanctioned script from $PROJECT_DIR — a raw push of
+        the release ref is blocked by the pre-push guard (FWADR-023):
+          dev-main:  ./scripts/promote_dev_to_main.sh
+          trunk:     ./scripts/promote_dev_to_main.sh v<X.Y.Z>
+        Production CI deploys.
   6. Pause. Do NOT auto-advance to the next phase. Wait for the user to
      confirm production deploy is healthy before starting anything new.
 
@@ -810,7 +821,7 @@ HARD RULES:
 - You never write code. Not a line. If the retry loop exhausts on a
   3-line tweak, you still escalate — you do not touch src/ yourself.
   (Exception: emergency bypass per session-policy §"When to suspend this
-  policy" — user-invoked, tagged [bypass], back-merged to dev.)
+  policy" — user-invoked, tagged [bypass], back-merged to dev under dev-main.)
 - You never open diffs. Trust the Reviewer's verdict and citations; the
   Reviewer read the code on your behalf. You read structured text, not
   source.

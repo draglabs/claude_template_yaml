@@ -11,7 +11,9 @@
 # Run from $PROJECT_DIR (parent dir under split layout), like every framework
 # script (FWADR-021 script placement doctrine).
 #
-# Modes:
+# Behaviour follows GIT_FLOW in .env (FWADR-035):
+#
+# GIT_FLOW=dev-main (default)          usage: promote_dev_to_main.sh [--bypass]
 #   (default)  Phase-exit promotion. Verifies main is checked out and HEAD is
 #              a merge commit whose second parent is dev's head (i.e. the
 #              annotated promotion merge per session-policy.md §"Promotion
@@ -20,17 +22,39 @@
 #              Skips the merge-shape check — for [bypass]-tagged commits made
 #              directly on main during a production fire. Loud on purpose.
 #
+# GIT_FLOW=trunk                       usage: promote_dev_to_main.sh v<X.Y.Z> [--bypass]
+#   (default)  Phase-exit release. Verifies main is checked out, the named
+#              annotated tag exists and points at HEAD, and HEAD is already
+#              on origin/main (so dev-environment CI has run on exactly this
+#              commit), then pushes the tag. Production CI deploys on the tag.
+#              The tag itself is made first, by the Orchestrator/Developer,
+#              with the shape in session-policy.md §"Promotion commit".
+#   --bypass   Emergency release: pushes main and the tag together, skipping
+#              the already-on-origin check. Loud on purpose.
+#
+# The script name is kept across modes so every doc pointer stays valid.
+#
 # Generic script — no project-specific body to fill in.
 
 set -euo pipefail
 
 BYPASS=0
-if [[ "${1:-}" == "--bypass" ]]; then
-  BYPASS=1
-elif [[ $# -gt 0 ]]; then
-  echo "usage: promote_dev_to_main.sh [--bypass]" >&2
-  exit 2
+TAG=""
+for arg in "$@"; do
+  case "$arg" in
+    --bypass) BYPASS=1 ;;
+    v[0-9]*)  TAG="$arg" ;;
+    *) echo "usage: promote_dev_to_main.sh [--bypass]            (GIT_FLOW=dev-main)" >&2
+       echo "       promote_dev_to_main.sh v<X.Y.Z> [--bypass]   (GIT_FLOW=trunk)" >&2
+       exit 2 ;;
+  esac
+done
+
+# GIT_FLOW: process env (claude-env launch) or the .env in this directory.
+if [[ -z "${GIT_FLOW:-}" && -f .env ]]; then
+  GIT_FLOW="$(grep -E '^GIT_FLOW=' .env | head -1 | cut -d= -f2- | tr -d '"'"'"'"')"
 fi
+[[ "${GIT_FLOW:-}" == "trunk" ]] || GIT_FLOW="dev-main"
 
 if [[ -n "${FRAMEWORK_ALLOW_MAIN_PUSH:-}" ]]; then
   echo "[promote] WARN: FRAMEWORK_ALLOW_MAIN_PUSH is already set in your environment." >&2
@@ -67,6 +91,45 @@ if [[ "$BRANCH" != "main" ]]; then
   echo "[promote] merge happens first, per session-policy.md §\"Phase exit gate\";" >&2
   echo "[promote] this script only performs the guarded push." >&2
   exit 1
+fi
+
+if [[ "$GIT_FLOW" == "trunk" ]]; then
+  if [[ -z "$TAG" ]]; then
+    echo "[promote] ERROR: GIT_FLOW=trunk releases by tag — name it: promote_dev_to_main.sh v<X.Y.Z>" >&2
+    exit 2
+  fi
+  if ! git rev-parse --verify -q "refs/tags/$TAG" >/dev/null; then
+    echo "[promote] ERROR: tag $TAG does not exist. Create the annotated release tag" >&2
+    echo "[promote] first (session-policy.md §\"Promotion commit\"), e.g.:" >&2
+    echo "[promote]   git tag -a $TAG -m 'Release $TAG: <phase name> complete ...'" >&2
+    exit 1
+  fi
+  if [[ "$(git rev-parse "$TAG^{commit}")" != "$(git rev-parse HEAD)" ]]; then
+    echo "[promote] ERROR: $TAG does not point at HEAD of main. Release the CURRENT" >&2
+    echo "[promote] trunk state — re-tag, or investigate what moved." >&2
+    exit 1
+  fi
+  if [[ "$BYPASS" -eq 0 ]]; then
+    git fetch -q origin main
+    if [[ "$(git rev-parse origin/main)" != "$(git rev-parse HEAD)" ]]; then
+      echo "[promote] ERROR: HEAD is not on origin/main yet. Push main first so the dev" >&2
+      echo "[promote] environment CI runs on exactly this commit, QA it, then release." >&2
+      echo "[promote] (--bypass pushes main and the tag together — emergencies only.)" >&2
+      exit 1
+    fi
+    FRAMEWORK_ALLOW_MAIN_PUSH=1 git push origin "refs/tags/$TAG"
+  else
+    echo "[promote] BYPASS MODE — pushing main and $TAG together without the on-origin check."
+    echo "[promote] Emergency duties still apply: [bypass] commit tag, 24h retrospective Reviewer, incident log."
+    FRAMEWORK_ALLOW_MAIN_PUSH=1 git push origin main "refs/tags/$TAG"
+  fi
+  echo "[promote] $TAG pushed — production CI deploys the tagged commit."
+  exit 0
+fi
+
+if [[ -n "$TAG" ]]; then
+  echo "[promote] ERROR: a release tag was given but GIT_FLOW=dev-main promotes by merge, not tag." >&2
+  exit 2
 fi
 
 if [[ "$BYPASS" -eq 0 ]]; then

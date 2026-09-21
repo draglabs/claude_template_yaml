@@ -12,6 +12,7 @@ Project variables (fill these in, used across docs and QA briefs):
 - `{{sub}}` — this project's subdomain (e.g. `myapp`)
 - `{{website}}` — shared parent domain (e.g. `draglabs.com`)
 - `{{ports}}` — local port range allocated to this project (e.g. `3050-3060` or `305*`); local dev runtimes (Docker, native dev server, reverse proxy) bind within this range. See [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md) §"Port allocation (local-hosted)".
+- `{{git_flow}}` — branch model: `dev-main` (features → `dev` → promotion merge to `main`) or `trunk` (features → `main`, released by `v*` tag). Set by the Strategist's first-contact interview (`GIT_FLOW` in `.env`) — asked, never assumed ([FWADR-035](docs/dev_framework/adrs/fwadr-035-git-flow-mode.md)).
 - `{{git_host}}` — where this project's repo is hosted (e.g. `github`, or self-hosted `gitlab` at a base URL). Set by the Strategist's first-contact interview (`GIT_HOST` in `.env`) — asked, never assumed. Git policy in this framework is host-neutral: "PR" means PR/MR on whatever host this names. See [`docs/dev_framework/dev_framework.md`](docs/dev_framework/dev_framework.md) §"Git-host neutrality".
 
 <!-- BEGIN FRAMEWORK MANAGED -->
@@ -48,7 +49,7 @@ Every role also reads this file (CLAUDE.md) as Layer 0 — the always-loaded bas
 ## Two process rules (every session)
 
 1. **Docs before code — for *additions*.** Architectural additions get documented by the Strategist and merged before the Orchestrator dispatches implementation. Enforced at the merge boundary by the Reviewer (`block` if no matching doc) and at the phase boundary by the Strategist's alignment audit. **This does NOT make an existing ADR outrank a live instruction from you.** When your instruction conflicts with an accepted ADR, the resolution is *doc-follows-instruction*: the deviation is recorded on the W-item, the review gate reports `doc-conflict` rather than blocking, and the ADR is **rewritten** (never appended to) to state the decision that now holds — or escalated to you if your intent isn't clear. The ADR log is living architecture, not doctrine ([FWADR-027](docs/dev_framework/adrs/fwadr-027-living-architecture.md)).
-2. **CI-only deploys to production.** Production changes land via `git push origin main` → CI. Never from a laptop. Never via `docker exec`. Dev environment behavior depends on mode — see [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md). **Direct-deploy escape hatch:** projects that have user-approved direct-to-server deploy use [`scripts/main_to_prod.sh`](scripts/main_to_prod.sh) as the canonical entry point — never improvise prod commands outside it. See [FWADR-019](docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md). Most projects keep this script as a stub (the unimplemented `exit 1` state IS the correct steady state for CI-deployed projects).
+2. **CI-only deploys to production.** Production changes land via the release push (`main` under `GIT_FLOW=dev-main`, a `v*` tag under `trunk`) → CI. Never from a laptop. Never via `docker exec`. Dev environment behavior depends on mode — see [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md). **Direct-deploy escape hatch:** projects that have user-approved direct-to-server deploy use [`scripts/main_to_prod.sh`](scripts/main_to_prod.sh) as the canonical entry point — never improvise prod commands outside it. See [FWADR-019](docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md). Most projects keep this script as a stub (the unimplemented `exit 1` state IS the correct steady state for CI-deployed projects).
 
 ## Presenting options
 
@@ -76,9 +77,9 @@ When one message asks the user more than one question — a numbered list, a bat
 
 ## Branch model
 
-Feature branches merge to **`dev`**, dev promotes to **`main`** at phase boundaries. Full flow in [`docs/dev_framework/session-policy.md`](docs/dev_framework/session-policy.md) §"Branching and isolation" and [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md).
+Two modes, chosen once at first contact as `GIT_FLOW` in `.env` ([FWADR-035](docs/dev_framework/adrs/fwadr-035-git-flow-mode.md)). **`dev-main`** (default): feature branches merge to **`dev`**, dev promotes to **`main`** by merge at phase boundaries. **`trunk`**: feature branches merge to **`main`**, production is released by an annotated **`v*` tag** at phase boundaries. Sourcing `.env` derives `INTEGRATION_BRANCH` (`dev` / `main`); where a framework doc says `dev` as a branch, read the integration branch. Full flow in [`docs/dev_framework/session-policy.md`](docs/dev_framework/session-policy.md) §"Branching and isolation" and [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md).
 
-**Pushing `main` is mechanically blocked** by a git pre-push guard the framework sync installs into every code repo ([FWADR-023](docs/dev_framework/adrs/fwadr-023-main-push-guard.md)). The only sanctioned push path is `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` (phase-exit promotion; `--bypass` for the emergency path). Never push `main` any other way; never set `FRAMEWORK_ALLOW_MAIN_PUSH` by hand or in `.env`.
+**Pushing the release ref is mechanically blocked** (`main` under dev-main; `v*` tags under trunk) by a git pre-push guard the framework sync installs into every code repo ([FWADR-023](docs/dev_framework/adrs/fwadr-023-main-push-guard.md)). The only sanctioned push path is `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` (phase-exit release; `v<X.Y.Z>` argument under trunk; `--bypass` for the emergency path). Never push the release ref any other way; never set `FRAMEWORK_ALLOW_MAIN_PUSH` by hand or in `.env`.
 
 Code-level rules (TDD, no hardcoded lifecycle values, fail loudly) live in [`docs/dev_framework/coding-standards.md`](docs/dev_framework/coding-standards.md) and are enforced by the Executor (writing) and Reviewer (checking) subagent briefs. The Orchestrator and Strategist do NOT load that doc — they delegate enforcement to the subagent layer.
 
@@ -152,8 +153,10 @@ npm test                 # test suite (CI gate)
 ./scripts/teardown_local.sh <slot>       # release a slot
 
 # Production deploy (also from $PROJECT_DIR):
-./scripts/promote_dev_to_main.sh         # THE ONLY sanctioned way to push main (FWADR-023);
-                                         # verifies the dev → main promotion-merge shape first
+./scripts/promote_dev_to_main.sh         # THE ONLY sanctioned release push (FWADR-023); dev-main:
+                                         # verifies the dev → main merge shape, pushes main.
+./scripts/promote_dev_to_main.sh v1.4.0  # trunk: verifies the tag is on the pushed head of main,
+                                         # pushes the tag. Production CI deploys on the tag.
 ./scripts/main_to_prod.sh                # NAMED ESCAPE HATCH for user-approved direct-deploy
                                          # (most projects: keep as stub; CI-only is the default)
 ```

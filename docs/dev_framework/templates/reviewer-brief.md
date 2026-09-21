@@ -70,7 +70,7 @@ this belong here?"
 ## Mechanical scope check (run BEFORE answering question 6)
 
 Before reading the diff, run `scripts/check-touches.sh` from the
-worktree root. This compares `git diff --name-only origin/dev` against
+worktree root. This compares `git diff --name-only origin/${INTEGRATION_BRANCH}` against
 the `touches:` list in the W-item file's YAML frontmatter (FWADR-020).
 The script is the verified scope signal — your prose judgment in
 question 6 builds on top of it.
@@ -78,7 +78,7 @@ question 6 builds on top of it.
     cd {{worktree path}}
     ./scripts/check-touches.sh \
       docs/execution-plans/<plan>/w-{{id}}.md \
-      origin/dev
+      origin/${INTEGRATION_BRANCH}
 
 Exit codes:
   - 0 → every modified file is within `touches`. Proceed to the diff.

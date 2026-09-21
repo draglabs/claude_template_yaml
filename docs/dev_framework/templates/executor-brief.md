@@ -1,6 +1,6 @@
 # Executor subagent briefing template
 
-Copy, fill in brackets, paste as the Agent tool's `prompt` argument. Do NOT set `isolation: "worktree"` on the Agent tool call — the Orchestrator pre-creates the worktree explicitly off `origin/dev` and passes the path in this brief. The tool's built-in isolation machinery is bypassed on purpose so the branch base is a literal command-line argument, not a thing to remember.
+Copy, fill in brackets, paste as the Agent tool's `prompt` argument. Do NOT set `isolation: "worktree"` on the Agent tool call — the Orchestrator pre-creates the worktree explicitly off `origin/${INTEGRATION_BRANCH}` and passes the path in this brief. The tool's built-in isolation machinery is bypassed on purpose so the branch base is a literal command-line argument, not a thing to remember.
 
 Under peer dispatch, the Executor is a single-cycle writer: it reads, writes, commits, and returns. It does NOT spawn Reviewer, QA, or Integrator-QA — the Orchestrator owns those peer calls. Iteration happens at the Orchestrator level: if the Reviewer blocks, QA fails, or Integrator-QA files a claim / surfaces a failure, the Orchestrator runs a retry cycle — continuing the same Executor via SendMessage, or dispatching a fresh Executor with the concerns as sharpened context ([FWADR-022](../adrs/fwadr-022-runtime-recalibration.md)). See [`../session-policy.md`](../session-policy.md) §"Dispatch flow" for the full model.
 
@@ -18,9 +18,10 @@ review gates from its own context.
 ## Dispatch context
 - Tier: {{XS | S | M | L | XL}}
 - Feature branch: w-{{id}}/{{slug}}  (already created by Orchestrator)
-- **Worktree path:** {{absolute-path}}  (already created off `origin/dev`)
-- **Worktree base: `origin/dev`** (verified — Orchestrator created it with
-  an explicit arg). The eventual merge target is also `dev`.
+- **Worktree path:** {{absolute-path}}  (already created off `origin/${INTEGRATION_BRANCH}`)
+- **Worktree base: `origin/${INTEGRATION_BRANCH}`** (verified — Orchestrator
+  created it with an explicit arg; `dev` under GIT_FLOW=dev-main, `main`
+  under trunk). The eventual merge target is the same branch.
 - **Retry cycle:** {{yes | no}}  (yes = Orchestrator re-dispatched you to
   address Reviewer or QA concerns; see "Prior concerns" below)
 

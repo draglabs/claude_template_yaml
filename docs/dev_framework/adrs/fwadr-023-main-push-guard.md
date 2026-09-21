@@ -1,4 +1,4 @@
-# FWADR-023: Mechanical main-push guard + sanctioned promotion script
+# FWADR-023: Mechanical release-ref push guard + sanctioned promotion script
 
 **Status:** accepted
 **Date:** 2026-07-28
@@ -26,11 +26,16 @@ Ship the mechanism, framework-wide:
 
 1. **Git pre-push guard.** `.claude/hooks/git-guard-pre-push.sh` (template-
    owned, synced to adopters like every hook) is a git `pre-push` hook that
-   rejects any push updating `refs/heads/main` unless
-   `FRAMEWORK_ALLOW_MAIN_PUSH=1` is set. It checks the real refspecs on the
-   hook's stdin — not command strings — so `git push origin main`,
-   `push origin HEAD:main`, `push --all`, and ref deletions are all caught
-   regardless of phrasing.
+   rejects any push updating the project's **release ref** unless
+   `FRAMEWORK_ALLOW_MAIN_PUSH=1` is set. The release ref follows `GIT_FLOW`
+   ([FWADR-035](fwadr-035-git-flow-mode.md)): `refs/heads/main` under
+   `dev-main` (the default); `refs/tags/v*` under `trunk`, where `main` is
+   the integration branch and pushes freely. The guard resolves `GIT_FLOW`
+   from the process env or `$PROJECT_DIR/.env` (via the common git dir, so
+   worktrees resolve too). It checks the real refspecs on the hook's stdin —
+   not command strings — so `git push origin main`, `push origin HEAD:main`,
+   `push --all`, `push --tags`, and ref deletions are all caught regardless
+   of phrasing.
 
 2. **SessionStart installation.** `sync-framework.sh` step 4b installs the
    guard into `.git/hooks/pre-push` of every code repo it can see: the
@@ -44,23 +49,31 @@ Ship the mechanism, framework-wide:
 
 3. **Sanctioned bypass = one named script.** The stub
    `scripts/promote_dev_to_main.sh` (seeded to adopters like the other
-   FWADR-019 script stubs; generic, no fill-in needed) is the only place
-   `FRAMEWORK_ALLOW_MAIN_PUSH=1` is ever set:
-   - **Default mode** — phase-exit promotion. Verifies `main` is checked out
-     and HEAD is a merge commit whose second parent is `dev`'s current head
-     (the annotated promotion merge already made per session-policy
-     §"Promotion commit"), then pushes. The merge itself remains the
-     Orchestrator's (or Developer's) act; the script owns only the guarded
-     push.
-   - **`--bypass` mode** — the emergency-bypass path (production fire,
+   FWADR-019 script stubs; generic, no fill-in needed; name kept across
+   modes so every doc pointer stays valid) is the only place
+   `FRAMEWORK_ALLOW_MAIN_PUSH=1` is ever set. The release event itself
+   remains the Orchestrator's (or Developer's) act; the script owns only the
+   guarded push.
+   - **dev-main, default mode** — phase-exit promotion. Verifies `main` is
+     checked out and HEAD is a merge commit whose second parent is `dev`'s
+     current head (the annotated promotion merge already made per
+     session-policy §"Promotion commit"), then pushes `main`.
+   - **dev-main, `--bypass`** — the emergency-bypass path (production fire,
      `[bypass]`-tagged commit directly on main). Skips the merge-shape check,
      prints the outstanding bypass duties (back-merge, retrospective
      Reviewer, incident log). Loud on purpose.
+   - **trunk, `v<X.Y.Z>`** — phase-exit release. Verifies `main` is checked
+     out, the named annotated tag exists and points at HEAD, and HEAD is
+     already on `origin/main` (dev-environment CI ran on exactly this
+     commit), then pushes the tag. Production CI deploys the tagged commit.
+   - **trunk, `v<X.Y.Z> --bypass`** — emergency release: pushes `main` and
+     the tag together, skipping the on-origin check. Loud on purpose.
 
 4. **Belt-and-braces recommendation.** The Strategist's first-contact
-   interview now recommends enabling host-side branch protection on `main`
-   where the host supports it. Host-side protection is absolute but
-   host-specific and unsyncable; the pre-push guard is the portable layer.
+   interview recommends host-side protection of the release ref where the
+   host supports it: `main` under dev-main; `v*` tags plus required PRs into
+   `main` under trunk. Host-side protection is absolute but host-specific
+   and unsyncable; the pre-push guard is the portable layer.
 
 **`FRAMEWORK_ALLOW_MAIN_PUSH` must never appear in `.env`** — framework
 scripts source `.env` wholesale (`set -a`), which would leave the guard
@@ -90,7 +103,10 @@ variable already set in the environment, which catches exactly this mistake.
 - Adopters with a pre-existing custom `pre-push` hook keep it and get a
   per-session warning until they merge the guard's check — named, visible
   drift instead of silent non-enforcement.
-- A user who genuinely wants to push main outside the two sanctioned modes
+- Under trunk the same guard protects `v*` tags instead of `main`; the
+  human gate moves from a merge to a tag and nothing else changes
+  ([FWADR-035](fwadr-035-git-flow-mode.md)).
+- A user who genuinely wants to push the release ref outside the sanctioned modes
   must consciously set `FRAMEWORK_ALLOW_MAIN_PUSH=1` — possible, but now an
   explicit act that can't happen by reflex.
 - `session-policy.md` §"Promotion commit", §"Phase exit gate" step 7, and

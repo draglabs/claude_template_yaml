@@ -1,6 +1,6 @@
 # Dev environment
 
-How this project's dev-branch code becomes something a QA subagent can test. Every project running on this template picks one of two modes; the rest of the framework stays identical either way.
+How this project's integration-branch code (`dev`, or `main` under `GIT_FLOW=trunk` — session-policy §"Branching and isolation") becomes something a QA subagent can test. Every project running on this template picks one of two modes; the rest of the framework stays identical either way.
 
 ## Naming convention (fixed)
 
@@ -15,7 +15,7 @@ Example: `myapp.dev.draglabs.com`. Every project that uses this template follows
 | | **Local-hosted dev** | **Remote-hosted dev** |
 |---|---|---|
 | Where dev runs | User's machine | A real server (VPS, Fly, Cloudron, …) |
-| Push to `dev` branch | No deploy. User runs `docker compose up` locally. | CI deploys to the dev server. |
+| Push to the integration branch (`dev` / `main` under trunk) | No deploy. User runs `docker compose up` locally. | CI deploys to the dev server. |
 | QA target | `{{sub}}.dev.{{website}}.com` (resolves to localhost via local redirect) | `{{sub}}.dev.{{website}}.com` (resolves to dev-server IP via wildcard DNS) |
 | Infra cost | Zero beyond user's machine | A server + DNS + CI deploy path |
 | When to pick | Solo dev, early stage, iteration-heavy | Multiple contributors, stable architecture, QA needs to run while laptop is closed |
@@ -78,7 +78,7 @@ The goal: `curl https://{{sub}}.dev.{{website}}.com` from anywhere hits the remo
 2. **Dev server provisioned.** If one doesn't exist, that's a prerequisite — escalate to user. Don't provision infrastructure from the Orchestrator; this is a one-time user decision, often involving billing.
 3. **Wildcard DNS.** `*.dev.{{website}}.com` → dev-server IP, at the registrar or DNS provider. Orchestrator can confirm via `dig` but doesn't edit DNS records.
 4. **TLS certificate.** Let's Encrypt wildcard (`*.dev.{{website}}.com`) via DNS-01 challenge. Caddy/Traefik on the dev server handles this automatically if pointed at the right DNS provider API.
-5. **CI deploy to dev.** Add a CI workflow on the project's git host (GitHub Actions, GitLab CI, or equivalent — per `GIT_HOST`): on push to `dev`, build the image and deploy to the dev server. Exact mechanism is project-specific (rsync + systemctl, `docker pull` on server, Cloudron app update, …). Record the chosen mechanism in the ADR.
+5. **CI deploy to dev.** Add a CI workflow on the project's git host (GitHub Actions, GitLab CI, or equivalent — per `GIT_HOST`): on push to the integration branch (`dev`; `main` under trunk), build the image and deploy to the dev server. Production deploys on push to `main` (dev-main) or on a `v*` tag (trunk). Exact mechanism is project-specific (rsync + systemctl, `docker pull` on server, Cloudron app update, …). Record the chosen mechanism in the ADR.
 6. **Smoke test.** Same as local — `curl` the URL, expect hello world. CI passing is not sufficient; confirm the URL actually serves the current dev commit.
 7. **Document.** Orchestrator adds deploy mechanism + server identity to the ADR.
 

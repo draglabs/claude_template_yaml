@@ -21,7 +21,7 @@ The Integrator-QA additionally requires the **long-context variant** available a
 
 | Role | Played by | Responsibility |
 |---|---|---|
-| **Orchestrator** | The active Claude Code session. | **Dispatcher + merger + review coordinator.** Picks the next W-item, pre-creates the worktree off `origin/dev`, dispatches Executor, then spawns Reviewer and (when required) QA as peer subagents, owns the retry loop, merges, pushes. Does NOT write code. Does NOT open diffs or `src/` directly — reads Reviewer/QA verdicts instead (which may cite `file:line`). |
+| **Orchestrator** | The active Claude Code session. | **Dispatcher + merger + review coordinator.** Picks the next W-item, pre-creates the worktree off `origin/${INTEGRATION_BRANCH}`, dispatches Executor, then spawns Reviewer and (when required) QA as peer subagents, owns the retry loop, merges, pushes. Does NOT write code. Does NOT open diffs or `src/` directly — reads Reviewer/QA verdicts instead (which may cite `file:line`). |
 | **Executor** | Work-tier subagent spawned via Agent tool by the Orchestrator. | **Writer.** Writes code + tests in a pre-created worktree, commits to the feature branch, returns a code-only package to the Orchestrator. Does NOT spawn Reviewer or QA. Does NOT merge or push. |
 | **Reviewer** | Top-tier subagent spawned via Agent tool **by the Orchestrator**. Sequential-mode (per-task) only. | Reviews the Executor's diff against canonical docs + coding standards. Returns verdict + concerns to the Orchestrator. Does not modify files. |
 | **QA** | Work-tier subagent spawned via Agent tool **by the Orchestrator** — per-W-item (pre-merge, sequential mode only), at phase exit, or post-promotion. | Runs end-to-end tests against a pre-merge worktree build or the live dev environment. Returns structured pass/fail to the Orchestrator. Cleans up test artifacts on success. |
@@ -267,18 +267,30 @@ The Orchestrator does NOT open diffs or source files directly. Verdicts cite `fi
 
 Under peer dispatch the Orchestrator sees Reviewer and QA verdicts inline — per-question answers, per-criterion results — which is more context than the old 6-line pass packages of earlier models. The **top tier** is preferred when retry judgment is likely to matter (⚠️ density, ambiguous Reviewer concerns, scope-creep calls). The **work tier** remains sufficient for phases of routine W-items where most items ship on first pass.
 
-## Branching and isolation (dev → main)
+## Branching and isolation (integration branch → release)
 
-This project uses a **dev branch** between feature branches and main. Features merge to dev; dev promotes to main at phase boundaries.
+The project's git flow is set once, at the first-contact interview, as `GIT_FLOW` in `.env` ([FWADR-035](adrs/fwadr-035-git-flow-mode.md)). Sourcing `.env` derives `INTEGRATION_BRANCH`; the two modes differ only in what that branch is and what the release event is:
 
-**Pushing `main` is mechanically blocked** ([FWADR-023](adrs/fwadr-023-main-push-guard.md)): the framework sync installs a git pre-push guard into every code repo's `.git/hooks/pre-push` that rejects any push updating `refs/heads/main` unless `FRAMEWORK_ALLOW_MAIN_PUSH=1` — and the only sanctioned setter of that variable is `scripts/promote_dev_to_main.sh` (run from `$PROJECT_DIR`; default mode for phase-exit promotion, `--bypass` for the emergency path). Never set the variable by hand and never put it in `.env`. Host-side branch protection on `main` is recommended in addition where the git host supports it (Strategist first-contact interview).
+| `GIT_FLOW` | Integration branch (`$INTEGRATION_BRANCH`) | Release event (moves production) | Guard blocks |
+|---|---|---|---|
+| `dev-main` (default) | `dev` — features merge here; CI deploys the dev environment from it | annotated **promotion merge** `dev → main` at phase exit | pushes to `main` |
+| `trunk` | `main` — features merge here; CI deploys the dev environment from it | annotated **release tag** `v<X.Y.Z>` on `main` at phase exit | pushes of `v*` tags |
+
+**Reading rule for the rest of this doc set:** where a doc says `dev` as a branch, read *the integration branch* — under trunk that is `main`. Where it says "promote `dev → main`", read *the release event* — under trunk that is tagging the pushed head of `main`. Command snippets use `${INTEGRATION_BRANCH}` and are correct in both modes when `.env` is sourced (`claude-env`). Switching an existing project: [`migration-guide-trunk.md`](migration-guide-trunk.md).
+
+**The release event is mechanically gated** ([FWADR-023](adrs/fwadr-023-main-push-guard.md)): the framework sync installs a git pre-push guard into every code repo's `.git/hooks/pre-push` that rejects any push updating the release ref (`refs/heads/main` under dev-main; `refs/tags/v*` under trunk) unless `FRAMEWORK_ALLOW_MAIN_PUSH=1` — and the only sanctioned setter of that variable is `scripts/promote_dev_to_main.sh` (run from `$PROJECT_DIR`; default mode for the phase-exit release, `--bypass` for the emergency path; under trunk it takes the tag name). Never set the variable by hand and never put it in `.env`. Host-side protection of the release ref is recommended in addition where the git host supports it (Strategist first-contact interview).
 
 ```
-feature (w-<id>/<slug>)  ──Orchestrator merge──▶  dev  ──phase-exit promotion──▶  main
-                                                   │                               │
-                                                   ▼                               ▼
-                                     CI deploys to dev env            CI deploys to production
-                             (local: no deploy; remote: dev server)   (always remote)
+dev-main:  feature (w-<id>/<slug>) ──merge──▶ dev ──phase-exit promotion merge──▶ main
+                                               │                                   │
+                                               ▼                                   ▼
+                                     CI deploys dev env                  CI deploys production
+
+trunk:     feature (w-<id>/<slug>) ──merge──▶ main ──phase-exit tag v<X.Y.Z>──▶ (same commit)
+                                               │                                   │
+                                               ▼                                   ▼
+                                     CI deploys dev env                  CI deploys production
+                                     (local: no deploy; remote: dev server)   (always remote)
 ```
 
 See [`dev-environment.md`](dev-environment.md) for local vs remote dev mode.
@@ -287,9 +299,9 @@ Every W-item follows one of two flows depending on its `Parallel-safe` field (se
 
 ### Sequential mode (Parallel-safe: false or unset)
 
-1. **Orchestrator** pre-creates the worktree explicitly off `origin/dev` with `git worktree add -b w-<id>/<slug> <path> origin/dev`, then dispatches the Executor via the Agent tool (WITHOUT the `isolation: "worktree"` flag — the Orchestrator owns worktree creation under this model). The Executor works inside the pre-created worktree. The standard worktree path is `/tmp/worktrees/<project>/w-<id>-<slug>`, where `<project>` = `basename $CODE_ROOT` (the git repo name; see [`context-management.md §Project layout`](context-management.md#project-layout)). Under split layout this is the `$CODE_SUBDIR` name; under flat layout it is `basename $PROJECT_DIR`.
+1. **Orchestrator** pre-creates the worktree explicitly off `origin/${INTEGRATION_BRANCH}` with `git worktree add -b w-<id>/<slug> <path> origin/${INTEGRATION_BRANCH}`, then dispatches the Executor via the Agent tool (WITHOUT the `isolation: "worktree"` flag — the Orchestrator owns worktree creation under this model). The Executor works inside the pre-created worktree. The standard worktree path is `/tmp/worktrees/<project>/w-<id>-<slug>`, where `<project>` = `basename $CODE_ROOT` (the git repo name; see [`context-management.md §Project layout`](context-management.md#project-layout)). Under split layout this is the `$CODE_SUBDIR` name; under flat layout it is `basename $PROJECT_DIR`.
 
-   **Mechanism, not intention.** The Agent tool's `isolation: "worktree"` flag creates a worktree from the parent session's current HEAD. If the Orchestrator happens to be sitting on `main` (or any other branch) when it dispatches, the worktree — and therefore the feature branch — inherits THAT base. Rule compliance here requires the Orchestrator to pre-create the worktree off `origin/dev` explicitly so the base becomes a literal command-line argument. "I read the rule" is not enforcement. The command is.
+   **Mechanism, not intention.** The Agent tool's `isolation: "worktree"` flag creates a worktree from the parent session's current HEAD. If the Orchestrator happens to be sitting on `main` (or any other branch) when it dispatches, the worktree — and therefore the feature branch — inherits THAT base. Rule compliance here requires the Orchestrator to pre-create the worktree off `origin/${INTEGRATION_BRANCH}` explicitly so the base becomes a literal command-line argument. "I read the rule" is not enforcement. The command is.
 
 2. **Executor** writes code + tests inside the worktree, commits to the feature branch, runs its own unit/integration tests + coding-standards self-check, returns a code-only package to the Orchestrator.
 
@@ -308,7 +320,7 @@ Same worktree pre-creation discipline per item (step 1), same Executor self-test
 - Integrator-QA returns `clean` / `partial` / `integration-failure` / `stumped`. On `clean`, Orchestrator merges every item. On `partial`, Orchestrator merges the non-blocked items and leaves the claim-blocked items for Strategist disposition. On `integration-failure` or `stumped`, Orchestrator surfaces to the user (no merge).
 - Fix commits authored by the Integrator-QA are already in dev (or an integration branch the Integrator is using) when its return lands; Orchestrator does not re-merge those.
 
-Main is NOT touched per W-item. Main only moves at phase-boundary promotion (see §"Phase exit gate" below).
+Production is NOT touched per W-item. The release event (promotion merge under dev-main, `v*` tag under trunk) happens only at the phase boundary (see §"Phase exit gate" below).
 
 ### Commit authorship
 
@@ -336,9 +348,11 @@ Model lines record the **actual model names resolved at spawn time** — never c
 
 If the Executor's return came back without Lessons learned, the Orchestrator bounces back and asks — does NOT merge with an empty block. (Exception: Executor wrote "Nothing surprising." That's a valid Lessons-learned value.)
 
-### Promotion commit (dev → main)
+### Promotion commit (release event)
 
-At phase exit, after QA passes on the dev environment and the user authorizes, the Orchestrator merges `dev` → `main`. Use a single annotated merge commit, then push via `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` — the pre-push guard (FWADR-023) blocks a raw `git push origin main`, and the script verifies the promotion-merge shape before setting the one-shot bypass:
+At phase exit, after QA passes on the dev environment and the user authorizes, the Orchestrator makes the release event, then pushes it via `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` — the pre-push guard (FWADR-023) blocks a raw push of the release ref, and the script verifies the shape before setting the one-shot bypass.
+
+**dev-main:** a single annotated merge commit `dev → main`, then `./scripts/promote_dev_to_main.sh`:
 
 ```
 Promote dev → main: <phase name> complete
@@ -350,32 +364,38 @@ Authorized by: <user | Strategist on user's behalf>
 Co-Authored-By: Claude <noreply@anthropic.com>
 ```
 
-No auto-advance on this commit — the Orchestrator pauses after a main push to let the user confirm production deploy landed cleanly before starting the next phase.
+**trunk:** `main` is already pushed and QA'd; make an annotated tag on its head with the same body, then `./scripts/promote_dev_to_main.sh v<X.Y.Z>` (the script checks the tag is on HEAD and HEAD is on `origin/main`):
 
-## Phase exit gate (and promotion to main)
+```
+git tag -a v<X.Y.Z> -m "Release v<X.Y.Z>: <phase name> complete" -m "W-items included: ... / Phase-exit QA: pass (...) / Authorized by: ..."
+```
 
-All W-items done is necessary but not sufficient. Phase exit under the dev-branch model requires **demonstrating every exit criterion live on the dev environment**, then promoting dev → main.
+No auto-advance on the release event — the Orchestrator pauses after the release push to let the user confirm production deploy landed cleanly before starting the next phase.
+
+## Phase exit gate (and the release event)
+
+All W-items done is necessary but not sufficient. Phase exit requires **demonstrating every exit criterion live on the dev environment**, then making the release event (promotion merge `dev → main` under dev-main; `v*` tag on the pushed head of `main` under trunk).
 
 ### Steps
 
-1. Confirm every W-item in the phase is merged to `dev` (no `blocked` items outstanding).
-2. Run the full test suite against `dev` — all green.
+1. Confirm every W-item in the phase is merged to the integration branch (no `blocked` items outstanding).
+2. Run the full test suite against the integration branch — all green.
 3. Apply all pending migrations (on the dev environment or locally if local-hosted).
-4. Push `dev` to origin (if any unpushed commits). Wait for dev-branch CI to pass.
+4. Push the integration branch to origin (if any unpushed commits). Wait for its CI to pass. Under trunk this is the push that CI deploys to the dev environment — and the exact commit the tag will release.
 5. **Orchestrator spawns a QA subagent against `{{sub}}.dev.{{website}}.com`** (this is the same peer-dispatch pattern as per-W-item QA; spawn context is "phase exit"). Record pass/fail per criterion.
 6. Report per-criterion results to the user. **Explicit user authorization required to proceed.** The user sees the QA verdict; the user says "promote" or "hold."
-7. On authorization: Orchestrator merges `dev` → `main` (annotated merge commit per §"Promotion commit"), then pushes via `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` (FWADR-023 — raw `git push origin main` is blocked by the pre-push guard). Production CI deploys.
+7. On authorization: Orchestrator makes the release event per §"Promotion commit" (dev-main: annotated merge `dev → main`; trunk: annotated tag `v<X.Y.Z>` on HEAD of `main`), then pushes it via `./scripts/promote_dev_to_main.sh` from `$PROJECT_DIR` (FWADR-023 — a raw push of the release ref is blocked by the pre-push guard). Production CI deploys.
 8. Optional post-promotion smoke test against production URL (`{{sub}}.{{website}}.com`). Strongly recommended for phases that touched critical paths (auth, billing, data migration). Not mandatory.
 
 ### Failure modes
 
 - **Criteria fail on dev** → re-open the failing W-ids. Fix on dev. Re-run the gate. No promotion yet.
 - **Criteria pass on dev, user withholds authorization** → not a failure, just a hold. Dev continues to accumulate W-items if there are follow-ups; main stays where it is.
-- **CI fails on `main` after promotion** → unusual (dev CI already passed), but possible if prod environment differs from dev. Revert on main; investigate the divergence; document in `execution-incidents.md`.
+- **Production CI fails after the release** → unusual (dev-environment CI already passed on the same code), but possible if prod environment differs from dev. dev-main: revert on main. trunk: fix forward on main and re-tag — never move a pushed tag. Investigate the divergence; document in `execution-incidents.md`.
 
 ### Why user authorization is explicit here
 
-Every W-item merge to dev is automated (Orchestrator decides). Every promotion to main is a user decision. This is the single point where human judgment gates production.
+Every W-item merge to the integration branch is automated (Orchestrator decides). Every release event is a user decision. This is the single point where human judgment gates production — in both modes.
 
 ## When to escalate to the user
 
@@ -435,7 +455,7 @@ Peer-dispatch discipline is for normal operations. When production is on fire an
 
 Under bypass:
 
-1. **Orchestrator writes directly to `main`.** Skip dev entirely — dev-branch discipline is about orderly integration, not fire suppression. Commit goes straight to main and is pushed via `./scripts/promote_dev_to_main.sh --bypass` from `$PROJECT_DIR` — the pre-push guard (FWADR-023) blocks a raw main push even during a fire, and `--bypass` is the sanctioned one-shot override. This is the single explicit exception to "Orchestrator doesn't write code." CI deploys to production.
+1. **Orchestrator writes directly to `main`.** dev-main: skip dev entirely — dev-branch discipline is about orderly integration, not fire suppression; the commit is pushed via `./scripts/promote_dev_to_main.sh --bypass` from `$PROJECT_DIR`. trunk: commit on `main`, then `./scripts/promote_dev_to_main.sh v<X.Y.Z> --bypass` pushes main and the release tag together. Either way the pre-push guard (FWADR-023) blocks a raw push of the release ref even during a fire, and `--bypass` is the sanctioned one-shot override. This is the single explicit exception to "Orchestrator doesn't write code." CI deploys to production.
 2. **Commit with a `[bypass]` tag** in the first line, plus a one-line reason:
    ```
    [bypass] Fix null-deref on /api/login — prod error rate spike
@@ -445,7 +465,7 @@ Under bypass:
    within 24h. Back-merge to dev planned so dev doesn't drift behind
    main.
    ```
-3. **Back-merge to dev immediately after bypass lands.** `git checkout dev && git merge main`. Without this, dev is missing the fix and the next W-item will either lose it or collide with it. Back-merge is mandatory, not optional.
+3. **Back-merge to dev immediately after bypass lands** (dev-main only; under trunk the fix is already on the integration branch and this step is a no-op). `git checkout dev && git merge main`. Without this, dev is missing the fix and the next W-item will either lose it or collide with it. Back-merge is mandatory, not optional.
 
    **Race note:** if an Executor is mid-flight when the bypass lands, let it complete. Its feature branch was based on pre-bypass dev, and its Reviewer ran against pre-bypass state. After the Executor's merge to dev, dev-CI (remote-hosted) or a quick local smoke (local-hosted) re-verifies the combined state. The auto-advance rule already gates the next W-item on dev-CI green. If dev-CI fails, treat it as a normal red-dev incident and fix on dev.
 4. **Within 24h, Orchestrator spawns a retrospective Reviewer** on the bypass commit (use the Reviewer brief as-is, pass the commit SHA instead of a worktree path). This is the same peer-dispatch call as a normal Reviewer spawn — the emergency path uses the standard mechanism, not a bespoke one. Two outcomes:
