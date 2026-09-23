@@ -2,7 +2,7 @@
 # One-time interactive setup for dev slots.
 #
 # Reads project variables from $PROJECT_DIR/.env (sourced) — the canonical
-# machine-readable surface per FWADR-019 Revision (v1.1). Halts if .env is
+# machine-readable surface per FWADR-019 Decision 7. Halts if .env is
 # missing or if PROJECT_SUB / PROJECT_PORTS still hold PLACEHOLDER values —
 # the Strategist owns these (per strategist.md §"First-contact interview")
 # and the Developer can't proceed until the interview is done.
@@ -32,7 +32,6 @@
 # /etc/hosts edits are needed. Caddy reverse-proxies hostname → port.
 #
 # Canonical doctrine: docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md
-# (Revision v1.1)
 
 set -euo pipefail
 
@@ -97,7 +96,7 @@ if (( ${#MISSING[@]} > 0 )); then
   echo ""
   echo "  Then re-run this script."
   echo ""
-  echo "  See FWADR-019 Revision (v1.1) for the .env-canonical doctrine."
+  echo "  See FWADR-019 Decision 7 for the .env-canonical doctrine."
   exit 1
 fi
 

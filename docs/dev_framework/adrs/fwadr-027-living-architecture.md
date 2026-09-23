@@ -50,7 +50,7 @@ too.
 
 This is the same failure class as [FWADR-025](fwadr-025-named-deliverables.md)
 (stale doctrine outranking a live instruction) and
-[FWADR-026](fwadr-026-curator-role.md) Revision v1.2 (a churned doc arguing its old
+[FWADR-026](fwadr-026-curator-role.md) (a churned doc arguing its old
 position over the user's latest ruling) — but at the merge gate, where it is
 worst, because the gate's verdict is treated as binding and the reversal is
 never surfaced.
@@ -94,9 +94,8 @@ outranks the user. When the two conflict, the ADR changes.**
 5. **Rewrite, never append.** A `Revision` section stacked on a contradicted
    ADR leaves the superseded decision arguing its case at the top of the file,
    where every future agent reads it first. Rewrite the body to state the
-   decision that now holds; git keeps the history. Established in
-   [FWADR-026](fwadr-026-curator-role.md) Revision v1.2 §Dispositions and
-   [`README.md`](../../architecture/README.md) §"Staleness rule" — cited here, not restated.
+   decision that now holds; git keeps the history. Doctrine and enforcement
+   in [FWADR-036](fwadr-036-prose-as-code.md) — cited here, not restated.
 
 6. **Rule 1 qualified at the root.** CLAUDE.md and `dev_framework.md` §"Two
    process rules" now scope docs-before-code to *additions*, and state that a

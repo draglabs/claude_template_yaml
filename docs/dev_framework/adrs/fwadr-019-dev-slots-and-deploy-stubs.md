@@ -8,222 +8,139 @@
 
 Two related context-cost problems surfaced in production use of the framework:
 
-1. **Deploy process re-derived every session.** Bringing up a local dev runtime (Docker container, native dev server, reverse proxy mapping) was unscripted. Every Developer session re-discovered the project's port range, container names, run flags, and Caddy/proxy config from scratch — sometimes from CLAUDE.md, sometimes from Slack scrollback, sometimes by reading `docker ps` and reverse-engineering the prior session's setup. The user reported burning a 20x account in ~20 working hours partly because of this re-derivation cost across three Parallel Developer sessions.
+1. **Deploy process re-derived every session.** Bringing up a local dev runtime (Docker container, native dev server, reverse proxy mapping) was unscripted. Every Developer session re-discovered the project's port range, container names, run flags, and Caddy/proxy config from scratch — from CLAUDE.md, Slack scrollback, or by reverse-engineering `docker ps`. The user burned a 20x account in ~20 working hours partly on this re-derivation across three Parallel Developer sessions.
 
-2. **Inconsistent deploys across sessions.** The same project would launch on different ports, different container names, or with different env vars depending on which session (or which Developer) brought it up. When two Parallel Developers needed to coexist, port collisions and container-name collisions surfaced unpredictably. The user-supervised QA loop hid most of this — but the cost was the user noticing and fixing it inline rather than the framework preventing it.
+2. **Inconsistent deploys across sessions.** The same project launched on different ports, container names, or env vars depending on which session brought it up. Parallel Developers collided on ports and container names unpredictably; the user noticed and fixed it inline rather than the framework preventing it.
 
-The companion template `codex_template` had already solved this with a slot-registry + deploy-stub pattern. A `docs/dev/slots.yaml` file pinned slot names to ports + roles + worktree requirements; three scripts (`launch_local.sh`, `teardown_local.sh`, `main_to_prod.sh`) shipped as exit-1 stubs with the slot/state-file plumbing pre-filled and the project-specific docker bodies left blank. Once an agent filled the project bodies into the scripts, "launch dev0" became `./scripts/launch_local.sh dev0` — no re-derivation, consistent across sessions, and the canonical entry point that Reviewer can audit against.
+The companion template `codex_template` had solved this with a slot-registry + deploy-stub pattern: `docs/dev/slots.yaml` pinned slot names to ports, roles, and worktree requirements; `launch_local.sh`, `teardown_local.sh`, and `main_to_prod.sh` shipped as exit-1 stubs with slot/state plumbing pre-filled and the project-specific bodies left blank. Once filled, "launch dev0" is `./scripts/launch_local.sh dev0` — no re-derivation, consistent across sessions, and a canonical entry point the Reviewer can audit.
+
+Field use of the adapted pattern then exposed further gaps, each of which shaped a Decision item below:
+
+- **Ambiguous `port`.** A multi-port adopter (Postgres per slot + a Marimo app server) typed their Postgres base port into setup, because nothing said which port a slot's `port` meant. Caddy routed the slot hostname to the database, breaking HTTP access; the Developer improvised raw `localhost:<port>` QA and hand-edited the Caddyfile. There was also no canonical home for the per-slot DB port.
+- **Fragile, ambient project variables.** Scripts regex-parsed CLAUDE.md for `{{sub}}` and `{{ports}}` (breaking on any rephrasing), and whoever ran setup picked a base port, so the range could collide with another project or drift from `{{ports}}` silently.
+- **Wrong-source launches.** A Parallel Developer ran `launch_local.sh` from a worktree and it silently launched the main checkout (the body used the implicit `$PWD`). It surfaced only in user-QA; a full launch + teardown cycle was lost. The missing primitive: "what source is this slot about to launch against, and does the operator agree?"
+- **Unread port ledger.** Picking a range asked the user to remember every other project's ports, yet the local Caddyfile already recorded them in each project's `# BEGIN <sub>-dev-slots` block. A read of the framework author's Caddyfile found a live collision (two projects on 3060) nobody had noticed, because nothing read the file as a ledger — and blocks held only the four slot ports, not the reserved range, while non-HTTP projects wrote none.
 
 ## Decision
 
-Bring the codex pattern into `claude_template_yaml`, adapted for two claude-side specifics: the `{{ports}}` project variable (port range varies per project) and the framework's existing CI-only production-deploy rule (CLAUDE.md §"Two process rules" #2). Adaptations:
+Bring the codex pattern into `claude_template_yaml`, adapted to the `{{ports}}` project variable (range varies per project) and the CI-only production-deploy rule (CLAUDE.md §"Two process rules" #2):
 
-1. **Slot registry at `docs/dev/slots.yaml`.** Four named slots (`dev0`, `dev1`, `dev2`, `dev3`). dev0 is reserved for the Default Developer (coordination, hot-fixes, neutral runtime; `worktree_required: false`). dev1–3 are for Parallel Developers (formal ticket work; `worktree_required: true`). Each slot carries a `hostname`, `port`, `role`, and `intended_use` array. Hostnames follow the pattern `<slot>.<sub>.localhost` — RFC 6761 reserves `.localhost`, which auto-resolves to 127.0.0.1 on macOS, Linux, and modern Windows, so no `/etc/hosts` edits are needed.
+1. **Slot registry at `docs/dev/slots.yaml`.** Four named slots (`dev0`–`dev3`). `dev0` is the Default Developer's (coordination, hot-fixes, neutral runtime; `worktree_required: false`); `dev1`–`dev3` are for Parallel Developers (ticket work; `worktree_required: true`). Each slot carries `hostname`, `port`, `role`, `intended_use`, and an optional `extras` map. Hostnames follow `<slot>.<sub>.localhost` — RFC 6761 `.localhost` auto-resolves to 127.0.0.1 on macOS, Linux, and modern Windows, so no `/etc/hosts` edits.
+   - **`port` is the HTTP/Caddy-routed port** — what `<slot>.<sub>.localhost` reverse-proxies to, and what QA targets.
+   - **`extras: { <name>: <port>, ... }`** holds project-specific secondary ports (database, cache, queue — per-slot but not HTTP-fronted). Project-managed: `setup_dev_slots.sh` never writes it; the launch body reads it from `slots.yaml` (Ruby snippet) and binds services to it.
+   - **Top-level `http_surface: true|false`** records whether the project has HTTP routes needing Caddy. `false` (CLI tools, libraries, headless pipelines) still uses slots for port assignment, without routes.
 
-2. **Caddy as the routing layer.** Caddy reverse-proxies `<slot>.<sub>.localhost` → `localhost:<port>`. The setup script generates the Caddy block and (with user confirmation) appends it to the user's Caddyfile, wrapped in `# BEGIN <sub>-dev-slots` / `# END <sub>-dev-slots` markers so re-runs update in place. Caddy auto-issues internal-CA certs for `.localhost` hosts; first-time use may require `caddy trust` once to suppress browser cert warnings.
-
-3. **Four scripts in `scripts/`** (all ship as stubs, idempotent-init):
-   - **`scripts/setup_dev_slots.sh`** — interactive one-time setup. Asks for base port, fills in slots.yaml (hostnames + ports), generates the Caddy block, prompts for Caddyfile path (auto-detects `/opt/homebrew/etc/Caddyfile`, `/usr/local/etc/Caddyfile`, `/etc/caddy/Caddyfile`, `~/Caddyfile` in order), appends with begin/end markers. Re-runnable; updates between markers on subsequent runs. Does NOT edit CLAUDE.md — `{{ports}}` lives inside the framework-managed block which gets overwritten on every sync (per FWADR-014); slots.yaml is the authoritative source of truth for actual port assignments.
-   - **`scripts/launch_local.sh <slot>`** — claims the slot (writes `.local/dev_slots/<slot>.yaml` state file), then runs the project-specific launch body. Slot-claim plumbing is pre-filled; the launch body (the actual `docker run …` or equivalent) is stubbed with `exit 1` until the agent fills it in. Detects "stub still has placeholders" via `port: 0` / `hostname: PLACEHOLDER` and halts with a "run setup_dev_slots.sh first" message.
-   - **`scripts/teardown_local.sh <slot>`** — reads the state file, runs the project-specific teardown body, removes the state file. Same stub-and-fill shape as launch.
-   - **`scripts/main_to_prod.sh`** — the **named escape hatch** for user-approved direct-to-server production deploy. Ships as a stub; agent scopes the real server with the user once and fills in connection + update + restart + verification steps. After filling, every prod deploy goes through this script — never improvise prod commands outside it.
-
-4. **`.local/dev_slots/<slot>.yaml`** — per-slot live state (gitignored). Created by launch, read by teardown. Captures `slot`, `role`, `hostname`, `port`, `claimed_at`, `ticket`, `status`. The committed slot registry (`slots.yaml`) tells you what slots exist; the local state tells you which are currently held.
-
-5. **Idempotent-init sync.** All four scripts and `slots.yaml` ship under `docs/dev_framework/_stubs/` in the canonical template. The sync hook (`.claude/hooks/sync-framework.sh`) copies them on first sync and never overwrites afterward — same pattern already used for `framework_exceptions/` and `.mcp.json`. Adopters that fill in the stubs keep their work across all future syncs.
-
-6. **Parent-side placement under split layout.** All four scripts and `slots.yaml` are seeded at **`$PROJECT_DIR/scripts/`** and **`$PROJECT_DIR/docs/dev/slots.yaml`** — the parent directory under split layout ([FWADR-021](fwadr-021-split-layout.md)), NOT inside `$CODE_ROOT`. These are agent-orchestration artifacts (dev-slot launch/teardown, deploy escape hatch); they belong with the tracking tree, not the code repo. About the only deploy-shaped thing that lives in `$CODE_ROOT` is CI config. Agents invoke the scripts with `$PROJECT_DIR` as the working directory (the scripts use CWD-relative paths internally). See [FWADR-021](fwadr-021-split-layout.md) §"Script placement doctrine" for the full rule.
-
-### Production-deploy doctrine (carve-out)
-
-CLAUDE.md §"Two process rules" #2 ("CI-only deploys to production. Production changes land via `git push origin main` → CI. Never from a laptop. Never via `docker exec`.") remains the **default rule for every adopter**. Most projects should never fill in `main_to_prod.sh` — its `exit 1` stub state is the correct steady state for a CI-deployed project.
-
-For the small number of projects where the user has explicitly approved direct-to-server deploy (legacy infrastructure, no CI runner, niche hosting), `main_to_prod.sh` is the **named, single, canonical entry point**. The doctrine sharpens to:
-
-- The default rule is unchanged: CI is how production gets updated.
-- When the user has approved direct-deploy, `main_to_prod.sh` is the only path. Improvisation outside this script is a Reviewer-blocking violation.
-- The script's existence as a filled-in artifact in the project repo is the implicit signal that the user has approved this exception. A still-stub `main_to_prod.sh` means CI-only is still in force.
-
-### Reviewer-side enforcement
-
-The Reviewer brief (`docs/dev_framework/templates/reviewer-brief.md`) gains a rule:
-
-> If a commit message, diff, or work history shows a production deploy executed by any path other than `scripts/main_to_prod.sh` (e.g., raw `ssh user@host docker pull`, ad-hoc `kubectl apply`, manual `pm2 restart` on the prod server), verdict is **block**. The Reviewer flags this even if the deploy succeeded — the doctrine violation is the issue, not the outcome.
-
-This makes the named-escape-hatch enforceable. Without Reviewer enforcement, `main_to_prod.sh` becomes one of several deploy paths in practice, and the consistency win evaporates.
-
-## Consequences
-
-**What this buys:**
-
-- **Deploy commands are scoped once per project, not every session.** After the agent fills in the launch/teardown bodies, "launch dev0" is one shell command. Context spent re-deriving the deploy process drops to zero across all subsequent sessions.
-- **Consistent slot allocation across sessions.** Default Developer always gets dev0; Parallel Developers always get dev1+ in order. Container names, ports, and hostnames are stable — no "what port is the QA running on this time?" friction.
-- **Friendly hostnames without `/etc/hosts`.** `dev0.<sub>.localhost` auto-resolves; Caddy reverse-proxies to the port. The user QAs at a real-looking URL instead of `localhost:3060`.
-- **Named escape hatch for direct-deploy projects.** The minority of projects that don't use CI now have a single canonical command instead of improvised ssh sessions, and the Reviewer can audit it.
-- **Setup is interactive but one-shot.** `scripts/setup_dev_slots.sh` is the only place that knows how to update both slots.yaml and the Caddyfile in lockstep — adopters don't have to remember the steps.
-
-**What this costs:**
-
-- **More framework surface.** Five new files (four scripts + one yaml) ship to every adopter. Most are small stubs with self-documenting "fill me in" exit-1 states; cost is mostly cognitive (more files to understand) plus the one-time setup time.
-- **Caddy as a dependency.** The hostname routing relies on Caddy. Adopters without Caddy installed get a working slots.yaml + scripts but the friendly hostnames don't work — they hit `localhost:<port>` directly. Documented in `dev-environment.md`; not framework-blocking.
-- **Ruby dependency for yaml parsing.** Launch and teardown scripts use `ruby -e` to read slots.yaml (matches codex; ruby is on macOS by default and widely available on Linux). Adopters without ruby need to swap in `yq` or another parser — documented as a known constraint.
-- **Filled-in stubs become project assets.** The launch/teardown bodies are project-specific code committed to the project repo. Same model as any other infrastructure-as-code artifact.
-- **First-launch TLS friction.** `caddy trust` is a one-shot but adds a step to the first-time setup. Documented in setup script output and in the ADR.
-
-**What this does NOT do:**
-
-- **Does not change the production-deploy default.** CI-only remains the rule. `main_to_prod.sh` is for projects that have already opted out of CI by user decision; it does not encourage opting out.
-- **Does not change the Developer's QA-loop pattern.** User-mediated QA inside `in_progress` (per FWADR-018) is unchanged. The slots simply give the runtime a stable hostname/port for the user to QA against.
-- **Does not change Orchestrator-mode dispatch.** Executor subagents in worktrees can use the slots if the project is configured, but the slot mechanism is Developer-centric — the QA-loop framing assumes a persistent session.
-- **Does not auto-fill the launch/teardown bodies.** Fundamentally project-specific (which container, which env vars, which compose file). The agent fills them in once on first use, then the script is the canonical entry point forever.
-
-## Alternatives considered
-
-1. **Codex's pattern as-is (no setup script, no Caddy).** Rejected — codex hard-codes ports 3060–3063 and leaves hostname routing to the adopter. claude_template's `{{ports}}` variable means port range is project-specific (no universal default), and the user explicitly wanted Caddyfile auto-configuration to save time. The adapted pattern adds the setup ritual on top of codex's slot+stub shape.
-
-2. **Skip Caddy; use raw `localhost:<port>` for QA.** Rejected — the user QAs against URLs that look like the product (cookie domains, CORS behavior, OAuth redirects depend on hostname). Friendly hostnames via Caddy + `.localhost` cost a one-time `caddy trust` and earn realism for every QA session thereafter.
-
-3. **`/etc/hosts` + non-`.localhost` suffix (e.g., `.local`, `.test`).** Rejected — `.localhost` auto-resolves per RFC 6761, eliminating the `/etc/hosts` step entirely. The user picked option 2 in design specifically for this property.
-
-4. **Destructive sync for `setup_dev_slots.sh` (framework-canonical) + idempotent-init for the others.** Rejected — mixed sync semantics inside `scripts/` create cognitive load (which scripts do I edit? which get overwritten?) without clear benefit. Uniform idempotent-init is simpler; the cost is that **none of the four scripts auto-propagate framework improvements to existing adopters** — including the slot-claim/state-file plumbing inside `launch_local.sh` and `teardown_local.sh`. If the plumbing has a bug, every adopter is stranded on the buggy version until they manually re-pull. Acceptable trade-off because the plumbing is small (~50 lines, well-tested via use) and a managed-block pattern inside scripts would be material additional complexity. v2 may revisit if the plumbing grows or a bug bites — adopters who want the latest framework-side script content can `cp $TEMPLATE_ROOT/docs/dev_framework/_stubs/scripts/* scripts/` manually.
-
-5. **Single ADR for both the slot registry and the production-deploy carve-out vs. two ADRs.** Single ADR (this one) wins — the carve-out is a doctrine adjustment driven by introducing `main_to_prod.sh`, not an independent decision. Two ADRs would force a forward reference from the deploy-doctrine ADR to the slot-mechanism ADR.
-
-6. **Fold setup into `sync-framework.sh` directly (run setup automatically on first sync).** Rejected — setup is interactive (asks user for base port, asks before writing Caddyfile). Running it from a SessionStart hook would block the session waiting for input, or skip the prompts and use defaults that may collide. Keeping setup as an explicit user-invoked script preserves the "first sync seeds, user runs setup once" flow.
-
-## Acceptance criteria for the shipping PR
-
-- `docs/dev_framework/_stubs/scripts/{launch_local,teardown_local,main_to_prod,setup_dev_slots}.sh` exist, each `bash -n`-clean, executable, with the slot/state plumbing filled and project-specific bodies stubbed.
-- `docs/dev_framework/_stubs/docs/dev/slots.yaml` exists with `dev0`–`dev3` entries, `port: 0` and `hostname: PLACEHOLDER` until setup runs.
-- `.claude/hooks/sync-framework.sh` includes the "5c" idempotent-init pass for the four scripts + `slots.yaml`. `bash -n` clean. Adopters first-syncing get the files; subsequent syncs leave them alone.
-- `docs/dev_framework/developer.md` §"Phase discipline" §Build mentions launching via `./scripts/launch_local.sh dev<N>` and §Code Review §Cleanup mentions teardown via `./scripts/teardown_local.sh dev<N>`. Discipline rule: "if the script is still a stub, halt and fill it in + commit before launching — no improvising docker."
-- `docs/dev_framework/dev-environment.md` has a §"Slot registry and launch scripts" section pointing at slots.yaml + the scripts + this ADR.
-- `CLAUDE.md` Commands section has rows for `setup_dev_slots.sh`, `launch_local.sh`, `teardown_local.sh`, `main_to_prod.sh`. §"Two process rules" #2 has a footnote naming `main_to_prod.sh` as the canonical escape hatch for user-approved direct-deploy projects.
-- `docs/dev_framework/templates/reviewer-brief.md` has the "block if prod deploy by any path other than `main_to_prod.sh`" rule under review questions.
-- `.gitignore` includes `.local/`.
-- One PR. Half-shipping these creates an incoherent intermediate state — adopters get scripts that reference docs that don't exist, or vice versa.
-
----
-
-## Revision (v1.1) — 2026-05-21: slot schema refinement + port-range governance
-
-Field experience from the first multi-port-surface adopter (Postgres-per-slot + Marimo app server) exposed three gaps in the original schema:
-
-1. **Implicit single-port-per-slot.** The original `slots.yaml.port` field was *intended* as the HTTP/Caddy-routed port, but nothing in the schema named it. The adopter typed their Postgres base port into `setup_dev_slots.sh` (because that was their primary "per-slot port"); Caddy then routed the slot hostname to the DB, breaking HTTP access entirely. The Developer improvised by running the app server on raw `localhost:<port>` and hand-editing the Caddyfile.
-2. **No place for project-specific secondary ports.** Once the adopter had separate DB and app ports, there was no canonical home for the DB port assignment — it lived in a project-local `.env` or scattered constants, with no per-slot mapping the launch body could read.
-3. **Port-range governance was ambient.** `setup_dev_slots.sh` asked "Base port for dev slots [3060]?" — whoever ran it picked a number, which could collide with another project on the same machine. `{{ports}}` in CLAUDE.md (the Strategist-set range) and slots.yaml could diverge silently.
-
-### Refinements
-
-1. **`port` is canonical: the HTTP/Caddy-routed port.** Renamed semantically — the slot's `port` is now formally defined as the port `<slot>.<sub>.localhost` reverse-proxies to. Caddy routes there; the Reviewer assumes QA targets this hostname.
-
-2. **Optional `extras: { <name>: <port>, ... }` map per slot.** Project-specific secondary ports (database, cache, message queue, anything per-slot but NOT HTTP-fronted) live here. `setup_dev_slots.sh` does NOT manage extras — projects fill them by hand or via a project-local helper. `launch_local.sh`'s project body reads them from slots.yaml directly (Ruby snippet in the body) and binds the project services to them.
-
-   Example for the field Dev's case (Marimo app + Postgres per slot):
    ```yaml
    dev1:
      role: parallel_developer
      hostname: dev1.analytics.localhost
      port: 2719           # HTTP/Caddy-routed — Marimo binds here
      extras:
-       db: 5442           # Postgres — project body reads from extras.db
+       db: 5442           # Postgres — project body reads extras.db
      worktree_required: true
    ```
 
-3. **Project variables move to `.env` (canonical machine source); CLAUDE.md is the human-readable mirror.** Previously the script regex-parsed CLAUDE.md to extract `{{sub}}` and `{{ports}}` — fragile against any rephrasing of the bullet text. Now: a starter `.env.example` ships with the template (`docs/dev_framework/_stubs/.env.example`) and is idempotent-init'd to `$PROJECT_DIR/.env.example` by the sync hook. The adopter copies it to `.env` (gitignored) on first init; the Strategist fills the values during the first-contact interview. Scripts source `.env` directly — `setup_dev_slots.sh` halts if `PROJECT_SUB` or `PROJECT_PORTS` is empty or `PLACEHOLDER`. CLAUDE.md still displays the same values inline (for human readability), kept in sync by Strategist discipline + the §"Stub audit" `.env`↔CLAUDE.md drift row.
+2. **Caddy as routing layer and machine-wide port ledger.** Caddy reverse-proxies `<slot>.<sub>.localhost` → `localhost:<port>` and auto-issues internal-CA certs for `.localhost` (first use may need `caddy trust` once). `setup_dev_slots.sh` writes each project's block between `# BEGIN <sub>-dev-slots` / `# END <sub>-dev-slots` markers so re-runs update in place. The BEGIN line is a **ledger header**: `# BEGIN <sub>-dev-slots (managed by scripts/setup_dev_slots.sh) PORTS=<low>-<high> PROJECT=<name> DIR=<path>` — `PORTS` is the full `PROJECT_PORTS` range; `DIR` is last so paths with spaces survive. **Every project writes a block:** `http_surface: false` projects get a comment-only block (header, one comment, end marker) that Caddy ignores and needs no reload, so their range is still visible. The framework reads the Caddyfile freely and writes it only through this marker mechanism, with confirmation.
 
-4. **Strategist owns the first-contact interview, including port-range confirmation.** Port allocation is a cross-project resource decision (avoids collisions with other projects on the same machine) — the Strategist negotiates with the user, fills `.env` (`PROJECT_SUB`, `PROJECT_PORTS`, etc.) and CLAUDE.md atomically. The script halt above is the forcing function: the Developer can't bring up a local runtime until the interview is done. Full question list in [`strategist.md`](../strategist.md) §"First-contact interview."
+3. **Five scripts in `scripts/`** (all seeded idempotent-init; `launch_local.sh`, `teardown_local.sh`, and `main_to_prod.sh` carry stubbed project bodies, `setup_dev_slots.sh` and `port_ledger.sh` are complete):
+   - **`setup_dev_slots.sh`** — interactive one-time setup, re-runnable. Sources `$PROJECT_DIR/.env` and halts if `PROJECT_SUB` or `PROJECT_PORTS` is empty or `PLACEHOLDER`. Runs `port_ledger.sh --check` on `PROJECT_PORTS` (ignoring its own block); on collision it warns with the proposed free range and asks before continuing — not fatal, because the fix is a Strategist `.env` edit this script does not own. Asks the HTTP-surface question and writes `http_surface`; asks for a base port within `PROJECT_PORTS` (default: range low end; all four slots must fit). Fills `slots.yaml` hostnames + ports, generates the Caddy block, prompts for the Caddyfile path (auto-detects `/opt/homebrew/etc/Caddyfile`, `/usr/local/etc/Caddyfile`, `/etc/caddy/Caddyfile`, `~/Caddyfile` in order), and writes between the markers. Prints the `extras` edit pattern. Does NOT edit CLAUDE.md or `.env` — `{{ports}}` lives in the framework-managed block overwritten on every sync ([FWADR-014](fwadr-014-framework-sync-on-session-start.md)); `slots.yaml` is the source of truth for actual port assignments.
+   - **`port_ledger.sh`** — read-only. Parses ledger headers *and* every `reverse_proxy … :<port>` line, attributing each to its enclosing block or site label, so hand-written blocks and blocks without a `PORTS=` header count too (re-running setup upgrades an old block in place). Bare: prints the table and cross-project overlaps (exit 2 if any). `--propose [N]`: the lowest free decade-aligned range of N at or above 3000, treating well-known defaults (3000, 5000, 5173, 8000, 8080, …) as built-in claims. `--check LOW-HIGH [--ignore <sub>-dev-slots]`: exit 2 on collision. **Lowest gap, not "above the highest claim"** — one project parked at 8080 must not push every later project into the 8000s. Pre-existing overlaps surface on first run and are the user's to resolve per project.
+   - **`launch_local.sh <slot> [--wid=W-NN] [--auto-confirm] [--code-path=PATH]`** — sources `$PROJECT_DIR/.env` and validates `DEFAULT_CODE_SUBDIR` (no init-time stub edit; single source per [FWADR-021](fwadr-021-split-layout.md)). Resolves the source, prints the confirmation block, claims the slot (writes the state file), then runs the project-specific launch body below the `PROJECT-SPECIFIC LAUNCH BODY` marker. The body ships as `exit 1` (cleaning up `$STATE_FILE` first) until the agent fills it in. Halts with "run setup_dev_slots.sh first" while `slots.yaml` still has `port: 0` / `hostname: PLACEHOLDER`.
+     - **`CODE_PATH` resolver**, in order: `--code-path` flag → `CODE_PATH` env var (backwards compatibility) → `--wid=W-NN` (worktree under `/tmp/worktrees/${DEFAULT_CODE_SUBDIR}/<wid>-*`) → `git rev-parse --show-toplevel` from `$PWD` → `$PROJECT_DIR/$DEFAULT_CODE_SUBDIR`. Exposed to the body as `$CODE_PATH_RESOLVED` plus `$MODE` (`worktree|main`). A body that binds docker/dev-server to `$PWD` or the main checkout instead of `$CODE_PATH_RESOLVED` is wrong. `$PORT` is the HTTP/Caddy-routed port.
+     - **App-env symlink for worktrees.** Worktrees don't carry gitignored files; if the resolved source lacks a `.env`, launch symlinks the app env from the main checkout (`$PROJECT_DIR/$DEFAULT_CODE_SUBDIR/.env` — the app env, distinct from the operator env it sources; [FWADR-033](fwadr-033-env-scope-rule.md)) after confirmation. With no canonical app env it reports "absent" and the body decides.
+     - **Pre-launch confirmation block (load-bearing).** Prints source path, mode, branch+SHA, port, hostname, `.env` state, then `Proceed? [Y/n]`. `--auto-confirm` bypasses for CI / scripted use. Because the script enforces it, "confirm the source before launching" is mechanical, not doctrine.
+   - **`teardown_local.sh <slot> [--auto-confirm]`** — prints the mirror confirmation block from the state file (no auto-detect; missing generic fields render `unknown`), prompts, runs the project-specific teardown body, then removes the state file once the body returns successfully. Same stub-and-fill shape and marker. Recommended body pattern: read project fields (`compose_project`, `compose_file`, `compose_override`) via `read_state`, bail or fall back as the project requires, then `docker compose down`.
+   - **`main_to_prod.sh`** — the **named escape hatch** for user-approved direct-to-server production deploy. Ships as a stub; the agent scopes the real server with the user once and fills in connection + update + restart + verification. After that, every prod deploy goes through it — never improvise prod commands outside it.
 
-5. **`setup_dev_slots.sh` asks the HTTP-surface question.** New interactive prompt: "Does this project expose an HTTP surface that needs Caddy routing?" Answer `true|false` is written to `http_surface` at the top of `slots.yaml`. If `false`, the script skips Caddy block generation entirely (no `<slot>.<sub>.localhost` blocks written). This lets non-HTTP projects (CLI tools, libraries, headless pipelines) use the slot model for port assignment without Caddy noise.
+4. **`.local/dev_slots/<slot>.yaml`** — per-slot live state (gitignored). Written by launch, read by teardown. The generic write (above the body marker) captures `slot`, `role`, `hostname`, `port`, `claimed_at`, `ticket`, `status`, `code_path`, `mode`, `branch`, `sha`; project bodies append their own fields (e.g. `compose_project`, `compose_file`, `compose_override`) below it. Teardown's generic header reads only generic fields; backwards-compat fallbacks for project fields belong in the project teardown body. `slots.yaml` says what slots exist; local state says which are held.
 
-6. **Reviewer rule: QA target is the slot hostname when Caddy is configured.** New conditional rule in `reviewer-brief.md`: if `slots.yaml` has `http_surface: true` AND the working log or diff shows the QA loop targeted raw `localhost:<port>` for an HTTP surface, flag **MED**. Pre-condition matters — projects with `http_surface: false` (CLI tools, libraries, server-side scripts) are unaffected. The rule mechanizes the doctrine "QA exercises the prod-shaped path through the proxy, not the raw bind port."
+5. **Idempotent-init sync.** The five scripts, `slots.yaml`, and `.env.example` ship under `docs/dev_framework/_stubs/` in the canonical template. The sync hook (`.claude/hooks/sync-framework.sh`) copies them on first sync and never overwrites afterward — the same pattern as `framework_exceptions/` and `.mcp.json`. Adopters keep filled-in stubs across all future syncs; the corollary is that framework improvements to the generic plumbing reach an adopter with filled bodies only when an agent manually merges the new generic header into the customized script (see Alternatives 4 and 8).
 
-7. **Developer doctrine update.** `developer.md §Build` adds: "QA target is `https://<slot>.<sub>.localhost/` via Caddy, NOT `localhost:<port>`. If your slot lacks a Caddy block, run `./scripts/setup_dev_slots.sh` from `$PROJECT_DIR` to (re)generate them." The Reviewer's MED rule is the enforcement; the Developer doc is the rule.
+6. **Parent-side placement under split layout.** The scripts and `slots.yaml` are seeded at **`$PROJECT_DIR/scripts/`** and **`$PROJECT_DIR/docs/dev/slots.yaml`** — the parent under split layout ([FWADR-021](fwadr-021-split-layout.md)), NOT inside `$CODE_ROOT`. They are agent-orchestration artifacts and belong with the tracking tree; about the only deploy-shaped thing in `$CODE_ROOT` is CI config. Agents invoke them with `$PROJECT_DIR` as the working directory (CWD-relative paths internally). Full rule: [FWADR-021](fwadr-021-split-layout.md) §"Script placement doctrine".
 
-### Migration (one-shot, per affected adopter)
+7. **Project variables live in the operator `.env`; the Strategist sets them.** `$PROJECT_DIR/.env` is the canonical machine source for `PROJECT_SUB`, `PROJECT_PORTS`, `DEFAULT_CODE_SUBDIR`, and the other project variables; scripts source it rather than parsing CLAUDE.md. It is created from the synced `$PROJECT_DIR/.env.example` (PLACEHOLDER values + comments) at first contact. CLAUDE.md shows the same values inline as the human-readable mirror, kept in sync by Strategist discipline and the §"Stub audit" `.env`↔CLAUDE.md drift row. Port allocation is a cross-project resource decision, so the Strategist owns it in the first-contact interview ([`strategist.md`](../strategist.md) §"First-contact interview"), filling `.env` and CLAUDE.md together. **The interview proposes, not asks** ([`templates/first-contact-interview.md`](../templates/first-contact-interview.md) Block 1): it runs `./scripts/port_ledger.sh --propose` from `$PROJECT_DIR` and offers the result as a yes/no. Remote-hosted projects have no local Caddyfile; the interview asks for the range directly. The setup-script halt is the forcing function: no local runtime until the interview is done.
 
-Adopters whose slots.yaml currently uses `port` for something other than the HTTP-routed port (i.e., the field Dev's case) do a one-time hand-edit:
+8. **QA target is the slot hostname when `http_surface: true`.** `developer.md` §Build: QA targets `https://<slot>.<sub>.localhost/` via Caddy, not `localhost:<port>`; if the slot lacks a Caddy block, re-run `./scripts/setup_dev_slots.sh` from `$PROJECT_DIR`. The Parallel Developer may launch from inside the worktree (auto-detect) or from `$PROJECT_DIR` with `--wid=W-NN`. The Reviewer enforces it (below). QA exercises the prod-shaped path through the proxy — host header, TLS, cookie domains — not the raw bind port.
 
-1. **Identify the HTTP port.** Whatever the app server should bind to for QA via Caddy.
-2. **Rename current `port`.** Move it under `extras` with a descriptive name. Example:
-   ```yaml
-   # Before
-   dev1: { port: 5441, hostname: dev1.analytics.localhost, ... }
+### Production-deploy doctrine (carve-out)
 
-   # After
-   dev1:
-     port: 2719              # HTTP/Caddy-routed (new)
-     hostname: dev1.analytics.localhost
-     extras:
-       db: 5441              # moved from port
-     ...
-   ```
-3. **Update `launch_local.sh`'s project body.** It currently reads `$PORT` as the DB port; change to read `$PORT` as the HTTP port, plus a Ruby snippet to pull `extras.db` for the database.
-4. **Re-run `./scripts/setup_dev_slots.sh`** from `$PROJECT_DIR` to regenerate Caddyfile blocks against the new `port` values (or hand-edit the Caddyfile if setup would clobber project-specific blocks).
-5. **Commit.** One commit per slot is fine; one commit covering all four slots is preferable.
+CLAUDE.md §"Two process rules" #2 (production changes land via the release push → CI; never from a laptop, never via `docker exec`) remains the **default rule for every adopter**. Most projects should never fill in `main_to_prod.sh` — its `exit 1` stub state is the correct steady state for a CI-deployed project.
 
-No mechanical `--migrate` flag ships — the rename is two YAML edits per slot, and a script automating it would be more code than the manual fix. Adopters who haven't run setup yet (or whose `port` is already the HTTP port, the original intent) need no migration.
+For the small number of projects where the user has explicitly approved direct-to-server deploy (legacy infrastructure, no CI runner, niche hosting), `main_to_prod.sh` is the **named, single, canonical entry point**:
 
-Projects with no app port (CLI-only tooling) leave `port` set to whatever (or `0` if no HTTP surface), skip Caddy generation entirely in setup, and use extras as the project requires. The Reviewer rule no-ops in that case (pre-condition: Caddyfile block exists).
+- The default rule is unchanged: CI is how production gets updated.
+- When the user has approved direct-deploy, `main_to_prod.sh` is the only path. Improvisation outside it is a Reviewer-blocking violation.
+- A filled-in `main_to_prod.sh` in the project repo is the implicit signal that the user approved this exception. A still-stub one means CI-only is in force.
 
-### Acceptance criteria for the Revision
+### Reviewer-side enforcement
 
-- `docs/dev_framework/_stubs/.env.example` — new starter file with project variables (PROJECT_NAME, PROJECT_SUB, PROJECT_WEBSITE, PROJECT_PORTS, DEV_ENVIRONMENT_MODE, DEFAULT_CODE_SUBDIR, CLAUDE_TEMPLATE_ROOT) as PLACEHOLDER values + comments.
-- `.claude/hooks/sync-framework.sh` — `.env.example` added to the idempotent-init list (seeded once; never overwrites adopter's `.env.example` or `.env`).
-- `docs/dev_framework/_stubs/docs/dev/slots.yaml` — header defines `port` as HTTP/Caddy-routed; `http_surface: PLACEHOLDER` top-level field; commented `extras: {}` example per slot.
-- `docs/dev_framework/_stubs/scripts/setup_dev_slots.sh` — sources `.env` (no more markdown regex), halts on `PLACEHOLDER` values, asks the HTTP-surface question, writes `http_surface` to `slots.yaml`, prints the extras edit pattern.
-- `docs/dev_framework/_stubs/scripts/launch_local.sh` — header names `$PORT` as HTTP/Caddy-routed; shows Ruby one-liner for reading `extras` in the project body.
-- `docs/dev_framework/developer.md §Build` — QA-target-is-slot-hostname rule (conditional on `http_surface: true`).
-- `docs/dev_framework/templates/reviewer-brief.md` — new conditional MED rule (pre-condition reads `http_surface` from `slots.yaml`).
-- `docs/dev_framework/strategist.md` — first-contact-interview responsibility (subsumes the prior port-range bullet); §"First-contact interview" section with .env + CLAUDE.md dual-surface fill instructions; new stub-audit rows for `.env` PLACEHOLDERs and `.env`↔CLAUDE.md drift.
-- `docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md` — this Revision (v1.1) section.
+The Reviewer brief (`docs/dev_framework/templates/reviewer-brief.md`) carries two rules from this ADR:
 
-## Revision (v1.2) — 2026-05-27: launch/teardown safety primitives
+> If a commit message, diff, or work history shows a production deploy executed by any path other than `scripts/main_to_prod.sh` (e.g., raw `ssh user@host docker pull`, ad-hoc `kubectl apply`, manual `pm2 restart` on the prod server), verdict is **block**. The Reviewer flags this even if the deploy succeeded — the doctrine violation is the issue, not the outcome.
 
-Field experience from a Parallel Developer at an adopter on 2026-05-27 exposed a fourth gap: `launch_local.sh <slot>` was invoked from a worktree CWD but silently launched against the main checkout (because the project body had no source-resolution layer — it just used the implicit `$PWD` of the script's enclosing directory). The mismatch surfaced only because the operator noticed the missing feature during user-QA; one full launch + teardown cycle was lost. The retrospective named the missing primitive: "what source is this slot about to launch against, and does the operator agree?"
+Without it, `main_to_prod.sh` becomes one of several deploy paths in practice and the consistency win evaporates.
 
-### Refinements
+**QA target (conditional):** if `slots.yaml` has `http_surface: true` AND the working log or diff shows the QA loop targeted raw `localhost:<port>` for an HTTP surface, the Reviewer flags **MED**. The rule no-ops when `http_surface` is `false` or `PLACEHOLDER`.
 
-1. **`CODE_PATH` 5-tier auto-resolver in the launch stub's generic header.** Order: `--code-path=PATH` flag → `CODE_PATH` env var (backwards-compat) → `--wid=W-NN` (worktree match under `/tmp/worktrees/${DEFAULT_CODE_SUBDIR}/<wid>-*`) → `git rev-parse --show-toplevel` from `$PWD` → `$PROJECT_DIR/$DEFAULT_CODE_SUBDIR` fallback. Result exposed to the project body as `$CODE_PATH_RESOLVED` plus `$MODE` (`worktree|main`). Worktree-launches that bind docker/dev-server at `$PWD` or `$PROJECT_DIR/$DEFAULT_CODE_SUBDIR` are wrong; the project body must use `$CODE_PATH_RESOLVED`.
+## Consequences
 
-2. **`.env` auto-symlink for worktrees.** Worktrees do not carry gitignored files; a fresh worktree at `/tmp/worktrees/<repo>/<wid>-<slug>` has no `.env`. The launch stub detects this case, prints "will symlink from $PROJECT_DIR/$DEFAULT_CODE_SUBDIR/.env" in the confirmation block, and applies the symlink after user confirmation. Adopters whose app needs no `.env` see "absent (no canonical to bootstrap from — project body must handle)" and the project body decides what to do.
+**What this buys:**
 
-3. **Pre-launch confirmation block (the load-bearing rule).** The launch stub prints `source path, mode, branch+SHA, port, hostname, .env state` and prompts `Proceed? [Y/n]` (interactive default). `--auto-confirm` bypasses for CI / scripted use. Teardown prints the mirror block (read from the state file — no auto-detect) and prompts the same. The rule "the launch script confirms the source before launching" is mechanical because the script enforces it; framework-level doctrine just acknowledges this is how the script now behaves.
+- **Deploy commands are scoped once per project, not every session.** After the launch/teardown bodies are filled, "launch dev0" is one shell command.
+- **Consistent slot allocation across sessions.** Default Developer always gets dev0; Parallel Developers get dev1+ in order. Container names, ports, and hostnames are stable.
+- **Friendly hostnames without `/etc/hosts`.** The user QAs at `dev0.<sub>.localhost` instead of `localhost:3060`.
+- **Wrong-source launches caught before launch, not during QA.** The confirmation block surfaces source, mode, and branch+SHA up front.
+- **Port ranges proposed from a ledger, not memory.** Cross-project collisions surface at setup and in the interview.
+- **Named escape hatch for direct-deploy projects.** A single canonical command instead of improvised ssh sessions, auditable by the Reviewer.
+- **Setup is interactive but one-shot.** `setup_dev_slots.sh` is the only place that updates `slots.yaml` and the Caddyfile in lockstep.
 
-4. **State-file schema additions.** The generic state-file write (above the `PROJECT-SPECIFIC LAUNCH BODY` marker) now includes `code_path`, `mode`, `branch`, `sha`. Project-specific bodies continue to append project-specific fields (e.g. `compose_project`, `compose_file`, `compose_override`) below the generic write. Teardown's generic header reads only the generic fields; the project-specific teardown body reads project-specific fields and is the right place for backwards-compat fallbacks when an in-flight slot pre-dates a body change.
+**What this costs:**
 
-5. **`DEFAULT_CODE_SUBDIR` sourced from `$PROJECT_DIR/.env` in the launch stub.** Aligns with v1.1's `setup_dev_slots.sh` doctrine (project variables live in `.env`, scripts source it). No init-time placeholder edit in the stub. Single source of truth per [FWADR-021](fwadr-021-split-layout.md).
+- **More framework surface.** Seven seeded files (five scripts, `slots.yaml`, `.env.example`) ship to every adopter. Mostly small self-documenting stubs; the cost is cognitive plus one-time setup.
+- **Caddy as a dependency.** Without Caddy, slots and scripts still work but friendly hostnames don't — QA hits `localhost:<port>` directly. Documented in `dev-environment.md`; not framework-blocking.
+- **Ruby dependency for yaml parsing.** Scripts use `ruby -e` to read `slots.yaml` (matches codex; on macOS by default and widely available on Linux). Adopters without ruby swap in `yq` or another parser.
+- **Filled-in stubs become project assets.** Launch/teardown bodies are project-specific code committed to the project, like any infrastructure-as-code.
+- **Generic plumbing does not auto-propagate** to adopters with filled bodies (Decision #5).
+- **First-launch TLS friction.** `caddy trust` is one extra first-time step, documented in setup output.
+- **The ledger is a machine-local file outside every project.** Its accuracy depends on every project on the machine having run setup.
 
-### Migration (adopter-side)
+**What this does NOT do:**
 
-For adopters that have already filled their `launch_local.sh` / `teardown_local.sh` project bodies (auto_portal is the precedent), the sync hook does NOT overwrite filled-in stubs — the new safety primitives ship in the template's `_stubs/scripts/` and reach existing adopters only when an agent manually merges the generic header into the customized script. The customized-body case is left to the adopter (and is the precedent for the follow-up sentinel-marker pattern described under "Out of scope" below). Adopters who have NOT yet filled the stubs receive the new generic header on first sync, the same way any other stub seeds.
+- **Does not change the production-deploy default.** CI-only remains the rule; `main_to_prod.sh` is for projects that have already opted out by user decision and does not encourage opting out.
+- **Does not change the Developer's QA-loop pattern.** User-mediated QA inside `in_progress` ([FWADR-018](fwadr-018-developer-role.md)) is unchanged; slots give it a stable hostname/port.
+- **Does not change Orchestrator-mode dispatch.** Executor subagents in worktrees can use slots, but the mechanism is Developer-centric — the QA loop assumes a persistent session.
+- **Does not auto-fill the launch/teardown bodies or `extras`.** Fundamentally project-specific; filled once on first use, then the script is the canonical entry point.
 
-In-flight state files (claimed pre-upgrade, torn down post-upgrade) will lack `code_path`, `mode`, `branch`, `sha`. The teardown's generic confirmation block tolerates this (renders `unknown` for missing fields). The project-specific teardown body decides whether to require its own appended fields or fall back — that decision lives in the body, not the generic header.
+## Alternatives considered
 
-### Out of scope (follow-up)
+1. **Codex's pattern as-is (no setup script, no Caddy).** Rejected — codex hard-codes ports 3060–3063 and leaves hostname routing to the adopter. `{{ports}}` is project-specific (no universal default), and the user wanted Caddyfile auto-configuration. The adapted pattern adds the setup ritual on top of codex's slot+stub shape.
 
-A "above-sentinel partial re-sync" mechanism — where the template stubs use a sentinel line (e.g. `# ============ PROJECT-SPECIFIC LAUNCH BODY (do not edit above) ============`) and `sync-framework.sh` can re-drop the above-sentinel content into adopters with customized bodies — would close the customized-body migration gap, but is not landing in this Revision. The current Revision keeps the existing comment-block marker form; the sentinel pattern is a separate doctrine decision (does the sync hook get smarter about stubs?) and a separate ADR's worth of work.
+2. **Skip Caddy; use raw `localhost:<port>` for QA.** Rejected — the user QAs against URLs that look like the product (cookie domains, CORS, OAuth redirects depend on hostname). Caddy + `.localhost` cost a one-time `caddy trust` and earn realism for every QA session.
 
-### Acceptance criteria for the Revision
+3. **`/etc/hosts` + non-`.localhost` suffix (e.g., `.local`, `.test`).** Rejected — `.localhost` auto-resolves per RFC 6761, eliminating the `/etc/hosts` step. The user chose this in design for that property.
 
-- `docs/dev_framework/_stubs/scripts/launch_local.sh` — sources `$PROJECT_DIR/.env`, validates `DEFAULT_CODE_SUBDIR`, parses `--wid` / `--auto-confirm` / `--code-path` / `--help`, runs the 5-tier resolver, detects mode, prints the confirmation block, applies the `.env` symlink, writes the new state schema. Preserves the `PROJECT-SPECIFIC LAUNCH BODY` marker form; the body's "not yet implemented" placeholder cleans up `$STATE_FILE` before exit 1.
-- `docs/dev_framework/_stubs/scripts/teardown_local.sh` — parses `--auto-confirm` / `--help`, reads generic state fields, prints the mirror confirmation block. Marker preserved. Project-specific body recommended pattern (in commented examples): read `compose_project` / `compose_file` / `compose_override` via `read_state`, bail or fall back as the project requires, then `docker compose down`. Generic post-body (below the marker) removes the state file once the body returns successfully.
-- `docs/dev_framework/dev-environment.md §"Slot registry and launch scripts"` — `launch_local.sh` / `teardown_local.sh` bullets describe the new flags, confirmation block, CODE_PATH resolver order, and `.env` symlink behavior.
-- `docs/dev_framework/developer.md §Build` — guidance that the Parallel Developer can invoke from inside the worktree (auto-detect) or from `$PROJECT_DIR` with `--wid=W-NN`. §"Cleanup at done-flip" — note that teardown also prompts; `--auto-confirm` is for scripted use only.
-- This Revision (v1.2) section.
+4. **Destructive sync for `setup_dev_slots.sh` (framework-canonical) + idempotent-init for the others.** Rejected — mixed sync semantics inside `scripts/` create cognitive load (which scripts do I edit? which get overwritten?) without clear benefit. Uniform idempotent-init is simpler; the cost is that **no script auto-propagates framework improvements to existing adopters**, including the slot-claim/state-file plumbing — a plumbing bug strands every adopter until they re-pull manually, and the launch/teardown safety primitives (Decision #3) reached filled-body adopters only by manual merge. Accepted when the plumbing was small, because a managed-block pattern inside scripts is material complexity; the generic header has since grown, and Alternative 8 is the path if the gap starts to bite. Adopters wanting the latest can `cp $TEMPLATE_ROOT/docs/dev_framework/_stubs/scripts/* scripts/` (or merge the generic header) manually.
 
-No new entries in `_stubs/.env.example` (DEFAULT_CODE_SUBDIR was already added in v1.1's acceptance criteria; this Revision just adds a second consumer of it).
+5. **Single ADR for both the slot registry and the production-deploy carve-out vs. two ADRs.** Single ADR wins — the carve-out is a doctrine adjustment driven by introducing `main_to_prod.sh`, not an independent decision. Two ADRs would force a forward reference from the deploy-doctrine ADR to the slot-mechanism ADR.
 
-## Revision (v1.3) — 2026-09-15: the Caddyfile is the machine-wide port ledger
+6. **Fold setup into `sync-framework.sh` (run setup automatically on first sync).** Rejected — setup is interactive (range confirmation, HTTP-surface question, base port, Caddyfile write). From a SessionStart hook it would block the session on input, or skip prompts and use defaults that may collide. An explicit user-invoked script preserves "first sync seeds, user runs setup once."
 
-The port-range question was the interview's persistent friction point: "what range should I allocate?" asked the user to remember every other project's ports on the machine. Meanwhile the local Caddyfile already held that answer — every project's `setup_dev_slots.sh` block records its slot ports under a `# BEGIN <sub>-dev-slots` marker — and a read of the framework author's Caddyfile on 2026-09-15 showed a live cross-project collision (two projects on 3060) that nobody had noticed because nothing read the file as a ledger. Two gaps kept it from being one: blocks recorded only the four slot ports, not the full reserved `PROJECT_PORTS` range, and non-HTTP projects wrote no block at all.
+7. **A `--migrate` flag for slots whose `port` held a non-HTTP port.** Rejected — the fix is moving the old value under `extras` and setting `port` to the HTTP port, two YAML edits per slot; automating it would be more code than the manual fix.
 
-**Decision.** Make the Caddyfile the ledger of record, and derive the range instead of asking for it.
+8. **Above-sentinel partial re-sync of launch/teardown stubs.** Stubs would carry a sentinel line (e.g. `# ============ PROJECT-SPECIFIC LAUNCH BODY (do not edit above) ============`) and `sync-framework.sh` would re-drop the above-sentinel generic plumbing into adopters with customized bodies, closing the propagation gap in Alternative 4. Deferred — whether the sync hook gets smarter about stubs is its own doctrine decision and its own ADR. The current comment-block marker form stays.
 
-- **Ledger header.** `setup_dev_slots.sh` writes `# BEGIN <sub>-dev-slots (managed by scripts/setup_dev_slots.sh) PORTS=<low>-<high> PROJECT=<name> DIR=<path>`. `PORTS` is the full `PROJECT_PORTS` range. `DIR` is last so paths with spaces survive.
-- **Every project writes a block.** `http_surface=false` projects get a comment-only block (header, one explanatory comment, end marker). Caddy ignores comments; no reload is needed; the range is now visible.
-- **`scripts/port_ledger.sh`** (new synced stub, read-only). Parses ledger headers *and* every `reverse_proxy … :<port>` line, attributing the latter to its enclosing block or site label, so hand-written blocks count too. Three modes: bare prints the table and cross-project overlaps (exit 2 if any); `--propose [N]` prints the lowest free decade-aligned range of N at or above 3000, skipping well-known defaults (3000, 5000, 5173, 8000, 8080, …) treated as built-in claims; `--check LOW-HIGH` exits 2 on collision, with `--ignore <sub>-dev-slots` so a project re-running setup does not collide with itself. Lowest gap, not "above the highest claim": one project parked at 8080 must not push every later project into the 8000s.
-- **`setup_dev_slots.sh` checks before writing.** It runs `--check` on `PROJECT_PORTS` (ignoring its own block) and, on collision, warns with the proposed free range and asks before continuing. Not fatal: the fix is a Strategist `.env` edit, which this script does not own.
-- **The interview proposes, not asks** (`templates/first-contact-interview.md` Block 1): `./scripts/port_ledger.sh --propose` from `$PROJECT_DIR`, offered as a yes/no. Remote-hosted projects have no local Caddyfile and keep the old question.
+9. **Ask the user for a port range in the interview.** Rejected for local-hosted projects — it relies on the user remembering every other project's ports, and the Caddyfile already holds that answer (see Context). Proposing from `port_ledger.sh` replaces recall with a read.
 
-**Consequences.** The Caddyfile is a machine-local file outside every project; the framework reads it freely and writes it only through the existing marker mechanism with confirmation. Existing blocks written before this revision carry no `PORTS=` header and appear in the ledger as individual ports only; the next `setup_dev_slots.sh` re-run on each project upgrades its block in place. Pre-existing overlaps surface on the first run and are the user's to resolve per project. Coherence surfaces in this change: `port_ledger.sh` (new), `setup_dev_slots.sh`, `sync-framework.sh` stub list, `.env.example`, the interview template, `dev-environment.md` §"Port allocation" and §"Slot registry", and this revision.
+## Acceptance criteria
+
+The surfaces that must stay coherent with this ADR:
+
+- `docs/dev_framework/_stubs/scripts/{setup_dev_slots,port_ledger,launch_local,teardown_local,main_to_prod}.sh` — `bash -n`-clean, executable, generic plumbing filled per Decision #3, project bodies stubbed behind the `PROJECT-SPECIFIC … BODY` marker.
+- `docs/dev_framework/_stubs/docs/dev/slots.yaml` — `dev0`–`dev3`, `port: 0` / `hostname: PLACEHOLDER` until setup, header defining `port` as HTTP/Caddy-routed, `http_surface: PLACEHOLDER`, commented `extras` example.
+- `docs/dev_framework/_stubs/.env.example` — project variables (`PROJECT_NAME`, `PROJECT_SUB`, `PROJECT_WEBSITE`, `PROJECT_PORTS`, `DEV_ENVIRONMENT_MODE`, `DEFAULT_CODE_SUBDIR`, `CLAUDE_TEMPLATE_ROOT`) as PLACEHOLDER + comments.
+- `.claude/hooks/sync-framework.sh` — idempotent-init list covers all seeded files (Decision #5); `.gitignore` includes `.local/`.
+- `docs/dev_framework/dev-environment.md` §"Port allocation (local-hosted)" and §"Slot registry and launch scripts" describe the ledger, slots, flags, resolver order, confirmation block, and app-env symlink.
+- `docs/dev_framework/developer.md` — §Build launches via `./scripts/launch_local.sh dev<N>` (worktree or `--wid`), QA-target rule; §"Cleanup at done-flip" tears down via `teardown_local.sh` (which also prompts; `--auto-confirm` for scripted use only). Discipline: a still-stub script means halt, fill it in, commit — no improvised docker.
+- `docs/dev_framework/templates/reviewer-brief.md` — both rules in §"Reviewer-side enforcement".
+- `docs/dev_framework/strategist.md` §"First-contact interview" + `templates/first-contact-interview.md` Block 1 — `.env` + CLAUDE.md fill, ledger-proposed range; stub-audit rows for `.env` PLACEHOLDERs and `.env`↔CLAUDE.md drift.
+- `CLAUDE.md` — Commands rows for the setup/launch/teardown/deploy scripts; §"Two process rules" #2 names `main_to_prod.sh` as the direct-deploy escape hatch.

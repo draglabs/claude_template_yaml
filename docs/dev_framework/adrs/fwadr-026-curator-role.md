@@ -33,11 +33,11 @@ was designed rather than assumed. Run against this repo at design time:
 | Signal | Method | Result |
 |---|---|---|
 | Churn | `git log --follow` per ADR | FWADR-018 at **10 commits vs a median of 2** |
-| Self-declared revisions | `^#{2,4} Revision \(?v[0-9]` headings | FWADR-018 carries **5** (v2, v3, v3.1, v3.2, v3.3) |
+| Self-declared revisions | `^#{2,4} Revision \(?v[0-9]` headings | FWADR-018 carried **5** appended revision sections |
 | Dead ADR | inbound reference count | FWADR-015 at 2, ADR-000 at 3 |
 | Bloat | line count vs Layer 1 budget | `developer.md` 448, `session-policy.md` 473, `strategist.md` 321 |
 
-FWADR-018 (the Developer role) is simultaneously the highest-churn ADR, the most
+FWADR-018 (the Developer role) was simultaneously the highest-churn ADR, the most
 revision-annotated, and tied to the most bloated doc in the framework. The
 user's "updated 30 times" heuristic fired on real data, unprompted, on the
 first run. This is not a rule that needs hope — it needs a script.
@@ -62,10 +62,10 @@ accumulated doc corpus and proposes dispositions.
 
 3. **Evidence is mechanical; disposition is judgment.**
    [`doc_churn_audit.sh`](../_stubs/scripts/doc_churn_audit.sh) computes churn, revision counts, inbound
-   references, line budgets, and exception age. **The script ranks; it does not
-   recommend.** Whether a high-churn ADR is mis-scoped or simply load-bearing
-   and actively maintained is precisely the call a script cannot make, and a
-   script emitting verdicts would be trusted past its evidence.
+   references, line budgets, exception age, and the fight-detection evidence in
+   decision 10. **The script ranks; it does not recommend.** A script emitting
+   verdicts would be trusted past its evidence; the Curator reads the evidence
+   and proposes, the user decides.
 
 4. **Fenced out of framework docs, mechanically.** `docs/dev_framework/*` and
    `.claude/hooks/*` are destructively re-synced every SessionStart ([FWADR-014](fwadr-014-framework-sync-on-session-start.md)),
@@ -73,18 +73,18 @@ accumulated doc corpus and proposes dispositions.
    [`check-curator-scope.sh`](../_stubs/scripts/check-curator-scope.sh) enforces this.
 
    **It compares against the template, not against git**, and that choice is
-   load-bearing. The first implementation used `git diff` — mirroring the
-   Researcher's fence ([FWADR-024](fwadr-024-researcher-role.md)) — and was caught
-   in testing exiting `2` (usage error) under FWADR-021's **default**
-   untracked-parent layout, where `$PROJECT_DIR` is not a git repo and `docs/`
-   is not tracked at all. A git-based fence is therefore silently inert in the
-   most common configuration: precisely the "passes a reading, fails at
-   execution" drift attractor this framework exists to prevent. Diffing
-   `docs/dev_framework/` and `.claude/hooks/` against the resolved template root
-   works in every layout mode and is semantically exact — a framework file is
-   *defined* as byte-identical to the template, so any deviation is the
-   violation. Template resolution mirrors `sync-framework.sh`'s chain and, like
-   it, deliberately ignores shell environment variables.
+   load-bearing. A `git diff` fence — mirroring the Researcher's
+   ([FWADR-024](fwadr-024-researcher-role.md)) — was tried first and exited `2`
+   (usage error) under FWADR-021's **default** untracked-parent layout, where
+   `$PROJECT_DIR` is not a git repo and `docs/` is not tracked at all. A
+   git-based fence is therefore silently inert in the most common
+   configuration: precisely the "passes a reading, fails at execution" drift
+   attractor this framework exists to prevent. Diffing `docs/dev_framework/`
+   and `.claude/hooks/` against the resolved template root works in every
+   layout mode and is semantically exact — a framework file is *defined* as
+   byte-identical to the template, so any deviation is the violation. Template
+   resolution mirrors `sync-framework.sh`'s chain and, like it, deliberately
+   ignores shell environment variables.
 
 5. **Framework findings become `fwreq-NNN-<slug>.md`** in
    `docs/framework_exceptions/`, routed **straight to the user**, who carries
@@ -106,21 +106,18 @@ accumulated doc corpus and proposes dispositions.
 7. **Always available in adopter projects, no activation gate — and not
    applicable in the canonical template repo.** Unlike the Researcher, the
    Curator needs no per-project parameters, so there is nothing to gate. But it
-   is an *adopter-project* role, like the Strategist. **Revision (v1.1,
-   2026-07-29):** the first version of this ADR omitted that boundary, and a
-   Curator booted in the template repo found three coupled breakages, all from
-   one cause — stubs deploy via sync, and sync self-skips in the template:
-   `scripts/doc_churn_audit.sh` did not exist there (only under `_stubs/`), the
-   scope fence was likewise unrunnable and therefore documentation-only, and
-   the `fwreq-*` escalation path was **circular** — a request addressed to the
-   Template Developer, filed in the repo the Template Developer works in. That
-   last one is a genuine design defect, not a missing file: the routing is
-   one-directional, *from* an adopter *to* canon, and has nowhere to travel
-   when origin and destination coincide. Fixed by stating the boundary in
-   `curator.md` (top-of-file applicability note plus a §"Routing" clause that
-   says report-to-user instead of file), and by the Template Developer running
-   the audit script directly from `_stubs/scripts/` when curating the framework
-   corpus. Found by the Curator role auditing its own first release.
+   is an *adopter-project* role, like the Strategist. In the template repo,
+   stubs are not deployed (sync self-skips there), so
+   `scripts/doc_churn_audit.sh` and the scope fence do not exist outside
+   `_stubs/`, and the `fwreq-*` path is **circular** — a request addressed to
+   the Template Developer, filed in the repo the Template Developer works in.
+   The routing is one-directional, *from* an adopter *to* canon, and has
+   nowhere to travel when origin and destination coincide. So `curator.md`
+   states the boundary (a top-of-file applicability note, and a §"Routing"
+   clause: report to the user instead of filing), and the Template Developer
+   curates the framework corpus by running the audit script directly from
+   `_stubs/scripts/`. A Curator booted in the template repo hit all three
+   breakages at once, from that one cause.
 
 8. **Proportionality is stated in its own doc, not by reference.** A bounded
    request gets a bounded audit. This role is the most likely in the framework
@@ -129,52 +126,51 @@ accumulated doc corpus and proposes dispositions.
    whatever mattered. Also stated inline: "nothing to prune" is a legitimate
    finding, and a Curator that never returns it cannot be trusted.
 
-9. **Revision (v1.2, 2026-07-30) — dispositions, fight-detection, and pacing.**
-   Rewritten in place rather than superseded, which is itself the rule this
-   revision establishes. Driven by a live curation session plus the Curator's
-   critique of its own operating manual (FWREQ-005). Four corrections:
+9. **Four dispositions: Rewrite in place, Detune, Consolidate N→1, Supersede +
+   archive.**
+   - **Rewrite in place** is the dominant case. A doc amended thirty times is
+     not a decision that changed thirty times; it is one never articulated
+     right, and superseding it just produces a successor that will also be
+     amended.
+   - **Detune** keeps the document and lowers its modality (MUST → SHOULD,
+     hard gate → default). A volume-only vocabulary — archive, deprecate,
+     retire, split — biases every finding toward deletion when the real defect
+     is often binding force. Detune is the precise remedy for the user's
+     founding complaint, "ADRs that are highly restrictive"; without it a live
+     curation session had to improvise it as "user-directed re-scope."
+   - **Supersede + archive**: the superseded ADR moves to `docs/archive/` in
+     the same commit as the successor. Supersession without archival is a
+     permanent context tax — every supersession would add a permanently-loaded
+     document describing a decision that is no longer true — so
+     `docs/archive/README.md` and `context-management.md` §"Phase archival"
+     cover ADRs, not only plans.
+   - **Appending a revision is not a disposition**
+     ([FWADR-036](fwadr-036-prose-as-code.md)); see §"Alternatives considered".
 
-   - **Supersede was a permanent context tax.** `docs/archive/README.md` and
-     `context-management.md` §"Phase archival" were **plan-only**; nothing ever
-     moved a superseded ADR out of `docs/architecture/`, so every supersession
-     added a permanently-loaded document describing a decision that is no
-     longer true. Archival now covers ADRs, in the same commit as the successor.
-   - **`detune` is now a first-class disposition.** The original vocabulary was
-     entirely about *volume* — archive, deprecate, retire, split — which biases
-     every finding toward deletion when the real defect is often binding force.
-     Detune keeps the document and lowers its modality (MUST → SHOULD, hard
-     gate → default). It is the precise remedy for the user's founding
-     complaint, "ADRs that are highly restrictive," and the original doc could
-     not express it; the live session had to improvise it as "user-directed
-     re-scope."
-   - **Churn is not ambiguous — it was being read wrong.** v1.0 framed
-     load-bearing-vs-mis-scoped as judgment a script cannot make. The ambiguity
-     dissolves on reading revisions **newest-first with their deciders**: a run
-     of user-decided revisions that consistently *relax* something is the user
-     overruling the document repeatedly while it re-accretes. That is a fight,
-     not maintenance, and it is legible from the corpus alone — chat logs are
-     not needed. **This is the same defect as
-     [FWADR-025](fwadr-025-named-deliverables.md)**: a churned doc argues its old
-     position at the top and records the overruling at the bottom, agents read
-     top-down, and stale doctrine outranks the user's live ruling. The Curator
-     shipped reproducing the very failure this framework was fixing.
-   - **Both corrections are mechanical, not advisory.**
-     `doc_churn_audit.sh` gained a **fight-detection** pass that emits revision
-     sections newest-first with their decider and direction-bearing title —
-     parsing version numbers rather than file order, since those differ
-     (FWADR-018 carries v3.3 *above* v3.2, so bottom-up reading inverts it). It
-     also gained a **REACH** column (highest context layer citing the doc) and
-     a worst-first shortlist that ranks Layer 0/1 reach above raw churn. The
-     `**Decided by:**` revision convention ships with it in
-     [`README.md`](../../architecture/README.md) §"Revision sections" — the extractor is useless
-     without a decider to extract, so rule and mechanism land together.
-   - **Pacing: one conflict at a time, worst first.** The v1.0 bootstrap report
-     ("ranked table + three or four findings") buried the single item that
-     mattered under forensics. Now: user's last position, the contradiction,
-     one recommendation, stop. Ranked table only on request; diagnostics into
-     `fwreq-*`, not the conversation. And **rank by reach** — an ADR cited from
-     CLAUDE.md or a Layer 1 doc is paid for by every session, which outranks
-     raw churn.
+10. **Fight detection reads the decider and direction, newest-first.** Churn
+    alone cannot tell a mis-scoped ADR from a load-bearing, actively maintained
+    one. The ambiguity dissolves when the changes are read newest-first with
+    their deciders: a run of user-decided changes that consistently *relax*
+    something is the user overruling the document repeatedly while it
+    re-accretes. That is a fight, not maintenance. **This is the same defect as
+    [FWADR-025](fwadr-025-named-deliverables.md)**: stale doctrine outranking
+    the user's live ruling.
+
+    The reading is mechanical. `doc_churn_audit.sh` has a **fight-detection**
+    pass that reads the `Decided-by:` and `Direction:` commit trailers on the
+    commits that rewrite each doc from `git log`, newest-first. The trailer
+    convention ships in [`README.md`](../../architecture/README.md)
+    §"Rewriting an ADR" — the extractor is useless without a decider to
+    extract, so rule and mechanism land together. The script also emits a
+    **REACH** column (highest context layer citing the doc) and a worst-first
+    shortlist that ranks Layer 0/1 reach above raw churn: an ADR cited from
+    CLAUDE.md or a Layer 1 doc is paid for by every session.
+
+11. **Pacing: one conflict at a time, worst first.** A bootstrap report of a
+    ranked table plus several findings buries the single item that matters
+    under forensics. The Curator presents the user's last position, the
+    contradiction, one recommendation, and stops. Ranked table only on request;
+    diagnostics go into `fwreq-*`, not the conversation.
 
 ## Consequences
 
@@ -193,32 +189,25 @@ becomes noise, which decisions 2 and 8 target directly.
 **Mechanism honesty.** The fence and the evidence are mechanical
 (`check-curator-scope.sh`, `doc_churn_audit.sh`). The propose-only rule and the
 proportionality rule are **English-only**, enforced by the per-item
-confirmation being user-visible output. No script can judge whether a document
+confirmation being user-visible output. Fight detection, like churn, needs the
+docs to be git-tracked; under an untracked parent there is no history, the
+script reports no decider, and the Curator asks the user. No script can judge whether a document
 still earns its place; naming that as a gap is more honest than a check that
 would rubber-stamp it.
 
-**Known gap — Layer 0/1 budget, third violation this session.**
-[`context-management.md`](../context-management.md) §"The rule"
-requires that any Layer 0/1 addition name what it replaces or demotes. This ADR
-adds a Roles-table row (CLAUDE.md 164 → 165, already 65% over its 100-line
-Layer 0 budget) and a new Layer 1 doc, and subtracts nothing. `curator.md` was
-at least written to budget (107). But the corpus now stands at **four docs over
-budget with no mechanical check**: `session-policy.md` 473, `developer.md` 448,
-`strategist.md` 321, CLAUDE.md 165. Doc mass outweighing a live instruction is
-a named contributing cause in [FWADR-025](fwadr-025-named-deliverables.md), and
-this session added to it three times. A `scripts/check-doc-budget.sh` plus a
-trim pass on the three worst offenders is now the highest-value outstanding
-framework work — the pattern, not the footnote.
+**Layer 0/1 cost.** This ADR adds a Roles-table row to CLAUDE.md and a new
+Layer 1 doc, and subtracts nothing. Doc mass outweighing a live instruction is
+a named contributing cause in [FWADR-025](fwadr-025-named-deliverables.md), so
+the cost is held mechanically: framework doc weight is word-capped per role
+and checked at every template SessionStart
+([FWADR-034](fwadr-034-doc-weight-ratchet.md)), `curator.md` included.
 
-**Verification note.** The audit script's two judgment columns were both wrong
-on first run and were caught by live-running it against this repo: the revision
-pattern missed the actual `Revision (v3.1)` spelling (reporting 0 where FWADR-018
-has 5), and the deprecation check matched mid-line, flagging FWADR-013
-("accepted; superseded **in part**") and ADR-000 ("stub — superseded
-incrementally") as already-deprecated when both are in force. Both fixed. A
-signal script that ships wrong is worse than no script, because its output
-looks authoritative — live-run any addition to it against a real corpus before
-trusting a column.
+**Verification rule.** A signal script that ships wrong is worse than no
+script, because its output looks authoritative. Live-run any addition to
+`doc_churn_audit.sh` against a real corpus before trusting a column — both of
+its judgment columns failed their first live run (a pattern that missed a real
+heading spelling, and a deprecation match that fired mid-line on in-force
+ADRs whose Status read "accepted; superseded **in part**").
 
 ## Alternatives considered
 
@@ -237,6 +226,18 @@ trusting a column.
   destructively re-synced, so the edit is lost at the next SessionStart. The
   `fwreq-*` request path is the only durable route, and the mechanical fence
   keeps a well-intentioned Curator from discovering this the expensive way.
+
+- **Keep "append a revision" as a (discouraged) disposition.** Rejected by
+  [FWADR-036](fwadr-036-prose-as-code.md). Appending produces dead prose: the
+  superseded position stays at the top where agents read it first, and every
+  append worsens the reading order that decision 10 exists to detect. History
+  belongs in git.
+
+- **Decider lines in the doc body** (`**Decided by:**` under revision
+  headings). Rejected: they need appended sections to hang on, re-creating the
+  dead prose above, and version-order parsing because file order and version
+  order diverge. Commit trailers keep the evidence in git, where history
+  belongs.
 
 - **Have the script emit recommendations.** Rejected. A verdict column gets
   trusted past its evidence — the false-positive bug found during verification

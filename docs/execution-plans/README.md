@@ -253,7 +253,7 @@ The Implementation log is the one section that gets appended after draft, at the
 
 Each Developer-claimed W-item gets its own working log file in the plan folder, `w-<id-lowercase>.log.md`. Freeform chronological scratchpad the Developer appends to throughout `in_progress` (build + user-mediated QA). Survives `/compact` so a post-compact session can re-establish working context cheaply by reading the log instead of re-deriving it from session memory that was just summarized away.
 
-Introduced by [FWADR-018](../dev_framework/adrs/fwadr-018-developer-role.md) Revision v3.3. Developer mode only — Orchestrator-mode dispatch does not produce working logs (Executor subagents are stateless and per-task; their working memory dies with the dispatch).
+Defined in [FWADR-018](../dev_framework/adrs/fwadr-018-developer-role.md) §"Working log and phase discipline". Developer mode only — Orchestrator-mode dispatch does not produce working logs (Executor subagents are stateless and per-task; their working memory dies with the dispatch).
 
 ### User-directed deviations
 

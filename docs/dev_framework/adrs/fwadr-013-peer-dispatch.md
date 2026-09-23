@@ -1,10 +1,8 @@
 # FWADR-013: Peer dispatch (supersedes the A2 nested-spawn model)
 
-**Status:** accepted; superseded in part by [FWADR-022](fwadr-022-runtime-recalibration.md) (2026-07-19) — the retry mechanism only. The peer-dispatch topology (no nested subagent spawns; Executor/Reviewer/QA as peers under the Orchestrator) remains in force and was re-verified against the current runtime.
+**Status:** accepted; retry mechanics are governed by [FWADR-022](fwadr-022-runtime-recalibration.md).
 **Date:** 2026-04-23
 **Deciders:** David (template author), Strategist session
-
-> **Addendum 2026-07-19 (FWADR-022).** The SendMessage-unavailability premise below (Context, final paragraph; Alternatives §2) no longer holds — the current Claude Code runtime provides SendMessage for continuing a prior agent. Retries now default to continuation of the same Executor, with fresh dispatch retained for approach-level blocks. See FWADR-022 and `session-policy.md` §"Orchestrator-owned retry mechanics". The rest of this ADR — including the nested-spawn prohibition, which was re-confirmed — stands unchanged. Model names in this ADR (Sonnet/Opus) reflect the ladder at decision time; current docs use role-relative tiers per FWADR-022.
 
 ## Context
 
@@ -19,27 +17,25 @@ Research uncovered the root cause: **nested subagent spawning is explicitly unsu
 
 Cross-framework convention is uniform: LangGraph (Supervisor), CrewAI, AutoGen (for pipeline review, not private reflection), OpenAI Agents SDK, and Google ADK all dispatch worker and reviewer as peers from a central orchestrator. "Generator self-critiquing" is a named anti-pattern in the multi-agent literature.
 
-Additionally, `SendMessage` (the mechanism for continuing a prior agent) is **not available in the Claude Code CLI runtime** — confirmed 2026-04-23 via `ToolSearch`. Any retry strategy that assumes SendMessage is unavailable; retries must use fresh Agent-tool invocations with sharpened context.
-
 ## Decision
 
-**The Orchestrator dispatches Executor, Reviewer, and QA as peers.** The Executor writes and commits; the Orchestrator separately spawns the Reviewer (Opus) and, when required, the QA (Sonnet). The Orchestrator owns the retry loop; on a Reviewer `block` or QA `fail`, it dispatches a fresh Executor with the prior branch + the concerns verbatim as sharpened context.
+**The Orchestrator dispatches Executor, Reviewer, and QA as peers.** No subagent spawns another subagent. The Executor writes and commits; the Orchestrator separately spawns the Reviewer (top tier) and, when required, the QA (work tier) — tiers per [FWADR-022](fwadr-022-runtime-recalibration.md). The Orchestrator owns the retry loop; on a Reviewer `block` or QA `fail`, it runs one Executor fix cycle with the concerns verbatim as sharpened context — continuation of the same Executor via `SendMessage` by default, fresh dispatch on the prior branch for approach-level blocks, a concern that survives one continuation, or an unreachable Executor (FWADR-022; `session-policy.md` §"Orchestrator-owned retry mechanics").
 
 ### Flow
 
 ```
 Orchestrator
   → Executor (worktree, writes + commits, returns code-only package)
-  → Reviewer (Opus, passed worktree path + commit SHA)
-     block? → re-dispatch Executor with concerns; re-run Reviewer
-  → QA (Sonnet, only after Reviewer ships, only if tier/markers require)
-     fail? → re-dispatch Executor with QA findings; re-run from Reviewer
+  → Reviewer (top tier, passed worktree path + commit SHA)
+     block? → Executor fix cycle with concerns; re-run Reviewer
+  → QA (work tier, only after Reviewer ships, only if tier/markers require)
+     fail? → Executor fix cycle with QA findings; re-run from Reviewer
   → merge to dev, push, auto-advance
 ```
 
 **Sequential, not parallel:** Reviewer runs first, QA only after `ship`. Parallel execution would waste QA cycles on code that's about to change.
 
-**Retry budget:** Orchestrator-owned counter. Default caps (2 for XS/S/M, 3 for L/XL/⚠️) unchanged from the prior model. Each block+re-dispatch consumes one retry. On exhaustion, escalate to the user with the unresolved concern and what was tried.
+**Retry budget:** Orchestrator-owned counter. Default caps (2 for XS/S/M, 3 for L/XL/⚠️) unchanged from the prior model. Each fix cycle consumes one retry, whichever mechanism ran it. On exhaustion, escalate to the user with the unresolved concern and what was tried.
 
 **Naming:** the acronym "A2" is retired. The framework describes the flow directly ("dispatch model" or "peer dispatch") rather than maintaining a code name for an architecture we no longer use. Retaining the name would be a drift attractor — a name that reads as accurate but describes something structurally different.
 
@@ -48,7 +44,7 @@ Orchestrator
 **Mechanical wins:**
 
 - **Provenance by construction.** The Orchestrator itself called the Reviewer via the Agent tool; the result is in the Orchestrator's own message history, with `agentId` returned automatically. Fabrication — the EI-001 failure mode — is impossible. No `Reviewer subagent id:` field or verification ritual is needed.
-- **Works with the Claude Code CLI as shipped.** No reliance on nested Agent-tool calls, no reliance on SendMessage.
+- **Works with the Claude Code CLI as shipped.** No reliance on nested Agent-tool calls; fresh dispatch remains available whenever continuation is not.
 - **Aligned with Anthropic's documented constraint** and with every major multi-agent framework's convention.
 
 **Softened claims the framework used to make:**
@@ -63,7 +59,7 @@ Orchestrator
 ## Alternatives considered
 
 1. **Keep nested spawning; try harder.** Add concrete JSON Agent-tool invocation examples to the Executor brief, require a specific `subagent_type`, hope for reliability. Rejected because Anthropic's SDK docs state nested spawning is unsupported regardless of how the brief is written. We would be hardening a mechanism against its own constraint.
-2. **SendMessage-based retries on the same Executor.** Rejected because SendMessage is unavailable in the Claude Code CLI runtime (verified 2026-04-23).
+2. **SendMessage continuation for every retry.** Rejected ([FWADR-022](fwadr-022-runtime-recalibration.md)): continuation is the default for execution-level blocks, but approach-level blocks go to a fresh Executor — a continued Executor tends to rationalize its own prior choices.
 3. **Parallel Reviewer + QA.** Rejected as premature optimization; sequential is simpler and avoids wasted QA cycles.
 4. **Keep the A2 name, redefine internally.** Rejected; a misleading name violates the policy-mechanism coherence doctrine just as English-only rules do.
 

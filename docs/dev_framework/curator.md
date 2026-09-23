@@ -26,16 +26,16 @@ That inversion is the entire point of the role separation. It is also why the Cu
 
 **The last-position rule.** On any doc flagged by churn, before forming a single opinion:
 
-1. **Extract its revision sections newest-first** — not top-down. `doc_churn_audit.sh` does this mechanically (§"The audit script"): it parses version numbers rather than reading file order, because those differ — FWADR-018 carries v3.3 *above* v3.2 in the file, so reading bottom-up gets it backwards.
-2. **Read the decider on each.** A run of revisions all decided by *the user* is not maintenance. It is the user overruling the document repeatedly and the document re-accreting anyway. The script prints the decider from each revision's `**Decided by:**` line (convention in [`../architecture/README.md`](../architecture/README.md) §"Revision sections"); `(no decider recorded)` means the corpus predates the convention — fall back to `git log` on that file, or ask.
-3. **Read the direction.** Revisions that consistently *relax* something — remove a cap, drop a gate, soften a MUST — mean the document is more restrictive than the user wants and keeps drifting back. That is a fight, not upkeep.
+1. **Extract its decision history newest-first** — not top-down. `doc_churn_audit.sh` does this mechanically (§"The audit script"): it reads the `Decided-by:` / `Direction:` commit trailers from `git log` on the file ([FWADR-036](adrs/fwadr-036-prose-as-code.md)). A legacy corpus may still carry appended `Revision` sections, often out of file order — the script lists those too, sorted by version.
+2. **Read the decider on each.** A run of changes all decided by *the user* is not maintenance. It is the user overruling the document repeatedly and the document re-accreting anyway. Trailer convention in [`../architecture/README.md`](../architecture/README.md) §"Rewriting an ADR"; `(no decider recorded)` means the commit predates the convention — read that commit's diff, or ask.
+3. **Read the direction.** Changes that consistently *relax* something — remove a cap, drop a gate, soften a MUST — mean the document is more restrictive than the user wants and keeps drifting back. That is a fight, not upkeep.
 4. **State the user's last position on the topic before proposing.** Open with "your last ruling on this lane is X, and the top of the doc still says Y," not with churn statistics. The numbers justify the pick; they are not the finding.
 
-**You almost never need chat logs for this** — the last position is usually already in the corpus, in revision deciders, verbatim quotes, and memory files. Missing history is rarely the problem; reading order is.
+**You almost never need chat logs for this** — the last position is usually already in the corpus, in commit deciders, verbatim quotes, and memory files. Missing history is rarely the problem; reading order is.
 
 ## Dispositions
 
-Five, and the first two are usually right. The vocabulary matters: the obvious words are all about *volume* (archive, deprecate, retire), which quietly biases every finding toward deletion when the actual problem is often binding force.
+Four, and the first two are usually right. The vocabulary matters: the obvious words are all about *volume* (archive, deprecate, retire), which quietly biases every finding toward deletion when the actual problem is often binding force.
 
 | Disposition | When |
 |---|---|
@@ -43,7 +43,8 @@ Five, and the first two are usually right. The vocabulary matters: the obvious w
 | **Detune** | The decision is right but **too binding**. Keep the document; lower its modality — MUST → SHOULD, hard gate → default, "always" → "unless X." The precise remedy for "this ADR is highly restrictive and I keep fighting it," and the one a volume-only vocabulary cannot express. Prefer it over deletion whenever the *content* is sound and only the *force* is wrong. |
 | **Consolidate N→1** | Several docs describe one decision. Fold them into the one that should survive; archive the others. |
 | **Supersede + archive** | The decision **genuinely changed** and the old reasoning is load-bearing context for the new one. The archive move is mandatory, not optional — see §"Archiving a superseded ADR". |
-| **Append a revision** | **Discouraged.** The de-facto default and usually the worst option: history is preserved but the document becomes something nobody can read top-to-bottom and know what is true. Every append makes the reading-order problem above worse. Use only when the amendment genuinely must be dated and attributed. |
+
+**Appending is not a disposition.** Never propose to "amend" a doc by adding a revision, addendum, or note that contradicts its body — that is dead prose, and it recreates the reading-order problem above ([FWADR-036](adrs/fwadr-036-prose-as-code.md)). A conflict between a doc and the user's ruling is a **Rewrite in place**; git keeps the old text. Appended `Revision` sections already in the corpus are themselves a finding: propose rewriting them into the body.
 
 **Never rewrite what was *decided*.** Re-scoping, detuning, and rewriting for clarity are cleanup. Reversing a decision is the user's call with the Strategist — propose it, never perform it.
 
@@ -81,7 +82,8 @@ This role is the most likely in the framework to over-reach, because its disposi
 | Signal | What it means |
 |---|---|
 | **Churn** — commits touching an ADR | High churn against the corpus median = the project may be fighting the decision. A *starting* signal: it tells you which doc to read, not what is wrong with it. |
-| **Revision markers** — `Revision v*` sections | Self-reported churn. Do not stop at the count — open them newest-first and read the **decider** and the **direction** per §"Reading a churned document". A run of user-decided, consistently-relaxing revisions is a fight, and that reading is what turns an ambiguous churn number into a finding. |
+| **Deciders** — `Decided-by:` / `Direction:` commit trailers | Do not stop at the count — read them newest-first per §"Reading a churned document". A run of user-decided, consistently-relaxing changes is a fight, and that reading is what turns an ambiguous churn number into a finding. |
+| **Dead prose** — appended `Revision` / `Addendum` sections | Legacy appends. Each is a Rewrite-in-place finding in its own right. |
 | **Inbound references** — files citing this ADR | Two readings. Near-zero = possibly dead. But *where* the references live matters more than how many: a citation from CLAUDE.md (Layer 0) or a Layer 1 role doc means every session pays for this document, which outranks raw count when ranking. |
 | **Line count vs budget** | Legacy size signal. Framework doc weight is word-denominated and checked template-side (`scripts/check-doc-weight.sh`, [FWADR-034](adrs/fwadr-034-doc-weight-ratchet.md)) — an oversized framework doc surfacing here is `fwreq-*` material, never a Curator edit. |
 | **Exception age** — days since an entry was filed | Old Active entries whose Retire-when may have quietly fired. |

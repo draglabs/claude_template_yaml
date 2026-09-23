@@ -50,17 +50,23 @@ System design docs. Owned by the Strategist. Referenced by the Orchestrator when
 
 Lock the decision by adding a one-line summary under `## Locked-in decisions` in `CLAUDE.md` with a link back to the ADR.
 
-### Revision sections — record the decider
+### Rewriting an ADR
 
-When a revision *is* the right disposition (see §"Staleness rule" — usually it is not), head it and name who decided:
+An ADR is spec prose: it states the decision that holds **now**. When the decision changes, **rewrite the body in place** — never append a revision, addendum, or amendment section ([FWADR-036](../dev_framework/adrs/fwadr-036-prose-as-code.md)). An appended section leaves the superseded position at the top, where every agent reads it first and acts on it.
 
-```markdown
-## Revision (vN.N, YYYY-MM-DD) — <what changed, stated as the direction>
+- **Keep the why.** Context, rationale, and rejected alternatives explain the current decision — they stay. If a mechanism was retired, the reason moves into Context or Alternatives considered.
+- **Drop the dead.** Statements of the old decision, "originally… now…" narration, and version tags go. The old text is one `git log -p` away.
+- **Contradictions are callers.** The edit is not done until every statement it contradicts — here and in docs citing the changed section — is rewritten too.
+- **The commit carries the history.** Its body says what the ADR said before and what it says now, and it ends with two trailers:
 
-**Decided by:** user | Strategist | Template Developer
+```
+Decided-by: user | Strategist | Developer
+Direction: relax: <what was loosened> | tighten: <what was added> | clarify
 ```
 
-**`Decided by:` is load-bearing, not bookkeeping.** `scripts/doc_churn_audit.sh` extracts revisions newest-first with their decider, because a run of **user**-decided revisions that consistently *relax* something — drop a cap, soften a MUST, remove a gate — means the document is more restrictive than the user wants and keeps drifting back. That is a fight, and it is only legible if the decider is recorded. Without it the audit prints `(no decider recorded)` and the strongest available signal is lost. Title the revision by its **direction** ("rewind retired", "no force-push of feature"), not by its topic — the extractor surfaces that title as the direction cue.
+Git parses trailers only from the message's **last paragraph** — put them in the same block as any `Co-Authored-By:` line, with no blank line between. Check with `git log -1 --format='%(trailers)'`.
+
+**`Decided-by:` is load-bearing, not bookkeeping.** `scripts/doc_churn_audit.sh` reads these trailers from `git log`, newest first, because a run of **user**-decided commits that consistently *relax* something — drop a cap, soften a MUST, remove a gate — means the document is more restrictive than the user wants and keeps drifting back. That is a fight, and it is only legible if the decider is recorded; without the trailer the audit prints `(no decider recorded)`. State `Direction:` as a direction ("relax: rewind retired"), not a topic. If `docs/` is not git-tracked (untracked parent, [FWADR-021](../dev_framework/adrs/fwadr-021-split-layout.md)), confirm each rewrite with the user first — there is no history to fall back on.
 
 ## Who reads this
 
@@ -83,4 +89,4 @@ Architecture docs that no longer match the code are worse than missing docs — 
 
 **Marking `superseded` is not the whole move — the file leaves this directory.** A superseded ADR goes to `docs/archive/` in the same commit as its successor (steps in [`../archive/README.md`](../archive/README.md) §"Superseded ADRs"). An ADR marked superseded but left here is still grepped, loaded, and read past by every future session; the directory would otherwise only ever grow.
 
-**Prefer fixing over superseding.** Supersession is for decisions that genuinely *changed*. When the decision still stands and only its wording was over-broad, or its binding force too strong, the right move is to **rewrite or detune the ADR in place** — a doc amended many times is usually one that was never articulated right, and superseding it just yields a successor that gets amended too. Stacking `Revision` sections onto an ADR is the most common and least useful option: it preserves history at the cost of a document nobody can read top-to-bottom and know what is true. Full disposition set in [`../dev_framework/curator.md`](../dev_framework/curator.md) §"Dispositions".
+**Prefer fixing over superseding.** Supersession is for decisions that genuinely *changed*. When the decision still stands and only its wording was over-broad, or its binding force too strong, the right move is to **rewrite or detune the ADR in place** — a doc amended many times is usually one that was never articulated right, and superseding it just yields a successor that gets amended too. Appending revision sections is not a disposition at all — it is dead prose (§"Rewriting an ADR"). Full disposition set in [`../dev_framework/curator.md`](../dev_framework/curator.md) §"Dispositions".

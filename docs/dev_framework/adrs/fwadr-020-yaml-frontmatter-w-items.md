@@ -77,7 +77,7 @@ Fields the W-item file does NOT carry (and the reasons):
 
 - **`status`** — lives only on the plan index per [FWADR-017](fwadr-017-plan-folder-restructure.md). Putting it in frontmatter would re-introduce the drift bait FWADR-017 eliminated. Status stays where it is.
 - **`effort` / `markers`** — index columns ([FWADR-017](fwadr-017-plan-folder-restructure.md) §"Index fields"); the Orchestrator reads them at-a-glance from the summary table. Duplicating them on the W-item file would invite the same drift.
-- **`blocked-by`** — index `Blocked by` column ([FWADR-017 v1.1](fwadr-017-plan-folder-restructure.md) §"Revision (v1.1)") is the single source for dependency data. Frontmatter would re-introduce the duplication that revision removed.
+- **`blocked-by`** — index `Blocked by` column ([FWADR-017](fwadr-017-plan-folder-restructure.md) §"Single-source dependency data") is the single source for dependency data. Frontmatter would re-introduce the duplication FWADR-017 removed.
 - **`id` / `title`** — H1 + filename + index already carry these. Frontmatter duplication earns nothing.
 
 ### Mechanical consumer (ships with the ADR)

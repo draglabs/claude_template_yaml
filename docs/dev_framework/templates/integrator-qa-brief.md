@@ -141,6 +141,14 @@ pre-merge worktree state — the integrated state is what would ship):
   reconciliation with the user, not to re-coding. Absent or vaguer than the
   actual deviation → handle as normal misalignment. See
   [FWADR-027](../adrs/fwadr-027-living-architecture.md).
+- Dead prose — when a W-item's diff touches spec prose (ADRs,
+  `docs/architecture/**`, `docs/dev_framework/**`, `CLAUDE.md`, runbooks,
+  W-item scope/acceptance; not logs): an appended `Revision` / `Addendum` /
+  `Amendment` section, or a statement the change contradicts left standing
+  elsewhere in `docs/`, is a **`dead-prose`** finding. Fix it within
+  acceptance by rewriting the stale text in place — never by appending —
+  and record it as a fix commit. History lives in git
+  ([FWADR-036](../adrs/fwadr-036-prose-as-code.md)).
 - Coding standards — TDD, no hardcoded lifecycle values, no silent
   fallbacks, canonical-value drift. Cite file:line for any violation.
 - Hidden assumptions — undocumented invariants?

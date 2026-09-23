@@ -35,6 +35,10 @@ churn() {  # commits touching a path; 0 when history is unavailable
 
 hr() { printf '%s\n' "------------------------------------------------------------"; }
 
+# Appended-history markers (FWADR-036): section headings and blockquote addenda.
+DEAD_RE='^(#{1,6}[[:space:]]+|>[[:space:]]*\*\*)(Revision|Addendum|Amendment)'
+dead_markers() { grep -cE "$DEAD_RE" "$1" 2>/dev/null || true; }
+
 # ---------------------------------------------------------------- ADR signals
 echo
 echo "=== ADR signals ==="
@@ -43,8 +47,8 @@ if compgen -G "docs/architecture/adr-*.md" >/dev/null; then
   for f in docs/architecture/adr-*.md; do
     base="$(basename "$f" .md)"
     c="$(churn "$f")"
-    # Headings only, and both spellings in the wild: "Revision (v3.1)" / "Revision v2".
-    rev="$(grep -cE '^#{2,4} Revision \(?v[0-9]' "$f" 2>/dev/null || true)"
+    # Appended-history markers — dead prose (FWADR-036): headings and blockquote addenda.
+    dead="$(dead_markers "$f")"
     # inbound references: any doc/script citing this ADR slug, excluding itself
     refs="$(grep -rl "$base" --include='*.md' --include='*.sh' . 2>/dev/null | grep -vx "./$f" || true)"
     inb="$(printf '%s' "$refs" | grep -c . || true)"
@@ -63,14 +67,14 @@ if compgen -G "docs/architecture/adr-*.md" >/dev/null; then
     # get trusted past their evidence.
     dep=""
     grep -qiE '^\*\*Status:\*\*[[:space:]]*(superseded|deprecated)' "$f" && dep="ALREADY-DEPRECATED"
-    rows+="$(printf '%4s %4s %5s %5s %6s  %-42s %s' "$c" "$rev" "$inb" "$reach" "$lines" "$base" "$dep")"$'\n'
+    rows+="$(printf '%4s %4s %5s %5s %6s  %-42s %s' "$c" "$dead" "$inb" "$reach" "$lines" "$base" "$dep")"$'\n'
   done
 
   # Median churn — the comparison point that makes a churn number meaningful.
   med="$(printf '%s' "$rows" | awk '{print $1}' | sort -n \
          | awk '{a[NR]=$1} END{if(NR)print (NR%2)?a[(NR+1)/2]:int((a[NR/2]+a[NR/2+1])/2); else print 0}')"
 
-  printf '%4s %4s %5s %5s %6s  %-42s %s\n' CHURN REVS INREF REACH LINES ADR NOTE
+  printf '%4s %4s %5s %5s %6s  %-42s %s\n' CHURN DEAD INREF REACH LINES ADR NOTE
   hr
   printf '%s' "$rows" | sort -rn
   hr
@@ -80,8 +84,8 @@ if compgen -G "docs/architecture/adr-*.md" >/dev/null; then
   echo "  CHURN  commits touching the file. Well above median = the project may be"
   echo "         fighting this decision. A STARTING signal — it says which doc to"
   echo "         read, not what is wrong with it. NOT a verdict."
-  echo "  REVS   self-declared 'Revision (vN)' sections. Do not stop at the count —"
-  echo "         see the fight-detection section below."
+  echo "  DEAD   appended Revision/Addendum/Amendment sections — dead prose. Each"
+  echo "         is a Rewrite-in-place finding on its own (FWADR-036)."
   echo "  INREF  files citing this ADR. Near zero = possibly dead."
   echo "  REACH  highest context layer citing it. L0 = cited from CLAUDE.md, L1 ="
   echo "         cited from a Layer 1 role doc. Both are read by EVERY session, so"
@@ -94,53 +98,60 @@ if compgen -G "docs/architecture/adr-*.md" >/dev/null; then
   # cited from Layer 0/1, so listing them all is noise. Shortlist = docs with an
   # actual churn/revision signal, ordered so Layer 0/1 ones come first.
   echo
-  shortlist="$(printf '%s' "$rows" | awk -v m="$med" '($1+0) > (m+0) || ($2+0) >= 2 {print}')"
+  shortlist="$(printf '%s' "$rows" | awk -v m="$med" '($1+0) > (m+0) || ($2+0) >= 1 {print}')"
   if [[ -n "$shortlist" ]]; then
-    echo "Worst-first shortlist (has a churn/revision signal; Layer 0/1 reach ranked up):"
+    echo "Worst-first shortlist (churn above median or dead prose; Layer 0/1 reach ranked up):"
     { printf '%s\n' "$shortlist" | awk '$4=="L0"' | sort -rn
       printf '%s\n' "$shortlist" | awk '$4=="L1"' | sort -rn
       printf '%s\n' "$shortlist" | awk '$4!="L0" && $4!="L1"' | sort -rn; } | grep . | sed 's/^/  /'
     echo
-    echo "  Take the TOP ONE. Read its revisions newest-first (below), state the"
+    echo "  Take the TOP ONE. Read its deciders newest-first (below), state the"
     echo "  user's last position on that topic, then propose ONE disposition."
   else
-    echo "No doc carries a churn or revision signal — nothing obvious to prune."
+    echo "No doc carries a churn or dead-prose signal — nothing obvious to prune."
   fi
 
   # -------------------------------------------------------- fight detection
-  # A churned doc argues its OLD position at the top and records the user
-  # overruling it at the bottom. Agents read top-down and get the stale position
-  # first. Emit revisions NEWEST-FIRST so the latest ruling is read first.
-  # File order is NOT version order (FWADR-018 has v3.3 above v3.2), so sort by
-  # parsed version rather than position.
+  # History lives in git, not in the file (FWADR-036). Every commit that
+  # changes a decision carries `Decided-by:` and `Direction:` trailers; read
+  # them newest-first so the latest ruling is read first.
   echo
-  echo "=== Fight detection — revisions newest-first ==="
+  echo "=== Fight detection — deciders newest-first (git trailers) ==="
   echo "Read the DECIDER and the DIRECTION, not the count. A run of user-decided"
-  echo "revisions that consistently RELAX something (drop a cap, soften a MUST,"
+  echo "changes that consistently RELAX something (drop a cap, soften a MUST,"
   echo "remove a gate) is the user overruling the doc while it re-accretes —"
   echo "that is a fight, not maintenance."
   any=0
+  if [[ $GIT_OK -eq 1 ]]; then
+    for f in docs/architecture/adr-*.md; do
+      n="$(churn "$f")"
+      [[ "${n:-0}" -ge 2 ]] || continue
+      any=1
+      hr
+      echo "$(basename "$f" .md)  — ${n} commits, newest first (last 8):"
+      git log --follow --date=short -n 8 \
+          --format='%ad%x1f%(trailers:key=Decided-by,valueonly,separator=%x2C )%x1f%(trailers:key=Direction,valueonly,separator=%x2C )%x1f%s' \
+          -- "$f" 2>/dev/null \
+        | while IFS=$'\x1f' read -r d who dir subj; do
+            [[ -z "$who" ]] && who="(no decider recorded)"
+            [[ -z "$dir" ]] && dir="$subj"
+            printf '    %s  %-56s %s\n' "$d" "$(printf '%s' "$dir" | cut -c1-56)" "$who"
+          done
+    done
+    [[ $any -eq 0 ]] && echo "  (no ADR has 2+ commits)"
+  else
+    echo "  (unavailable — no git history in untracked-parent mode)"
+  fi
+
+  # Legacy appended revisions, oldest corpora only. Dead prose to rewrite —
+  # listed so the Curator can propose folding each into the body.
+  legacy=0
   for f in docs/architecture/adr-*.md; do
-    n="$(grep -cE '^#{2,4} Revision \(?v[0-9]' "$f" 2>/dev/null || true)"
-    [[ "${n:-0}" -ge 2 ]] || continue
-    any=1
-    hr
-    echo "$(basename "$f" .md)  — ${n} revisions, newest first:"
-    grep -nE '^#{2,4} Revision \(?v[0-9]' "$f" \
-      | sed -E 's/^([0-9]+):#+ Revision \(?v?([0-9]+(\.[0-9]+)?)\)?/\2|\1|v\2/' \
-      | sort -t'|' -k1,1 -rV \
-      | while IFS='|' read -r _ver line rest; do
-          # decider convention: a "**Decided by:** X" line within 4 lines of the heading
-          who="$(sed -n "${line},$((line+4))p" "$f" \
-                 | sed -nE 's/.*\*\*Decided by:\*\*[[:space:]]*([^.]*).*/\1/p' | head -1)"
-          [[ -z "$who" ]] && who="(no decider recorded)"
-          # The revision TITLE carries the direction ("rewind retired",
-          # "no force-push") — that is the signal, so give it room.
-          title="$(printf '%s' "$rest" | sed -E 's/^v[0-9.]+[,)]?[[:space:]]*//; s/^[0-9-]*\)?[:—[:space:]]*//' | cut -c1-56)"
-          printf '    L%-5s %-56s %s\n' "$line" "$title" "$who"
-        done
+    [[ "$(dead_markers "$f")" -ge 1 ]] || continue
+    [[ $legacy -eq 0 ]] && echo && echo "=== Dead prose — appended sections to rewrite in place ===" && legacy=1
+    echo "  $(basename "$f" .md):"
+    grep -nE "$DEAD_RE" "$f" | sed 's/^/    L/' | cut -c1-90
   done
-  [[ $any -eq 0 ]] && echo "  (no ADR carries 2+ revision sections)"
 else
   echo "(no docs/architecture/adr-*.md found)"
 fi

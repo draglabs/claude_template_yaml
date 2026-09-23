@@ -15,7 +15,7 @@ meaningful work or before the Developer runs `scripts/setup_dev_slots.sh`.
 
 This isn't optional — `scripts/setup_dev_slots.sh` sources `.env` and halts on
 `PLACEHOLDER` values for `PROJECT_SUB` or `PROJECT_PORTS` (see
-[FWADR-019](../adrs/fwadr-019-dev-slots-and-deploy-stubs.md) Revision v1.1),
+[FWADR-019](../adrs/fwadr-019-dev-slots-and-deploy-stubs.md) Decision 7),
 so the Developer's first launch attempt will fail until the Strategist has
 done this.
 
@@ -30,7 +30,7 @@ Project variables live in **two places**:
 
 ## Pre-flight: read `.env` before asking anything
 
-The `claude-env` launcher seeds `.env` from `.env.example` on the first launch in a fresh project ([FWADR-032](../adrs/fwadr-032-claude-env-launcher.md) Revision v1.1), and users are told to fill the **MINIMUM TO BOOT** block before the first session. So the interview starts by reading, not asking:
+The `claude-env` launcher seeds `.env` from `.env.example` on the first launch in a fresh project ([FWADR-032](../adrs/fwadr-032-claude-env-launcher.md)), and users are told to fill the **MINIMUM TO BOOT** block before the first session. So the interview starts by reading, not asking:
 
 1. `grep -E '^[A-Z_]+=' $PROJECT_DIR/.env` — every framework variable, with its current value. Do not print token values back.
 2. **Set values** (not `PLACEHOLDER`, not empty) are answers. Present them in one table — variable, value, the CLAUDE.md surface it fills — and ask for a single yes/no confirmation of the batch, followed by "Anything else?" (CLAUDE.md §"Asking questions"). Correct individual rows only if the user objects.
@@ -61,7 +61,7 @@ Everything downstream assumes Claude Code was launched with `.env` in its proces
 | One sentence: what does it do? | (no .env mirror) | `{{one-line description}}` on the same line |
 | What's the project subdomain? Examples: `auto`, `analytics`, `myapp`. Used in URLs like `<sub>.<website>.com` (prod) and `<slot>.<sub>.localhost` (dev). | `PROJECT_SUB=auto` | `{{sub}}` bullet |
 | What's the parent domain? Examples: `jumpermedia.co`, `draglabs.com`. | `PROJECT_WEBSITE=jumpermedia.co` | `{{website}}` bullet |
-| Port range — **propose, don't ask.** Run `./scripts/port_ledger.sh --propose` from `$PROJECT_DIR` (local-hosted only; it reads the machine-wide Caddyfile, where every project's `setup_dev_slots.sh` block records its reserved range — [FWADR-019](../adrs/fwadr-019-dev-slots-and-deploy-stubs.md) Revision v1.3). Offer the printed range for a yes/no; `--propose 20` if the project needs more than ten (HTTP + DB + queue per slot). Run it bare first to show the table if the user wants to see what is taken — it also flags existing cross-project overlaps, which are theirs to resolve, not this interview's. Remote-hosted: no local ledger; ask as before. | `PROJECT_PORTS=3080-3089` | `{{ports}}` bullet |
+| Port range — **propose, don't ask.** Run `./scripts/port_ledger.sh --propose` from `$PROJECT_DIR` (local-hosted only; it reads the machine-wide Caddyfile, where every project's `setup_dev_slots.sh` block records its reserved range — [FWADR-019](../adrs/fwadr-019-dev-slots-and-deploy-stubs.md) Decision 7). Offer the printed range for a yes/no; `--propose 20` if the project needs more than ten (HTTP + DB + queue per slot). Run it bare first to show the table if the user wants to see what is taken — it also flags existing cross-project overlaps, which are theirs to resolve, not this interview's. Remote-hosted: no local ledger; ask as before. | `PROJECT_PORTS=3080-3089` | `{{ports}}` bullet |
 | Local-hosted or remote-hosted dev environment? Local = dev runtimes on the user's machine. Remote = dev runtimes on a shared dev server. | `DEV_ENVIRONMENT_MODE=local-hosted` | `{{local-hosted \| remote-hosted}}` in §"Dev environment mode" |
 | Where is this repo hosted — GitHub, self-hosted GitLab, or something else? **Ask; never assume GitHub.** Users may run multiple hosts (e.g. GitHub for some projects, a private GitLab for others), and a repo created on the wrong host is expensive confusion. The answer determines the host CLI (`gh` vs `glab`), which MCP applies, and where PRs/MRs live. Self-hosted: also capture the base URL. | `GIT_HOST=gitlab` (+ `GIT_HOST_URL=https://...` if self-hosted) | `{{git_host}}` bullet |
 | Which git flow — `dev-main` (features → `dev`, promotion merge to `main` at phase exit; the default) or `trunk` (features → `main`, production released by a `v*` tag at phase exit)? **Ask; never assume.** Both keep the same human gate at phase exit; trunk has one branch fewer and releases by tag ([FWADR-035](../adrs/fwadr-035-git-flow-mode.md)). Existing project switching modes: [`../migration-guide-trunk.md`](../migration-guide-trunk.md). | `GIT_FLOW=dev-main` | `{{git_flow}}` bullet |

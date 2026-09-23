@@ -10,6 +10,8 @@ Claude Code sessions lose context through four mechanisms: fresh startup, `--res
 
 This violates the template's own doctrine: **a rule of the shape "X always happens on Y" must ship in the same PR as the command or check that makes X mechanical.** Context-reset re-orientation was a rule without a mechanism.
 
+The same actor problem applies to repo freshness. A stale local tree is invisible precisely when it is misleading: in an adopter field case (navy_exam_tutor EX-007), CI auto-promotion kept origin moving while a checkout sat idle, and an audit session reasoned from a tree 87 commits behind origin — reporting as "uncommitted" work that had landed weeks earlier. `developer.md` lifecycle step 1 fetches on the W-item claim path, but ad-hoc diagnosis and audit sessions have no other freshness mechanism.
+
 Claude Code's `SessionStart` hook fires on all four reset paths with a `source` value discriminating which one. Hook stdout is injected into the post-reset context as a system message. This is the mechanism.
 
 ## Decision
@@ -25,6 +27,15 @@ Hook coverage:
 | `compact` | Re-read role doc + CLAUDE.md locked decisions + exceptions file; Orchestrators re-run ledger reconciliation. |
 | `clear` | Starting fresh; confirm role; same re-read list as compact. |
 
+### Code-repo staleness check
+
+For **every** `source`, the hook also checks freshness of the flat/tracked-parent repo (`$PROJECT_DIR/.git`) and every immediate subdirectory with `.git/` (split layout, multi-repo):
+
+1. **Quiet `git fetch --no-tags origin` per repo, guarded against hangs:** `GIT_TERMINAL_PROMPT=0` (a credential prompt fails instead of blocking — relevant for sessions launched without `.env`, [FWADR-032](fwadr-032-claude-env-launcher.md)) and `http.lowSpeedLimit/lowSpeedTime` (a stalled transfer aborts in ~10s).
+2. **NOTICE on lag.** Emits `[session-reorient] Code-repo staleness NOTICE` naming each repo whose local `dev`/`main` trails its origin counterpart, with the commit count — same pattern as the sync hook's flat-layout NOTICE.
+3. **Failed fetch → "staleness UNKNOWN"** for that repo, never silence — silence is indistinguishable from freshness, which is the failure being prevented. Repos without an `origin` remote are skipped.
+4. **Everything current → no output.** Quiet means healthy. Soft-fail throughout; the hook never blocks session start.
+
 Script is pure bash (no jq / python dependency) so it runs on any dev machine that adopts the template. Script uses `$CLAUDE_PROJECT_DIR` for portability when the template is copy-pasted into other repos.
 
 ## Consequences
@@ -33,13 +44,14 @@ Script is pure bash (no jq / python dependency) so it runs on any dev machine th
 
 - Re-orientation becomes mechanical. The session that just lost context is told what to re-read, by the harness, before its next substantive action.
 - One mechanism covers all four reset paths.
+- No session silently reasons from a stale tree.
 - The hook is part of the template; adopters inherit the behavior automatically.
 - Auditable — the injected text is visible in the transcript, so drift (agents ignoring the reminder) is observable.
 
 **What this costs:**
 
 - ~50 lines of shell and ~15 lines of settings JSON added to every project that adopts the template.
-- A small startup delay at every session start while the hook runs. Originally the script did no I/O beyond reading stdin; Revision v1.1 adds one quiet `git fetch` per project repo (bounded by prompt/stall guards — see below).
+- A small startup delay at every session start: one quiet `git fetch` per project repo, bounded by the prompt/stall guards above.
 - The hook itself is English-only once it has injected — the agent still has to choose to obey. Acceptable because the injection happens at the one moment the agent is most likely to accept orientation instructions (immediately post-reset, before the agent has committed to any interpretation).
 
 **What this does NOT do:**
@@ -62,32 +74,3 @@ Script is pure bash (no jq / python dependency) so it runs on any dev machine th
 - Manual test recorded in the PR: run `/clear` in a session that adopts the template, verify the injected text appears in the next response's context.
 - Manual test recorded in the PR: trigger compaction (fill context near cap), verify `source: "compact"` branch fires.
 - `session-policy.md` gains a section documenting the hook and linking to this ADR, so adopters understand it's part of the SOP and not magic.
-
-## Revision v1.1 (2026-08-12) — code-repo staleness NOTICE
-
-Adopter field case (navy_exam_tutor EX-007): CI auto-promotion kept origin
-moving while a local checkout sat idle; an audit session reasoned from a tree
-87 commits behind origin and produced false conclusions ("uncommitted" work
-that had landed weeks earlier). The framework's only fetch step was
-`developer.md` lifecycle step 1, which covers the W-item claim path — ad-hoc
-diagnosis/audit sessions had no freshness mechanism at all. A stale tree is
-invisible precisely when it is misleading, so the session is the wrong actor
-to trigger its own fetch — same actor problem this ADR already solved for
-re-orientation.
-
-The hook now runs a staleness check for **every** session-start source, over
-the flat/tracked-parent repo (`$PROJECT_DIR/.git`) and every immediate
-subdirectory with `.git/` (split layout, multi-repo):
-
-- Quiet `git fetch --no-tags origin` per repo, guarded against hangs:
-  `GIT_TERMINAL_PROMPT=0` (a credential prompt fails instead of blocking —
-  relevant for sessions launched without `.env`, FWADR-032) and
-  `http.lowSpeedLimit/lowSpeedTime` (a stalled transfer aborts in ~10s).
-- Emits `[session-reorient] Code-repo staleness NOTICE` naming each repo whose
-  local `dev`/`main` trails its origin counterpart, with the commit count —
-  same pattern as the sync hook's flat-layout NOTICE.
-- A failed fetch reports "staleness UNKNOWN" for that repo rather than staying
-  silent — silence is indistinguishable from freshness, which is the exact
-  failure being fixed. Repos without an `origin` remote are skipped.
-- Everything is current → no output. Quiet means healthy. Soft-fail
-  throughout; the hook never blocks session start.

@@ -148,8 +148,8 @@ cat <<'EOF'
     confirmations are exempt.
 EOF
 
-# Code-repo staleness check — runs for EVERY session-start source (FWADR-012
-# Revision v1.1). CI and auto-promotion keep origin moving while local
+# Code-repo staleness check — runs for EVERY session-start source (FWADR-012).
+# CI and auto-promotion keep origin moving while local
 # checkouts sit idle; a stale tree is misleading exactly when it looks normal
 # (field case: an audit session reasoned from a checkout 87 commits behind
 # origin and produced false conclusions). Quietly fetch each repo's origin,

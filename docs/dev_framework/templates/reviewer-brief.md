@@ -37,8 +37,8 @@ branch. The Executor's changes are only in the worktree until the
 Orchestrator merges.
 
 **Do not read working log files (`w-<id>.log.md` if present in the plan
-folder).** Those are Developer-mode working memory (FWADR-018 Revision
-v3.3) and not part of the code-review surface. Stick to the named files
+folder).** Those are Developer-mode working memory (FWADR-018 §"Working log
+and phase discipline") and not part of the code-review surface. Stick to the named files
 listed under "Files changed" + the canonical references below.
 
 If this W-item is on a retry cycle (Orchestrator re-dispatched the
@@ -129,6 +129,19 @@ Reviewer judgment call.)
    An accepted ADR is the best current record of a decision, not a
    constraint that outranks a live instruction from the user. See
    [FWADR-027](../adrs/fwadr-027-living-architecture.md).
+   **Dead prose — when the diff touches spec prose** (ADRs,
+   `docs/architecture/**`, `docs/dev_framework/**`, `CLAUDE.md`, runbooks,
+   W-item scope/acceptance — not logs such as `process-exceptions.md`,
+   incidents, Implementation logs, `w-<id>.log.md`): spec prose states what
+   is true now; history lives in git
+   ([FWADR-036](../adrs/fwadr-036-prose-as-code.md)). Report a
+   **`dead-prose`** finding → `block` (class `execution`) when the diff
+   appends a `Revision` / `Addendum` / `Amendment` section or note instead
+   of rewriting the body, or leaves standing a statement its change
+   contradicts — `grep` the changed ADR's number and the changed term
+   across `docs/` to find citers. A commit that changes a documented
+   decision without `Decided-by:` / `Direction:` trailers →
+   `ship-with-concerns`.
 3. **Coding standards (cite specific violations):** TDD followed — is
    there a test committed alongside each new code path? No hardcoded
    lifecycle values — any domain/version/path literal that duplicates a
@@ -158,7 +171,7 @@ Reviewer judgment call.)
    deploys go through CI — that's the correct steady state, do NOT
    flag it. Flag only when a commit actually ran a non-CI prod deploy
    outside the script. See ../adrs/fwadr-019-dev-slots-and-deploy-stubs.md.
-8. **QA target doctrine (FWADR-019 Revision v1.1) — conditional:** when
+8. **QA target doctrine (FWADR-019) — conditional:** when
    the project uses Caddy-routed dev slots, the user-QA loop should
    target `https://<slot>.<sub>.localhost/` (the Caddy-fronted hostname),
    NOT raw `localhost:<port>`. The slot hostname is the prod-shaped path
@@ -205,6 +218,9 @@ Reviewer judgment call.)
    reconciliation (the Developer rewrites the ADR or asks the user —
    [FWADR-027](../adrs/fwadr-027-living-architecture.md)), never
    to an Executor re-code.
+   **`dead-prose`** findings (question 2) list file:line of each appended
+   section or contradicted statement left standing; the fix is a rewrite
+   in place, never another append.
    On `block`, additionally classify: **Block class: `execution` or
    `approach`** (FWADR-022). `execution` = the approach is sound but the
    implementation is incomplete or wrong (the same Executor can fix it

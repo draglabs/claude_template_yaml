@@ -9,7 +9,7 @@
 # "what port range is free?"
 #
 # Two sources of truth inside the Caddyfile, both parsed:
-#   1. Ledger headers written by setup_dev_slots.sh (FWADR-019 Revision v1.3):
+#   1. Ledger headers written by setup_dev_slots.sh (FWADR-019 Decision 2):
 #        # BEGIN <sub>-dev-slots (managed by scripts/setup_dev_slots.sh) PORTS=<low>-<high> PROJECT=<name> DIR=<path>
 #      These record the FULL reserved range (PROJECT_PORTS), not just the four
 #      slot ports, and are written for non-HTTP projects too (comment-only
@@ -31,7 +31,6 @@
 # allocation (local-hosted)").
 #
 # Canonical doctrine: docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md
-# (Revision v1.3)
 
 set -euo pipefail
 

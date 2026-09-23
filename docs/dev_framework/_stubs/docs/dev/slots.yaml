@@ -6,14 +6,14 @@ hostname_pattern: "<slot>.<sub>.localhost"
 # http_surface: does this project expose HTTP routes that need Caddy fronting?
 #   true  → setup_dev_slots.sh generates a Caddyfile block per slot;
 #           the Reviewer's QA-target MED rule applies.
-#   false → CLI tool / library / headless project. No Caddy block generated;
-#           the QA-target rule no-ops.
+#   false → CLI tool / library / headless project. Comment-only Caddyfile block
+#           (port-ledger header, no routes); the QA-target rule no-ops.
 # Set by setup_dev_slots.sh based on the Strategist's first-contact interview
 # answer (per strategist.md §"First-contact interview"). PLACEHOLDER until then.
 http_surface: PLACEHOLDER
 notes:
   - run scripts/setup_dev_slots.sh once to fill in ports + hostnames for this project
-  - the Strategist must confirm {{sub}} and {{ports}} in CLAUDE.md first — setup will halt otherwise
+  - the Strategist must set PROJECT_SUB and PROJECT_PORTS in .env first — setup will halt otherwise
   - hostnames auto-resolve via .localhost (RFC 6761) — no /etc/hosts edits needed
   - port = HTTP/Caddy-routed port (the canonical thing a slot represents, when http_surface is true)
   - Caddy reverse-proxies the slot hostname to the slot's port (configured by setup script)
@@ -21,7 +21,7 @@ notes:
   - the launch_local.sh project body reads extras directly from this file as needed
   - first launch may show a cert warning until `caddy trust` runs once
   - per-slot live state lives in .local/dev_slots/<slot>.yaml (gitignored)
-  - canonical doctrine: docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md (Revision v1.1)
+  - canonical doctrine: docs/dev_framework/adrs/fwadr-019-dev-slots-and-deploy-stubs.md
 slots:
   dev0:
     role: default_developer

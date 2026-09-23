@@ -35,7 +35,7 @@
 #   $HOSTNAME_VAL        Caddy-fronted hostname (e.g. dev1.myapp.localhost)
 #   $PORT                HTTP/Caddy-routed port — bind the app server here so
 #                        Caddy reverse-proxies $HOSTNAME_VAL → localhost:$PORT.
-#                        Canonical user-facing surface for QA (FWADR-019 v1.1).
+#                        Canonical user-facing surface for QA (FWADR-019 Decision 8).
 #   $CODE_PATH_RESOLVED  absolute path to the source directory the user just
 #                        confirmed — point docker/dev-server at this, NOT at
 #                        $PWD or $PROJECT_DIR/$DEFAULT_CODE_SUBDIR (worktree

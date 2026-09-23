@@ -116,6 +116,11 @@ if [[ "$PROJECT_DIR" == "$TEMPLATE_ROOT" ]]; then
     "$PROJECT_DIR/scripts/check-doc-weight.sh" \
       || echo "[sync-framework] WARN: doc weight check FAILED — compact or deliberately re-cap before committing (FWADR-034)."
   fi
+  # Template-only lint: no appended-history markers in spec docs (FWADR-036).
+  if [[ -x "$PROJECT_DIR/scripts/check-dead-prose.sh" ]]; then
+    "$PROJECT_DIR/scripts/check-dead-prose.sh" \
+      || echo "[sync-framework] WARN: dead-prose check FAILED — rewrite in place before committing (FWADR-036)."
+  fi
   exit 0
 fi
 
@@ -384,10 +389,10 @@ fi
 #         docs/dev/slots.yaml.
 #       - Reviewer-side mechanical scope check (FWADR-020):
 #         check-touches.sh — generic, no project-specific body to fill.
-#       - Machine-wide dev-port ledger (FWADR-019 Revision v1.3):
+#       - Machine-wide dev-port ledger (FWADR-019):
 #         port_ledger.sh — reads the Caddyfile; --propose feeds the interview.
-#       - Project variables starter (FWADR-019 Revision v1.1):
-#         .env.example — committed template; adopter copies to .env (gitignored)
+#       - Project variables starter (FWADR-019):
+#         .env.example — committed template; the claude-env launcher seeds .env (gitignored) from it
 #         and fills in. Strategist owns the values per first-contact interview.
 # ---------------------------------------------------------------------------
 

@@ -20,7 +20,7 @@ Ship a second `SessionStart` hook — `.claude/hooks/sync-framework.sh` — that
 
 1. **Destructively sync `docs/dev_framework/`** from the canonical template via `rsync -a --delete`. Any local edits to that tree are overwritten without warning. This is the "push it back into alignment" enforcement — if the system went wild and started editing framework docs, the next session start restores the canonical state.
 
-2. **Destructively sync `.claude/hooks/`** from the canonical template. The hooks themselves are part of the framework and must stay current.
+2. **Sync `.claude/hooks/` without delete** from the canonical template (`rsync -a`). Template hooks are overwritten — they are part of the framework and must stay current; adopter-owned hooks survive (see "What this does NOT do").
 
 3. **Idempotent-initialize `docs/framework_exceptions/`**. On first sync (folder missing), copy pristine stubs from `$TEMPLATE_ROOT/docs/dev_framework/_stubs/framework_exceptions/`. On subsequent syncs, leave existing files alone — the adopter's accumulated exceptions are preserved.
 
@@ -28,13 +28,21 @@ Ship a second `SessionStart` hook — `.claude/hooks/sync-framework.sh` — that
 
 ### Template root discovery
 
-Resolved in three-tier priority:
+The canonical template is `claude_template_yaml`. Resolved in priority order:
 
-1. `$CLAUDE_TEMPLATE_ROOT` environment variable (shell-level).
-2. `CLAUDE_TEMPLATE_ROOT=` line in the project's `.env` file.
-3. Sibling directory `../claude_template`.
+1. `CLAUDE_TEMPLATE_ROOT=` line in the project's `.env` file.
+2. `CLAUDE_TEMPLATE_ROOT=` line in the `.env` of any immediate subdirectory that has `.git/` (split-layout adopters who keep `.env` in the code repo — [FWADR-021](fwadr-021-split-layout.md)).
+3. `../claude_template_yaml`
+4. `../../claude_template_yaml`
+5. `../../../claude_template_yaml`
+
+The deeper sibling fallbacks support adopters nested under `code/projects/<team>/<repo>` rather than directly under `code/`. Sibling lookups name only `claude_template_yaml`; the dormant predecessor `claude_template`, if still on disk, is never found.
+
+**Shell environment variables are intentionally not consulted.** A stale `CLAUDE_TEMPLATE_ROOT` export in a dotfile (commonly pointing at a long-defunct template location) would silently shadow every other source, and the adopter would pull framework from the wrong place for months without noticing. Configure via `.env` or rely on the sibling fallback.
 
 If none resolves, the hook warns and exits 0 — sync is value-add, never blocking.
+
+Canonical specification of the chain: `.claude/hooks/sync-framework.sh`; mirrored in CLAUDE.md §"Framework sync on SessionStart" and `session-policy.md` §"Framework sync on context resets".
 
 ### Template-self detection
 
@@ -49,14 +57,14 @@ Every step in the sync script is non-blocking. rsync errors warn and continue. M
 **What this buys:**
 
 - Framework drift is mechanically prevented. An adopter's Strategist can edit framework docs on any given day, but the next session start erases those edits and warns nothing — the lesson is "don't edit there; use the exceptions file."
-- The "copy-paste the new framework over" story becomes automatic. The user edits framework docs in `claude_template` itself; every adopting project pulls the change on next session start.
+- The "copy-paste the new framework over" story becomes automatic. The user edits framework docs in `claude_template_yaml` itself; every adopting project pulls the change on next session start.
 - CLAUDE.md stays in sync on the framework-y sections without losing per-project content.
 - `framework_exceptions/` initializes itself for new adopters — no manual setup step.
 
 **What this costs:**
 
 - Silent overwrite is dangerous if the template's own dev_framework gets into a bad state — adopters pull breakage. Mitigation: the template is curated; framework-doc changes go through the Strategist on the template repo, not arbitrary commits. This is the same risk model as pushing any shared dependency.
-- Adopters lose the ability to locally tweak framework docs for testing. Deliberate — the policy is "tweak the template, not the adopting project." For short-lived experiments, change the template on a feature branch and have adopters sync from that branch by setting `$CLAUDE_TEMPLATE_ROOT` to its working copy.
+- Adopters lose the ability to locally tweak framework docs for testing. Deliberate — the policy is "tweak the template, not the adopting project." For short-lived experiments, change the template on a feature branch and have adopters sync from that branch by pointing their `.env` `CLAUDE_TEMPLATE_ROOT=` line at its working copy.
 - The managed-block pattern in CLAUDE.md is fragile if markers are deleted or moved. Mitigation: the sync warns when markers are missing on either side; it does not fabricate them.
 
 **What this does NOT do:**
@@ -85,7 +93,7 @@ To unblock the first session, the adopter must manually add this block to their 
 }
 ```
 
-After this one-time edit, sync takes over: every subsequent session start pulls the canonical framework and hooks from `claude_template`, keeps them current, and the adopter never edits framework content directly again.
+After this one-time edit, sync takes over: every subsequent session start pulls the canonical framework and hooks from `claude_template_yaml`, keeps them current, and the adopter never edits framework content directly again.
 
 The adopter also needs to have the hook scripts themselves on disk. On the first sync, `.claude/hooks/` is populated from the template. But on the very first bootstrap — before the first sync ever runs — the scripts must be present. The simplest path: copy `.claude/hooks/sync-framework.sh` and `.claude/hooks/session-reorient.sh` from the template by hand, alongside the settings.json edit. After that, the sync keeps them current automatically.
 
@@ -97,36 +105,13 @@ The adopter also needs to have the hook scripts themselves on disk. On the first
 4. **Symlink `docs/dev_framework/` to the template.** Makes the canonical source literal but breaks when the template isn't on the same machine (different dev machine, CI, etc.). Rejected.
 5. **Always-copy CLAUDE.md wholesale.** Would destroy per-project values. Rejected.
 6. **Semantic merge of CLAUDE.md.** Harder, error-prone. Rejected in favor of structural managed-block markers.
+7. **Shell-env `$CLAUDE_TEMPLATE_ROOT` as a resolution source.** Rejected — a stale export silently shadows every other source (see §"Template root discovery").
 
 ## Acceptance criteria
 
 - `.claude/hooks/sync-framework.sh` runs on macOS and Linux under bash, no external dependencies beyond `rsync`, `sed`, `grep`, POSIX utilities.
 - Manual test: in an adopting project, modify `docs/dev_framework/session-policy.md`, run `/clear`, confirm the file is restored to the template's version.
 - Manual test: in an adopting project with no `docs/framework_exceptions/` folder, run `/clear`, confirm the folder is created with the three stub files.
-- Manual test: `$CLAUDE_TEMPLATE_ROOT` unset, `.env` absent, `../claude_template` absent — run `/clear`, confirm the hook warns but does not error.
+- Manual test: no `CLAUDE_TEMPLATE_ROOT=` line in any `.env`, no `claude_template_yaml` at any sibling depth — run `/clear`, confirm the hook warns but does not error.
 - Manual test: run `/clear` in the template repo itself, confirm the hook reports "This project IS the template — no sync."
 - `session-policy.md` gains a §"Framework sync on context resets" that points at this ADR.
-
-## Revision (v1.1, 2026-05-02) — Template renamed; resolution chain narrowed
-
-**Problem.** Two changes shipped together:
-
-1. **Template renamed.** The canonical template repo is now `claude_template_yaml` (this repo). The original `claude_template` is forked away from. Every reference to the old name in framework code paths and docs would silently misroute — adopters with `../claude_template` siblings on disk would keep syncing from a defunct location.
-2. **Shell-env resolution dropped.** A stale `CLAUDE_TEMPLATE_ROOT` exported in an adopter's shell config (commonly an old dotfile pointing at `~/code/claude_template`) silently shadows everything else. Failure mode: adopter pulls framework from a long-defunct location for months without noticing. Removing the shell-env path eliminates the silent-shadow class entirely.
-
-**Decision.** Effective 2026-05-02:
-
-- Template root is `claude_template_yaml`. All references in hooks, framework docs, and ADRs use the new name.
-- Resolution chain narrows from 3 sources to 2 (with deeper sibling fallback to handle nested adopter project layouts):
-  1. `CLAUDE_TEMPLATE_ROOT=` line in the project's `.env` file.
-  2. `../claude_template_yaml`
-  3. `../../claude_template_yaml`
-  4. `../../../claude_template_yaml`
-- Shell environment variables (`$CLAUDE_TEMPLATE_ROOT` from the parent shell) are intentionally NOT consulted. Adopters configure via local `.env` or rely on the sibling-depth fallback.
-- The deeper sibling fallback (`../..`, `../../..`) replaces the prior single-depth `../claude_template` to support adopters whose projects are nested under `code/projects/<team>/<repo>` rather than directly under `code/`.
-
-**Surfaces updated:** lines 33–35 (Template root discovery), line 59 (alternative consideration about feature-branch experimentation via `$CLAUDE_TEMPLATE_ROOT`), line 88 (first-time bootstrap reference to `claude_template`), line 106 (acceptance test for unset env). Canonical specification lives in `.claude/hooks/sync-framework.sh` (the script), `CLAUDE.md` §"Framework sync on SessionStart", and `dev_framework/session-policy.md` §"Framework sync on context resets".
-
-**Migration.** The old `claude_template` repo on adopters' disks does not need to be removed — it is simply no longer found by the resolution chain. Adopters who relied on the shell-env override path must move the value into their project's `.env` file (or rename/relocate the template repo to one of the sibling-fallback paths). Adopters with no override saw no change other than the template-name update.
-
-**Why a Revision instead of a new ADR.** The mechanism (sync on SessionStart, destructive into `dev_framework/`, additive into `hooks/`, managed-block on CLAUDE.md) is unchanged. Only the input-resolution table and the template name move. New rule, same principle.

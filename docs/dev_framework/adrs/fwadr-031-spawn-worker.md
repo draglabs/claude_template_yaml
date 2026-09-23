@@ -32,7 +32,7 @@ Ship `scripts/spawn_worker.sh` as a synced dev-slot stub (seeded by
 spawn_worker.sh <name> ["initial prompt"]
 ```
 
-It opens a macOS terminal that runs, in the project root:
+It opens a macOS terminal that runs, in the project directory:
 `set -a; source .env; set +a; exec claude --dangerously-skip-permissions --name "<name>" --remote-control [prompt]`.
 An optional second arg is sent as the worker's first message — arbitrary, so it
 covers a role bootstrap (`"you are the Developer"`) or any task.
@@ -41,15 +41,22 @@ Design choices:
 
 - **Self-contained, not dependent on the user's `claude-env`.** `claude-env` is a
   shell-rc function installed per machine (framework-shipped and confirmed at
-  first contact since [FWADR-032](fwadr-032-claude-env-launcher.md), but
+  first contact per [FWADR-032](fwadr-032-claude-env-launcher.md), but
   installation remains opt-in), so an adopter may not have it. The script
   reimplements its core (cd + `source .env`) inline, which also runs the
   FWADR-030 git-auth wiring, so the worker's git is authenticated like any
   `claude-env` session.
 - **Customized only via `.env`.** `WORKER_TERMINAL` (`iterm` default, or
-  `terminal`) picks the terminal app; the project path is self-located from the
-  script's own position. So the Strategist "customizes at setup" by setting one
-  `.env` value — there is no per-repo script body to fill.
+  `terminal`) picks the terminal app. So the Strategist "customizes at setup" by
+  setting one `.env` value — there is no per-repo script body to fill.
+- **Project directory = nearest ancestor holding a `.env`.** The script walks up
+  from its own location and launches there — the planning directory where
+  `.env`, `CLAUDE.md`, and the planning git repo live (split layout, FWADR-021),
+  which is also where `.env` must be sourced. Falls back to the parent of
+  `scripts/` only if no `.env` is found upward. "Parent of `scripts/`" alone is
+  right only at the canonical `$PROJECT_DIR/scripts/` location; run from the
+  template's own `_stubs/scripts/` it opened a test worker in
+  `docs/dev_framework/_stubs`.
 - **Temp-launcher indirection.** The command (with a name and an arbitrary prompt)
   is written to a `mktemp` script that the terminal runs, sidestepping
   AppleScript quote-escaping. The launcher `rm`s itself then `exec`s claude, so
@@ -88,16 +95,3 @@ worker phone-reachable.
 - **One worker per name.** Names are the operator's handle (`dev-auth`, `orch-1`);
   the script does not enforce uniqueness. Reusing a name just launches another
   session with the same display name.
-
-## Revision v1.1 (2026-08-11)
-
-The project directory is now located by **walking up from the script to the
-nearest ancestor that holds a `.env`**, rather than assuming "parent of
-`scripts/`". The worker launches there — the planning directory where `.env`,
-`CLAUDE.md`, and the planning git repo live (split layout, FWADR-021), which is
-also where `.env` must be sourced. This resolves correctly wherever the script
-sits (canonically `$PROJECT_DIR/scripts/`, but also the template's own
-`_stubs/scripts/`), falling back to the parent of `scripts/` only if no `.env` is
-found upward. Motivated by a spawned worker opening in `docs/dev_framework/_stubs`
-during testing instead of the project root — the old "parent of `scripts/`" rule
-was correct only for the canonical deploy location.
