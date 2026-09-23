@@ -159,14 +159,15 @@ caught by review or by the Curator, not by a script.
 keep their old copy. Deleting `scripts/doc_churn_audit.sh` re-seeds the new
 one on next SessionStart. Accepted as a gap, not fixed here.
 
-**Open question — untracked parent.** "Git keeps the history" is true for the
-framework and for tracked-parent adopters. Under the default *untracked
+**Untracked parent: rewrite in place anyway.** Under the default *untracked
 parent* ([FWADR-021](fwadr-021-split-layout.md)), `docs/architecture/` has no
-git history: a rewrite in place loses the old text, and there is no commit to
-carry trailers. Until the user decides, rewriting a product ADR in an
-untracked parent is confirmed per item with the user (the Curator already
-works this way), and the audit's decider column is unavailable there — as its
-churn column already is.
+git history, so a rewrite loses the old text. That loss is accepted: the
+untracked phase is where early ideas get worked out, and their history is not
+worth keeping. Rewrite in place with no extra confirmation step and no
+fallback copy; the trailers and the audit's decider column simply do not exist
+there yet, like its churn column. **The framework never pushes git tracking.**
+The user decides when a project starts tracking its parent; from that commit
+on, history and trailers apply.
 
 ## Alternatives considered
 

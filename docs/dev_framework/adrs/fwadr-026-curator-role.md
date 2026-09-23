@@ -190,8 +190,8 @@ becomes noise, which decisions 2 and 8 target directly.
 (`check-curator-scope.sh`, `doc_churn_audit.sh`). The propose-only rule and the
 proportionality rule are **English-only**, enforced by the per-item
 confirmation being user-visible output. Fight detection, like churn, needs the
-docs to be git-tracked; under an untracked parent there is no history, the
-script reports no decider, and the Curator asks the user. No script can judge whether a document
+docs to be git-tracked; under an untracked parent there is no history and the
+script reports no decider — the Curator reads the doc as it stands. No script can judge whether a document
 still earns its place; naming that as a gap is more honest than a check that
 would rubber-stamp it.
 
