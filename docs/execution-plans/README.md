@@ -230,7 +230,7 @@ Introduced by [FWADR-020](../dev_framework/adrs/fwadr-020-yaml-frontmatter-w-ite
 
 - `status` — index-only, per FWADR-017's drift-bait elimination.
 - `effort` / `markers` — index summary-table columns; the Orchestrator reads them at-a-glance there.
-- `blocked-by` — index `Blocked by` column, per FWADR-017 v1.1 (single source for dependency data).
+- `blocked-by` — index `Blocked by` column, per FWADR-017 §"Single-source dependency data".
 - `id` / `title` — H1, filename, and the index summary table all carry these; frontmatter duplication earns nothing.
 
 The Implementation log is the one section that gets appended after draft, at the `code_review → done` flip. It is append-only (not mutated after merge) and therefore does not reintroduce drift bait — see FWADR-018.

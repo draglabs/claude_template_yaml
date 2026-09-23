@@ -11,7 +11,7 @@
 #   D. ADR version tags:          "FWADR-019 v1.3", "ADR-004 v2"
 #
 # Scope: spec docs only — docs/dev_framework/ (incl. stub scripts' comments),
-# docs/architecture/, CLAUDE.md, .claude/hooks/. Log docs (process-exceptions,
+# docs/architecture/, docs/execution-plans/README.md, CLAUDE.md, .claude/hooks/. Log docs (process-exceptions,
 # incidents) are append-only by design and not scanned. A deliberate exception
 # carries "dead-prose: allow" on the same line.
 #
@@ -22,7 +22,7 @@
 set -u
 cd "$(dirname "$0")/.." || exit 1
 
-PATHS=(docs/dev_framework docs/architecture CLAUDE.md .claude/hooks)
+PATHS=(docs/dev_framework docs/architecture docs/execution-plans/README.md CLAUDE.md .claude/hooks)
 EXCLUDE='docs/dev_framework/_stubs/framework_exceptions/(process-exceptions|execution-incidents)\.md'
 
 fail=0
