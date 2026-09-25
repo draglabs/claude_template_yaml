@@ -23,7 +23,7 @@
 #       instead — never keep a local edit to a synced framework file.
 #   2 — template root could not be resolved (cannot check).
 #
-# Generic script — no project-specific body to fill in.
+# FRAMEWORK-OWNED — overwritten on every sync; do not edit (FWADR-014).
 
 set -euo pipefail
 

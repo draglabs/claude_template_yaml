@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # One-time interactive setup for dev slots.
+# FRAMEWORK-OWNED — overwritten on every sync; do not edit (FWADR-014).
 #
 # Reads project variables from $PROJECT_DIR/.env (sourced) — the canonical
 # machine-readable surface per FWADR-019 Decision 7. Halts if .env is

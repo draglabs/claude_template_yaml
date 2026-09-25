@@ -16,7 +16,7 @@ Policy text alone can't enforce "don't edit `docs/dev_framework/*`" — that's a
 
 ## Decision
 
-Ship a second `SessionStart` hook — `.claude/hooks/sync-framework.sh` — that runs before the re-orient hook. It does four things:
+Ship a second `SessionStart` hook — `.claude/hooks/sync-framework.sh` — that runs before the re-orient hook. It does five things:
 
 1. **Destructively sync `docs/dev_framework/`** from the canonical template via `rsync -a --delete`. Any local edits to that tree are overwritten without warning. This is the "push it back into alignment" enforcement — if the system went wild and started editing framework docs, the next session start restores the canonical state.
 
@@ -25,6 +25,17 @@ Ship a second `SessionStart` hook — `.claude/hooks/sync-framework.sh` — that
 3. **Idempotent-initialize `docs/framework_exceptions/`**. On first sync (folder missing), copy pristine stubs from `$TEMPLATE_ROOT/docs/dev_framework/_stubs/framework_exceptions/`. On subsequent syncs, leave existing files alone — the adopter's accumulated exceptions are preserved.
 
 4. **Reconcile CLAUDE.md via managed-block markers.** The template's CLAUDE.md wraps framework-owned sections in `<!-- BEGIN FRAMEWORK MANAGED -->` / `<!-- END FRAMEWORK MANAGED -->`. The sync script extracts that block from the template and replaces the corresponding block in the local CLAUDE.md. Content outside the markers (project variables, commands, stack, locked decisions, dev mode) is untouched. This lets the framework evolve CLAUDE.md's framework-side content centrally without destroying per-project values.
+
+5. **Place stub scripts by ownership** (§"Stub scripts").
+
+### Stub scripts
+
+Stubs under `docs/dev_framework/_stubs/` copy to project paths (`scripts/`, `docs/dev/slots.yaml`, `.env.example`). Each is one of two kinds, and **the file says which**:
+
+- **Framework-owned** — no project-specific body; carries the header line `FRAMEWORK-OWNED — overwritten on every sync; do not edit`. The sync overwrites the project copy whenever it differs from the template, so a fix reaches every existing adopter on its next session start. Changes go to the template (`fwreq-*`), never into the project copy. Today: `promote_dev_to_main.sh`, `check-touches.sh`, `check-researcher-scope.sh`, `check-curator-scope.sh`, `doc_churn_audit.sh`, `port_ledger.sh`, `setup_dev_slots.sh`, `spawn_worker.sh`.
+- **Seed-once** — holds a project body or project values (`launch_local.sh`, `teardown_local.sh`, `main_to_prod.sh`, `slots.yaml`, `.env.example`). Copied when missing, never overwritten; improvements to their generic parts reach a filled-in copy only by manual merge ([FWADR-019](fwadr-019-dev-slots-and-deploy-stubs.md)).
+
+The marker lives in the file, not a list in the hook, so whoever opens a script can see whether editing it is legal, and moving a script between kinds is one header line.
 
 ### Template root discovery
 
@@ -106,6 +117,7 @@ The adopter also needs to have the hook scripts themselves on disk. On the first
 5. **Always-copy CLAUDE.md wholesale.** Would destroy per-project values. Rejected.
 6. **Semantic merge of CLAUDE.md.** Harder, error-prone. Rejected in favor of structural managed-block markers.
 7. **Shell-env `$CLAUDE_TEMPLATE_ROOT` as a resolution source.** Rejected — a stale export silently shadows every other source (see §"Template root discovery").
+8. **Seed every stub once and never overwrite.** Uniform and simple, but no fix to generic plumbing ever reached an existing adopter: a wrong-repo bug in `promote_dev_to_main.sh` (it released a git-tracked parent instead of the code repo) and a rewritten `doc_churn_audit.sh` would each have needed a manual delete-and-reseed in every project. Rejected for scripts with no project body; kept for stubs that hold one.
 
 ## Acceptance criteria
 
@@ -114,4 +126,5 @@ The adopter also needs to have the hook scripts themselves on disk. On the first
 - Manual test: in an adopting project with no `docs/framework_exceptions/` folder, run `/clear`, confirm the folder is created with the three stub files.
 - Manual test: no `CLAUDE_TEMPLATE_ROOT=` line in any `.env`, no `claude_template_yaml` at any sibling depth — run `/clear`, confirm the hook warns but does not error.
 - Manual test: run `/clear` in the template repo itself, confirm the hook reports "This project IS the template — no sync."
+- Manual test: in an adopting project, edit `scripts/promote_dev_to_main.sh` and `scripts/launch_local.sh`, run `/clear`; the first is restored ("updated framework-owned"), the second is untouched.
 - `session-policy.md` gains a §"Framework sync on context resets" that points at this ADR.

@@ -374,26 +374,21 @@ if [[ -f "$MCP_STUB" && ! -f "$LOCAL_MCP" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# 5c. Initialize project-local stubs (scripts/ + docs/dev/slots.yaml)
-#     if missing. Idempotent: never overwrites filled-in stubs. Adopters
-#     fill any project-specific bodies once; subsequent syncs leave their
-#     work alone.
-#
-#     Stubs live under $TEMPLATE_ROOT/docs/dev_framework/_stubs/<relpath>
-#     and copy to $PROJECT_DIR/<relpath>, preserving the executable bit
-#     for .sh files (cp -p).
-#
-#     Stubs covered:
-#       - Dev-slot infrastructure (FWADR-019): launch_local.sh,
-#         teardown_local.sh, main_to_prod.sh, setup_dev_slots.sh,
-#         docs/dev/slots.yaml.
-#       - Reviewer-side mechanical scope check (FWADR-020):
-#         check-touches.sh — generic, no project-specific body to fill.
-#       - Machine-wide dev-port ledger (FWADR-019):
-#         port_ledger.sh — reads the Caddyfile; --propose feeds the interview.
-#       - Project variables starter (FWADR-019):
-#         .env.example — committed template; the claude-env launcher seeds .env (gitignored) from it
-#         and fills in. Strategist owns the values per first-contact interview.
+# 5c. Project-local stubs (scripts/ + docs/dev/slots.yaml + .env.example).
+#     Two kinds, told apart by a marker in the template copy:
+#       - FRAMEWORK-OWNED scripts (no project-specific body): overwritten
+#         whenever they differ, so framework fixes reach existing adopters.
+#         promote_dev_to_main.sh, check-touches.sh, check-researcher-scope.sh,
+#         check-curator-scope.sh, doc_churn_audit.sh, port_ledger.sh,
+#         setup_dev_slots.sh, spawn_worker.sh.
+#       - Seed-once stubs (project bodies or project values): copied when
+#         missing, never overwritten. launch_local.sh, teardown_local.sh,
+#         main_to_prod.sh (FWADR-019), docs/dev/slots.yaml, and .env.example
+#         (the claude-env launcher seeds .env from it; the Strategist owns the
+#         values per the first-contact interview).
+#     Stubs live under $TEMPLATE_ROOT/docs/dev_framework/_stubs/<relpath> and
+#     copy to $PROJECT_DIR/<relpath>, preserving the executable bit (cp -p).
+#     Rationale: FWADR-014 §"Stub scripts".
 # ---------------------------------------------------------------------------
 
 DEV_SLOT_STUBS=(
@@ -412,15 +407,28 @@ DEV_SLOT_STUBS=(
   ".env.example"
 )
 
+# A stub whose template copy carries the FRAMEWORK-OWNED marker has no
+# project-specific body: it is overwritten whenever it differs, so fixes reach
+# existing adopters. Every other stub (project bodies, slots.yaml,
+# .env.example) is seeded once and never touched again. The marker in the file
+# itself answers "may I edit this?" for whoever opens it.
+OWNED_MARK='FRAMEWORK-OWNED — overwritten on every sync'
 for relpath in "${DEV_SLOT_STUBS[@]}"; do
   src="$TEMPLATE_ROOT/docs/dev_framework/_stubs/$relpath"
   dst="$PROJECT_DIR/$relpath"
-  if [[ -f "$src" && ! -f "$dst" ]]; then
+  [[ -f "$src" ]] || continue
+  if [[ ! -f "$dst" ]]; then
     mkdir -p "$(dirname "$dst")"
     if cp -p "$src" "$dst" 2>/dev/null; then
       echo "[sync-framework] initialized $relpath from stub"
     else
       echo "[sync-framework] WARN: failed to initialize $relpath"
+    fi
+  elif grep -qF "$OWNED_MARK" "$src" && ! cmp -s "$src" "$dst"; then
+    if cp -p "$src" "$dst" 2>/dev/null; then
+      echo "[sync-framework] updated framework-owned $relpath"
+    else
+      echo "[sync-framework] WARN: failed to update framework-owned $relpath"
     fi
   fi
 done

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # check-touches.sh — mechanical scope check for the Reviewer subagent.
+# FRAMEWORK-OWNED — overwritten on every sync; do not edit (FWADR-014).
 #
 # Reads the `touches:` list from a W-item file's YAML frontmatter, runs
 # `git diff --name-only <base-ref>` from the current working directory,
@@ -62,7 +63,13 @@ TOUCHES_LIST="$(ruby -e '
 ' "$WITEM_FILE")" || exit 2
 
 # Get the list of files changed vs the base ref.
-CHANGED="$(git diff --name-only "$BASE_REF" 2>/dev/null || true)"
+# A base ref that does not resolve (e.g. origin/dev after a trunk migration
+# deleted it) must fail loudly — an empty diff would read as "all in scope".
+if ! git rev-parse --verify -q "$BASE_REF^{commit}" >/dev/null; then
+  echo "check-touches: base ref '$BASE_REF' does not resolve — fetch, or pass the right ref" >&2
+  exit 2
+fi
+CHANGED="$(git diff --name-only "$BASE_REF")"
 
 if [[ -z "$CHANGED" ]]; then
   # No changes — trivially in-scope.

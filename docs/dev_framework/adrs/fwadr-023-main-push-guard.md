@@ -48,8 +48,9 @@ Ship the mechanism, framework-wide:
    Executor/Developer worktrees are covered automatically.
 
 3. **Sanctioned bypass = one named script.** The stub
-   `scripts/promote_dev_to_main.sh` (seeded to adopters like the other
-   FWADR-019 script stubs; generic, no fill-in needed; name kept across
+   `scripts/promote_dev_to_main.sh` (a framework-owned stub, overwritten on
+   every sync — [FWADR-014](fwadr-014-framework-sync-on-session-start.md)
+   §"Stub scripts"; name kept across
    modes so every doc pointer stays valid) is the only place
    `FRAMEWORK_ALLOW_MAIN_PUSH=1` is ever set. The release event itself
    remains the Orchestrator's (or Developer's) act; the script owns only the

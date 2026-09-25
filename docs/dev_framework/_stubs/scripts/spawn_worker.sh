@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # spawn_worker.sh — launch a named, Remote-Control-enabled Claude worker in a
+# FRAMEWORK-OWNED — overwritten on every sync; do not edit (FWADR-014).
 # new macOS terminal window at the project root (FWADR-031).
 #
 #   spawn_worker.sh <name> ["initial prompt"]

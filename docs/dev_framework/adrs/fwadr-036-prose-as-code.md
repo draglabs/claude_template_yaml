@@ -154,10 +154,10 @@ authoring time; the Reviewer's `dead-prose` finding and the audit's
 — a paragraph contradicted without any marker — cannot be grepped for; it is
 caught by review or by the Curator, not by a script.
 
-**Delivery gap.** `doc_churn_audit.sh` is a seed-once stub
-([FWADR-014](fwadr-014-framework-sync-on-session-start.md)): existing adopters
-keep their old copy. Deleting `scripts/doc_churn_audit.sh` re-seeds the new
-one on next SessionStart. Accepted as a gap, not fixed here.
+**Delivery.** `doc_churn_audit.sh` is a framework-owned stub
+([FWADR-014](fwadr-014-framework-sync-on-session-start.md) §"Stub scripts"):
+the sync overwrites every adopter's copy, so the trailer-reading audit reaches
+existing projects on their next session start.
 
 **Untracked parent: rewrite in place anyway.** Under the default *untracked
 parent* ([FWADR-021](fwadr-021-split-layout.md)), `docs/architecture/` has no

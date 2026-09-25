@@ -147,6 +147,6 @@ These are real follow-ups but each earns its own decision. Shipping them upfront
 - Updated: `docs/execution-plans/README.md` — W-item file shape shows frontmatter, "Execution notes" section header removed, field table updated to mark which fields are frontmatter and which are body, "What's NOT on the W-item file" paragraph extended to cover the frontmatter exclusions (status, effort, markers, blocked-by, id, title).
 - Updated: `docs/dev_framework/templates/executor-brief.md` — STEP 1 / STEP 3 reference frontmatter as the source for `touches` and `references`.
 - Updated: `docs/dev_framework/templates/reviewer-brief.md` — question 6 (scope creep) instructs the Reviewer to run `./scripts/check-touches.sh <w-item-file> origin/dev` and treat any non-zero exit's stdout as scope-creep findings.
-- Updated: `.claude/hooks/sync-framework.sh` — `scripts/check-touches.sh` added to the idempotent-init sync list (preserves executable bit via `cp -p`).
+- Updated: `.claude/hooks/sync-framework.sh` — `scripts/check-touches.sh` added to the stub sync list as a framework-owned script ([FWADR-014](fwadr-014-framework-sync-on-session-start.md) §"Stub scripts").
 - FWADR-017 unchanged (Status doctrine intact).
 - Single PR. Format change + consumer script + brief integrations land together. A format change without the consumer is speculative scaffolding; a script without the format is unmoored.

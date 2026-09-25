@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # port_ledger.sh — machine-wide dev-port ledger, read from the Caddyfile.
+# FRAMEWORK-OWNED — overwritten on every sync; do not edit (FWADR-014).
 #
 # The local Caddyfile is the one file every local-hosted project on this
 # machine already writes to (scripts/setup_dev_slots.sh appends a

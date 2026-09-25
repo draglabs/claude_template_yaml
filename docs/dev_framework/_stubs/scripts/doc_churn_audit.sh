@@ -13,7 +13,7 @@
 #   0 — audit ran (findings on stdout; findings are not an error)
 #   2 — not run from a directory containing docs/, or git unavailable
 #
-# Generic script — no project-specific body to fill in.
+# FRAMEWORK-OWNED — overwritten on every sync; do not edit (FWADR-014).
 
 set -euo pipefail
 

@@ -82,10 +82,9 @@ worker phone-reachable.
   an interactive terminal, and the osascript is wrapped in `with timeout of 30
   seconds` to fail fast with guidance rather than hang the 120s default. This was
   found by a live smoke test; the dry run alone could not surface it.
-- **Copy-if-missing stub**, like the other dev-slot scripts (FWADR-019): existing
-  adopters get it on next sync only if absent, so a future change to the script
-  does not auto-propagate. Acceptable for an ops helper; consistent with the
-  established dev-slot sync tier rather than inventing a new one.
+- **Framework-owned stub** ([FWADR-014](fwadr-014-framework-sync-on-session-start.md)
+  §"Stub scripts"): no project body, so the sync overwrites every adopter's
+  copy and a fix to the script reaches existing projects on their next session.
 - **Coherence surfaces, all in this change:** the stub script, its entry in the
   `sync-framework.sh` `DEV_SLOT_STUBS` list, the `WORKER_TERMINAL` declaration in
   `.env.example`, and this ADR.
