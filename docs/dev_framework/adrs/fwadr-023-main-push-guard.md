@@ -29,8 +29,11 @@ Ship the mechanism, framework-wide:
    rejects any push updating the project's **release ref** unless
    `FRAMEWORK_ALLOW_MAIN_PUSH=1` is set. The release ref follows `GIT_FLOW`
    ([FWADR-035](fwadr-035-git-flow-mode.md)): `refs/heads/main` under
-   `dev-main` (the default); `refs/tags/v*` under `trunk`, where `main` is
-   the integration branch and pushes freely. The guard resolves `GIT_FLOW`
+   `dev-main` (the default); `refs/tags/v*` under `trunk`, where the guard
+   also rejects direct pushes to `main` in code repos because work lands
+   there by PR (the tracking parent, which holds plans, pushes `main`
+   freely — [FWADR-035](fwadr-035-git-flow-mode.md) §"Landing under
+   trunk"). The guard resolves `GIT_FLOW`
    from the process env or `$PROJECT_DIR/.env` (via the common git dir, so
    worktrees resolve too). It checks the real refspecs on the hook's stdin —
    not command strings — so `git push origin main`, `push origin HEAD:main`,
@@ -72,8 +75,9 @@ Ship the mechanism, framework-wide:
 
 4. **Belt-and-braces recommendation.** The Strategist's first-contact
    interview recommends host-side protection of the release ref where the
-   host supports it: `main` under dev-main; `v*` tags plus required PRs into
-   `main` under trunk. Host-side protection is absolute but host-specific
+   host supports it: `main` under dev-main; under trunk, `v*` tags plus
+   `main` locked to PR landing (push = no one, merge = maintainers).
+   Host-side protection is absolute but host-specific
    and unsyncable; the pre-push guard is the portable layer.
 
 **`FRAMEWORK_ALLOW_MAIN_PUSH` must never appear in `.env`** — framework
@@ -104,8 +108,8 @@ variable already set in the environment, which catches exactly this mistake.
 - Adopters with a pre-existing custom `pre-push` hook keep it and get a
   per-session warning until they merge the guard's check — named, visible
   drift instead of silent non-enforcement.
-- Under trunk the same guard protects `v*` tags instead of `main`; the
-  human gate moves from a merge to a tag and nothing else changes
+- Under trunk the same guard protects `v*` tags, and `main` in code repos
+  against direct pushes; the human release gate moves from a merge to a tag
   ([FWADR-035](fwadr-035-git-flow-mode.md)).
 - A user who genuinely wants to push the release ref outside the sanctioned modes
   must consciously set `FRAMEWORK_ALLOW_MAIN_PUSH=1` — possible, but now an

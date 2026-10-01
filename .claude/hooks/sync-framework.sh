@@ -434,6 +434,45 @@ for relpath in "${DEV_SLOT_STUBS[@]}"; do
 done
 
 # ---------------------------------------------------------------------------
+# 5d. Tracked parent: keep framework-synced files out of its git (FWADR-014
+#     §"Tracked parent"). docs/dev_framework/, the template's hooks, and the
+#     framework-owned scripts are rebuilt from the template every session, so
+#     tracking them only produces churn. Applies only to a git-tracked parent
+#     that holds code repos — never a flat layout (its repo IS the code repo).
+#     Maintains one managed block in .gitignore; files already tracked get a
+#     NOTICE with the one-time un-track command — never run from here.
+# ---------------------------------------------------------------------------
+
+if [[ -d "$PROJECT_DIR/.git" ]] && compgen -G "$PROJECT_DIR/*/.git" >/dev/null; then
+  SYNCED=("/docs/dev_framework/")
+  for h in "$TEMPLATE_ROOT"/.claude/hooks/*; do
+    [[ -f "$h" ]] && SYNCED+=("/.claude/hooks/$(basename "$h")")
+  done
+  for relpath in "${DEV_SLOT_STUBS[@]}"; do
+    src="$TEMPLATE_ROOT/docs/dev_framework/_stubs/$relpath"
+    [[ -f "$src" ]] && grep -qF "$OWNED_MARK" "$src" && SYNCED+=("/$relpath")
+  done
+  GI="$PROJECT_DIR/.gitignore"
+  GI_BEGIN="# BEGIN framework-synced (FWADR-014) — rebuilt from the template every session; do not edit"
+  GI_END="# END framework-synced"
+  want="$(printf '%s\n' "$GI_BEGIN" "${SYNCED[@]}" "$GI_END")"
+  have=""
+  [[ -f "$GI" ]] && have="$(awk -v b="$GI_BEGIN" -v e="$GI_END" '$0==b{f=1} f{print} $0==e{f=0}' "$GI")"
+  if [[ "$have" != "$want" ]]; then
+    tmp="$(mktemp)"
+    [[ -f "$GI" ]] && awk -v b="$GI_BEGIN" -v e="$GI_END" '$0==b{f=1;next} $0==e{f=0;next} !f' "$GI" > "$tmp"
+    { cat "$tmp"; [[ -s "$tmp" ]] && echo; printf '%s\n' "$want"; } > "$GI"
+    rm -f "$tmp"
+    echo "[sync-framework] refreshed framework-synced block in .gitignore (tracked parent)"
+  fi
+  tracked="$(git -C "$PROJECT_DIR" ls-files -- "${SYNCED[@]#/}" 2>/dev/null | wc -l | tr -d ' ')"
+  if [[ "${tracked:-0}" -gt 0 ]]; then
+    echo "[sync-framework] NOTICE: the tracked parent still tracks $tracked framework-synced file(s); they churn on every template change. One-time fix, from $PROJECT_DIR:"
+    echo "[sync-framework]   git rm -r --cached -q --ignore-unmatch -- ${SYNCED[*]#/} && git commit -m 'chore: stop tracking framework-synced files (FWADR-014)'"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # 6. CLAUDE.md managed-block reconciliation.
 #    The template's CLAUDE.md wraps framework-owned sections in:
 #      <!-- BEGIN FRAMEWORK MANAGED -->

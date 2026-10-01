@@ -37,6 +37,10 @@ Stubs under `docs/dev_framework/_stubs/` copy to project paths (`scripts/`, `doc
 
 The marker lives in the file, not a list in the hook, so whoever opens a script can see whether editing it is legal, and moving a script between kinds is one header line.
 
+### Tracked parent
+
+A git-tracked parent ([FWADR-021](fwadr-021-split-layout.md)) would otherwise show every template change as local churn — about thirty modified files after a single sync, blocking the clean tree that branch operations need. The sync keeps one managed block in the parent's `.gitignore` listing what it rebuilds every session: `docs/dev_framework/`, the template's hooks by name (adopter-owned hooks stay tracked), and the framework-owned scripts (seed-once scripts stay tracked — they hold project code). Files the parent already tracks get a NOTICE with the one-time `git rm --cached` command; the hook never changes the index itself. Not applied to a flat layout, whose repo is the code repo. The CLAUDE.md managed block still changes with the template — small, and part of a file the project owns. The framework's history lives in the template's git, not the parent's.
+
 ### Template root discovery
 
 The canonical template is `claude_template_yaml`. Resolved in priority order:
@@ -126,5 +130,6 @@ The adopter also needs to have the hook scripts themselves on disk. On the first
 - Manual test: in an adopting project with no `docs/framework_exceptions/` folder, run `/clear`, confirm the folder is created with the three stub files.
 - Manual test: no `CLAUDE_TEMPLATE_ROOT=` line in any `.env`, no `claude_template_yaml` at any sibling depth — run `/clear`, confirm the hook warns but does not error.
 - Manual test: run `/clear` in the template repo itself, confirm the hook reports "This project IS the template — no sync."
+- Manual test: in a tracked parent, run `/clear`; `.gitignore` gains the framework-synced block, and editing `docs/dev_framework/*` leaves `git status` clean.
 - Manual test: in an adopting project, edit `scripts/promote_dev_to_main.sh` and `scripts/launch_local.sh`, run `/clear`; the first is restored ("updated framework-owned"), the second is untouched.
 - `session-policy.md` gains a §"Framework sync on context resets" that points at this ADR.

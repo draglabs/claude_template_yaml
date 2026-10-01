@@ -274,7 +274,7 @@ The project's git flow is set once, at the first-contact interview, as `GIT_FLOW
 | `GIT_FLOW` | Integration branch (`$INTEGRATION_BRANCH`) | Release event (moves production) | Guard blocks |
 |---|---|---|---|
 | `dev-main` (default) | `dev` — features merge here; CI deploys the dev environment from it | annotated **promotion merge** `dev → main` at phase exit | pushes to `main` |
-| `trunk` | `main` — features merge here; CI deploys the dev environment from it | annotated **release tag** `v<X.Y.Z>` on `main` at phase exit | pushes of `v*` tags |
+| `trunk` | `main` — features land here **by PR** ([FWADR-035](adrs/fwadr-035-git-flow-mode.md) §"Landing under trunk"); CI deploys the dev environment from it | annotated **release tag** `v<X.Y.Z>` on `main` at phase exit | pushes of `v*` tags; direct pushes to `main` in code repos |
 
 **Reading rule for the rest of this doc set:** where a doc says `dev` as a branch, read *the integration branch* — under trunk that is `main`. Where it says "promote `dev → main`", read *the release event* — under trunk that is tagging the pushed head of `main`. Command snippets use `${INTEGRATION_BRANCH}` and are correct in both modes when `.env` is sourced (`claude-env`). Switching an existing project: [`migration-guide-trunk.md`](migration-guide-trunk.md).
 
@@ -286,7 +286,7 @@ dev-main:  feature (w-<id>/<slug>) ──merge──▶ dev ──phase-exit pro
                                                ▼                                   ▼
                                      CI deploys dev env                  CI deploys production
 
-trunk:     feature (w-<id>/<slug>) ──merge──▶ main ──phase-exit tag v<X.Y.Z>──▶ (same commit)
+trunk:     feature (w-<id>/<slug>) ───PR────▶ main ──phase-exit tag v<X.Y.Z>──▶ (same commit)
                                                │                                   │
                                                ▼                                   ▼
                                      CI deploys dev env                  CI deploys production

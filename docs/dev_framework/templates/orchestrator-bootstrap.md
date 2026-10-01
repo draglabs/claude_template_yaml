@@ -542,8 +542,20 @@ STEP 5 — Merge + push + ledger update + auto-advance.
        - Otherwise: surface to user before merging. Scope creep is the
          one field you can police without reading code.
 
-    3. Merge to DEV: `git checkout dev && git merge --no-ff <branch>`
-       with this message:
+    3. Merge to the integration branch with the message below.
+       dev-main: `git checkout dev && git merge --no-ff <branch>`.
+       trunk (FWADR-035 §"Landing under trunk" — the guard rejects a
+       direct push to main in a code repo): push the branch
+       (`git push -u origin <branch>`), open a PR whose description is
+       this message, then
+         - plan carries a `**Merge grant:**` line → merge on the host,
+           waiting for the pipeline:
+             gh pr merge <n> --merge --auto --subject "<line 1>" --body "<rest>"
+             glab mr merge <n> -m "<message>"    (auto-merges on green)
+         - no grant → offer the user the review ("PR <n> (W-<id>) is
+           ready — review it, or I merge?") and wait for their word.
+       A grant covers merging, never releasing. Then
+       `git checkout main && git pull --ff-only` before STEP 4.
 
        ```
        Merge w-<id>/<slug>: <short description>
@@ -597,7 +609,8 @@ STEP 5 — Merge + push + ledger update + auto-advance.
        If the Executor filed exceptions directly on the worktree branch,
        those are ALREADY in the file via the merge — don't duplicate.
 
-    6. Push: `git push origin dev`. In remote-hosted dev mode, CI deploys
+    6. Push (dev-main; under trunk the PR merge already landed it):
+       `git push origin dev`. In remote-hosted dev mode, CI deploys
        to {{sub}}.dev.{{website}}.com. In local-hosted dev, no deploy is
        triggered.
 
@@ -685,6 +698,13 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
     Wait for the Integrator-QA verdict.
 
   STEP 3B.5 — Handle the Integrator-QA return.
+
+    trunk: the Integrator-QA opened ONE batch PR instead of merging
+    (FWADR-035 §"Landing under trunk"). Before the ledger update below,
+    land it exactly as STEP 3 does for a single item — merge under the
+    plan's merge grant, or offer the user the review and wait — then
+    `git checkout main && git pull --ff-only`. "Merged to dev" below
+    means "landed by that PR".
 
     Verdict: `clean`
       → Integrator-QA already merged every item in the batch to dev and

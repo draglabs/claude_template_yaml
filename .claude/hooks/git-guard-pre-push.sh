@@ -7,8 +7,13 @@
 #      that updates the project's RELEASE REF unless FRAMEWORK_ALLOW_MAIN_PUSH=1
 #      is set in the environment. Which ref that is depends on GIT_FLOW:
 #        dev-main (default) → refs/heads/main      (promotion merge)
-#        trunk              → refs/tags/v*         (release tag; main is the
-#                                                   trunk and pushes freely)
+#        trunk              → refs/tags/v*         (release tag), and in code
+#                                                   repos also refs/heads/main:
+#                                                   work lands on the trunk by
+#                                                   PR, merged on the host. The
+#                                                   tracking parent (a repo that
+#                                                   holds code repos) pushes
+#                                                   main freely — plan commits.
 #      The only sanctioned setter of that variable is
 #      scripts/promote_dev_to_main.sh (phase-exit release and, with --bypass,
 #      the emergency path). GIT_FLOW is read from the process env, else from
@@ -49,6 +54,15 @@ if [[ -z "${GIT_FLOW:-}" ]]; then
 fi
 [[ "${GIT_FLOW:-}" == "trunk" ]] || GIT_FLOW="dev-main"
 
+# Is this the tracking parent (FWADR-021 tracked parent) rather than a code
+# repo? Judged by child repos, never by a .env — every code repo may carry its
+# own app .env (FWADR-033).
+repo_root="${repo_root:-$(cd "$(git rev-parse --git-common-dir 2>/dev/null || echo .git)/.." 2>/dev/null && pwd)}"
+IS_PARENT=0
+for child in "$repo_root"/*/.git; do
+  [[ -e "$child" ]] && { IS_PARENT=1; break; }
+done
+
 # stdin: one line per ref being pushed: <local ref> <local sha> <remote ref> <remote sha>
 blocked_refs=""
 env_hits=""
@@ -57,7 +71,9 @@ while read -r local_ref local_sha remote_ref remote_sha; do
 
   if [[ "${FRAMEWORK_ALLOW_MAIN_PUSH:-}" != "1" ]]; then
     case "$GIT_FLOW" in
-      trunk)    [[ "$remote_ref" == refs/tags/v* ]]        && blocked_refs+="$remote_ref"$'\n' ;;
+      trunk)    { [[ "$remote_ref" == refs/tags/v* ]] \
+                  || { [[ "$remote_ref" == "refs/heads/main" ]] && [[ "$IS_PARENT" -eq 0 ]]; }; } \
+                  && blocked_refs+="$remote_ref"$'\n' ;;
       dev-main) [[ "$remote_ref" == "refs/heads/main" ]]   && blocked_refs+="$remote_ref"$'\n' ;;
     esac
   fi
@@ -91,16 +107,27 @@ EOF
 fi
 
 if [[ -n "$blocked_refs" ]]; then
-  if [[ "$GIT_FLOW" == "trunk" ]]; then
+  if [[ "$GIT_FLOW" == "trunk" && "$blocked_refs" == *refs/heads/main* ]]; then
+    cat >&2 <<'EOF'
+[push-guard] BLOCKED: this push updates main in a code repo.
+
+  GIT_FLOW=trunk: work lands on main by PR, merged on the git host — one
+  PR per finished W-item (or batch), never a direct push. Push your feature
+  branch and open the PR:
+
+    git push -u origin <w-id/slug>
+
+  See docs/dev_framework/adrs/fwadr-035-git-flow-mode.md §"Landing under trunk".
+EOF
+  elif [[ "$GIT_FLOW" == "trunk" ]]; then
     cat >&2 <<'EOF'
 [push-guard] BLOCKED: this push creates or moves a release tag (v*).
 
-  GIT_FLOW=trunk: main is the trunk and pushes freely; PRODUCTION is
-  released by a v* tag, which only moves at phase exit through the
-  sanctioned script (it verifies the tag sits on the pushed head of main):
+  GIT_FLOW=trunk: PRODUCTION is released by a v* tag, which only moves at
+  phase exit through the sanctioned script (it verifies the tag sits on the
+  pushed head of main):
 
-    ./scripts/promote_dev_to_main.sh v<X.Y.Z>            # phase-exit release
-    ./scripts/promote_dev_to_main.sh v<X.Y.Z> --bypass   # emergency release
+    ./scripts/promote_dev_to_main.sh --repo <subdir> v<X.Y.Z> -m "<msg>"
 
   run from $PROJECT_DIR. See docs/dev_framework/adrs/fwadr-023-main-push-guard.md.
 EOF

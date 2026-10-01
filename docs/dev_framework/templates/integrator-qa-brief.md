@@ -287,6 +287,14 @@ any fix-commits you added.
 
 After all eligible merges land, push dev.
 
+**Under `GIT_FLOW=trunk`** (FWADR-035 §"Landing under trunk") the guard
+rejects a direct push to `main` in a code repo. Make the same merges on a
+`batch/{{batch-id}}` branch cut from `origin/main`, with your fix commits
+on it, push that branch, and open **one PR** for the batch — description:
+the merge-commit content above for each W-item. Do not merge it: the
+Orchestrator merges under the plan's merge grant or after offering the user
+the review. Report the PR in the return shape.
+
 ## Return shape (to the Orchestrator)
 
 Return this exact shape:
@@ -295,7 +303,7 @@ Integrator-QA batch {{batch-id}} complete.
 
 Verdict: clean | partial | integration-failure | stumped
 
-W-items merged: <list of W-ids>
+W-items merged: <list of W-ids>   (trunk: "in PR <n>: <list>")
 W-items held (open claims): <list of W-ids with IC-NNN references>
 W-items reverted: <list if any — rare>
 
