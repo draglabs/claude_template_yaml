@@ -54,10 +54,24 @@ appends each user prompt to `$PROJECT_DIR/userlog.md`, grouped by chat name.
 - **Format** matches the request: a `## <chat>` header emitted only when the
   chat changes from the previous entry, then `### <datetime>` and the message
   verbatim.
-- **Only genuine user input** is logged. Empty/whitespace prompts and subagent
-  prompts (payloads carrying `agent_id`/`agent_type`) are skipped.
-- **Silent and soft-fail.** No stdout (nothing enters the model context); the
-  script always exits 0 (a logging failure never blocks or disturbs a session).
+- **Only genuine user input** is logged. Three kinds of prompt are skipped:
+  empty/whitespace prompts; subagent prompts (payloads carrying
+  `agent_id`/`agent_type`); and harness-synthesized prompts — when a background
+  agent finishes, Claude Code queues its completion as a prompt beginning
+  `<task-notification>` and fires this hook on it, carrying no agent id.
+- **Silent, soft-fail, bounded.** No stdout (nothing enters the model
+  context); the script always exits 0 (a logging failure never blocks or
+  disturbs a session); and no step waits indefinitely. The harness kills a
+  `UserPromptSubmit` hook at a hardcoded 30s and shows the user a "timed out"
+  notice — the `timeout` field in `settings.json` cannot raise that cap. The
+  only read that could block, the payload on stdin, is a `read -t 5`; the
+  concurrent-writer lock gives up after ~1s; the transcript scan narrows with
+  `grep -F` before `jq` parses, so cost stays flat on multi-MB transcripts.
+- **Trace.** Every run appends phase markers to
+  `/tmp/claude-userlog-hook.trace` (rolling, truncated past ~200KB). If the
+  harness ever reports the hook timing out again, the last line for that
+  session and pid names the phase it stalled in. This is the diagnostic the
+  first timeout report lacked.
 - **Propagation.** The script rides the existing `.claude/hooks/` sync. The
   registration is *injected* into the adopter's `.claude/settings.json` by a new
   idempotent step in `sync-framework.sh` (§4c) — keyed on the script name, it
