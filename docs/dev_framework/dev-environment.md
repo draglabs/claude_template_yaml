@@ -78,7 +78,7 @@ The goal: `curl https://{{sub}}.dev.{{website}}.com` from anywhere hits the remo
 2. **Dev server provisioned.** If one doesn't exist, that's a prerequisite — escalate to user. Don't provision infrastructure from the Orchestrator; this is a one-time user decision, often involving billing.
 3. **Wildcard DNS.** `*.dev.{{website}}.com` → dev-server IP, at the registrar or DNS provider. Orchestrator can confirm via `dig` but doesn't edit DNS records.
 4. **TLS certificate.** Let's Encrypt wildcard (`*.dev.{{website}}.com`) via DNS-01 challenge. Caddy/Traefik on the dev server handles this automatically if pointed at the right DNS provider API.
-5. **CI deploy to dev.** Add a CI workflow on the project's git host (GitHub Actions, GitLab CI, or equivalent — per `GIT_HOST`): on push to the integration branch (`dev`; `main` under trunk), build the image and deploy to the dev server. Production deploys on push to `main` (dev-main) or on a `v*` tag (trunk). Exact mechanism is project-specific (rsync + systemctl, `docker pull` on server, Cloudron app update, …). Record the chosen mechanism in the ADR.
+5. **CI deploy to dev.** Add a CI workflow on the project's git host (GitHub Actions, GitLab CI, or equivalent — per `GIT_HOST`): on push to the integration branch (`dev`; `main` under trunk), build the image and deploy to the dev server. Production deploys on push to `main` (dev-main) or on a `v*` tag (trunk). Runner tags and the pipeline shape follow §"CI runners". Exact deploy mechanism is project-specific (rsync + systemctl, `docker pull` on server, Cloudron app update, …). Record the chosen mechanism in the ADR.
 6. **Smoke test.** Same as local — `curl` the URL, expect hello world. CI passing is not sufficient; confirm the URL actually serves the current dev commit.
 7. **Document.** Orchestrator adds deploy mechanism + server identity to the ADR.
 
@@ -138,6 +138,30 @@ Each slot carries a `hostname` (`<slot>.{{sub}}.localhost`, auto-resolves via RF
 **Sync semantics.** All four scripts and `slots.yaml` ship as **idempotent-init stubs** under `docs/dev_framework/_stubs/` in the canonical template ([FWADR-014](adrs/fwadr-014-framework-sync-on-session-start.md) sync flow). First sync copies them; subsequent syncs leave the adopter's filled-in versions alone.
 
 **Discipline.** When a script is still a stub (exit-1 with "PROJECT-SPECIFIC ... is not implemented yet"), halt — fill it in and commit before launching. Never improvise `docker run` or `docker stop` outside the scripts. The Reviewer enforces the same rule for `main_to_prod.sh`: any prod-deploy commit by a path other than `main_to_prod.sh` is a `block`.
+
+## CI runners
+
+Self-hosted runners are split by **job kind**, never by project ([FWADR-037](adrs/fwadr-037-ci-runner-topology.md)). Hosted runners (github.com) already behave this way; this section is for projects whose host runs its own runners.
+
+| Job kind | Tag | Executor | Where | Refs |
+|---|---|---|---|---|
+| verify / test / lint / build | `docker` | docker | CI runner (any box) | any |
+| deploy | `deploy` | shell | the deploy host, one runner per server | protected only (`main`, `dev`, `v*`) |
+
+Per-project `.gitlab-ci.yml` shape:
+
+```yaml
+verify:app:
+  tags: [docker]
+  image: python:3.12-slim          # real image; the executor honours it
+  services: [postgres:16-alpine]   # never `docker run postgres` in the job
+
+deploy:
+  tags: [deploy]
+  resource_group: production       # same-project deploys serialize; others run alongside
+```
+
+Rules the Developer applies when writing or touching a pipeline file: no new job against the legacy `self-hosted` tag; dependencies via `services:`; no host-toolchain assumptions (the `image:` pins the toolchain); deploy jobs only on protected refs, which the runner enforces regardless of the file. Runner registration and capacity (`concurrent`, per-runner `limit`, `request_concurrency`) are server state owned by the user, recorded in the project's deploy README.
 
 ## Relationship to production
 
