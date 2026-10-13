@@ -148,6 +148,18 @@ cat <<'EOF'
     confirmations are exempt.
 EOF
 
+# PR handoffs carry the deep link — emitted for EVERY source.
+# Conversational rule from CLAUDE.md §"Handing off a PR"; the resolver is
+# scripts/pr_link.sh, this reminder is what keeps the habit across resets.
+cat <<'EOF'
+
+[session-reorient] PR handoffs carry the deep link.
+  - Any message asking the user to review, approve or merge a PR/MR includes
+    the PR's host URL: `./scripts/pr_link.sh <n>` from $PROJECT_DIR resolves
+    it per GIT_HOST. Shape: "Review PR <n> (W-<id>): <url>". A bare
+    "waiting on PR 13" is not a handoff.
+EOF
+
 # Code-repo staleness check — runs for EVERY session-start source (FWADR-012).
 # CI and auto-promotion keep origin moving while local
 # checkouts sit idle; a stale tree is misleading exactly when it looks normal

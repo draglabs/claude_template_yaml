@@ -57,11 +57,13 @@ check_role() {
 # compaction review (F1-F3, F5) — measured 11,595 / 8,814 + ~8% headroom.
 check_role "Developer"          12500  developer.md coding-standards.md
 check_role "Strategist"          9500  strategist.md
-check_role "Orchestrator"        9000  session-policy.md
+# Orchestrator + Researcher caps +100 on 2026-10-12: Layer 0 grew by the
+# user-mandated "Handing off a PR" rule (CLAUDE.md), which every role loads.
+check_role "Orchestrator"        9100  session-policy.md
 check_role "Template Developer"  7000  template-developer.md dev_framework.md
 check_role "Curator"             5500  curator.md
 check_role "Designer"            4000  designer.md
-check_role "Researcher"          3500  researcher.md
+check_role "Researcher"          3600  researcher.md
 
 if (( fail )); then
   echo "[check-doc-weight] FAILED — a role's bootstrap load exceeds its cap (FWADR-034)."

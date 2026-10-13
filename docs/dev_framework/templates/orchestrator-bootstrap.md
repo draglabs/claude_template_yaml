@@ -552,8 +552,10 @@ STEP 5 — Merge + push + ledger update + auto-advance.
            waiting for the pipeline:
              gh pr merge <n> --merge --auto --subject "<line 1>" --body "<rest>"
              glab mr merge <n> -m "<message>"    (auto-merges on green)
-         - no grant → offer the user the review ("PR <n> (W-<id>) is
-           ready — review it, or I merge?") and wait for their word.
+         - no grant → offer the user the review WITH its deep link
+           (`./scripts/pr_link.sh <n>` from $PROJECT_DIR):
+           "Review PR <n> (W-<id>): <url> — or I merge?" and wait for
+           their word. A bare "PR <n> is ready" is not a handoff.
        A grant covers merging, never releasing. Then
        `git checkout main && git pull --ff-only` before STEP 4.
 

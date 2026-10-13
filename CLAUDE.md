@@ -75,6 +75,10 @@ Bias-correction:
 
 When one message asks the user more than one question — a numbered list, a batch confirmation, an interview block, a multi-item `AskUserQuestion` — the **last item is always "Anything else?"**. It is an open slot: the user answers the numbered items and drops extra context, corrections, or a tangent into that slot in the same reply, instead of having to interrupt the flow to volunteer it. Treat whatever lands there as first-class input, not an aside. Single questions and yes/no confirmations don't need it. English-only rule by nature (a conversational habit, not a checkable artifact); the session-reorient hook re-injects it on every context reset.
 
+## Handing off a PR
+
+A message that asks the user to review, approve, or merge a PR/MR carries the PR's host deep link, resolved by `./scripts/pr_link.sh <n>` from `$PROJECT_DIR` (host-neutral per `GIT_HOST`). Shape: `Review PR <n> (W-<id>): <url>`. Never a bare "waiting on PR 13" ([FWADR-035](docs/dev_framework/adrs/fwadr-035-git-flow-mode.md) §"Landing under trunk").
+
 ## Branch model
 
 Two modes, chosen once at first contact as `GIT_FLOW` in `.env` ([FWADR-035](docs/dev_framework/adrs/fwadr-035-git-flow-mode.md)). **`dev-main`** (default): feature branches merge to **`dev`**, dev promotes to **`main`** by merge at phase boundaries. **`trunk`**: feature branches merge to **`main`**, production is released by an annotated **`v*` tag** at phase boundaries. Sourcing `.env` derives `INTEGRATION_BRANCH` (`dev` / `main`); where a framework doc says `dev` as a branch, read the integration branch. Full flow in [`docs/dev_framework/session-policy.md`](docs/dev_framework/session-policy.md) §"Branching and isolation" and [`docs/dev_framework/dev-environment.md`](docs/dev_framework/dev-environment.md).
