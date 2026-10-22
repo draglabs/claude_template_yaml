@@ -380,7 +380,7 @@ fi
 #         whenever they differ, so framework fixes reach existing adopters.
 #         promote_dev_to_main.sh, check-touches.sh, check-researcher-scope.sh,
 #         check-curator-scope.sh, doc_churn_audit.sh, port_ledger.sh,
-#         setup_dev_slots.sh, spawn_worker.sh, pr_link.sh.
+#         setup_dev_slots.sh, spawn_worker.sh, pr_link.sh, check-ditto-stack.sh.
 #       - Seed-once stubs (project bodies or project values): copied when
 #         missing, never overwritten. launch_local.sh, teardown_local.sh,
 #         main_to_prod.sh (FWADR-019), docs/dev/slots.yaml, and .env.example
@@ -404,6 +404,7 @@ DEV_SLOT_STUBS=(
   "scripts/spawn_worker.sh"
   "scripts/port_ledger.sh"
   "scripts/pr_link.sh"
+  "scripts/check-ditto-stack.sh"
   "docs/dev/slots.yaml"
   ".env.example"
 )

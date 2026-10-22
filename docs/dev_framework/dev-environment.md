@@ -163,6 +163,29 @@ deploy:
 
 Rules the Developer applies when writing or touching a pipeline file: no new job against the legacy `self-hosted` tag; dependencies via `services:`; no host-toolchain assumptions (the `image:` pins the toolchain); deploy jobs only on protected refs, which the runner enforces regardless of the file. Runner registration and capacity (`concurrent`, per-runner `limit`, `request_concurrency`) are server state owned by the user, recorded in the project's deploy README.
 
+## Dittofeed stack
+
+Dittofeed is the standard lifecycle-email stack; each project runs its own compose stack (`dittofeed-lite`, Postgres, Temporal, ClickHouse). It is sized for ClickHouse, not for the tenant data ([FWADR-038](adrs/fwadr-038-dittofeed-stack-sizing.md)): under a 2 GiB cap ClickHouse crash-loops on its own trace logging, and the merge storm that follows a backlog needs headroom far above the ~1 GiB steady state.
+
+| Service | `mem_limit` | `cpus` | Also |
+|---|---|---|---|
+| ClickHouse | ≥ 8 GiB | 3 | system-log override mounted (below) |
+| `dittofeed-lite` | ≥ 1 GiB | 1 | |
+| Postgres / Temporal | 512 MiB / 1 GiB | | measured, not floors |
+
+Compose shape:
+
+```yaml
+clickhouse-server:
+  image: clickhouse/clickhouse-server:24.12.6.70-alpine
+  mem_limit: ${CLICKHOUSE_CONTAINER_MEM_LIMIT:?}m   # 8192
+  cpus: 3
+  volumes:
+    - ./clickhouse-config/system-logs.xml:/etc/clickhouse-server/config.d/system-logs.xml:ro
+```
+
+The override file is copied from [`_stubs/dittofeed/clickhouse-system-logs.xml`](_stubs/dittofeed/clickhouse-system-logs.xml) — the file by name, never the whole `config.d` directory. On a stack that already runs, truncate `system.text_log` before recreating the container with the mount. `./scripts/check-ditto-stack.sh <compose-file>` checks all of this; the Reviewer runs it on any diff touching the stack's compose, and the deploy README runs it before `up -d`.
+
 ## Relationship to production
 
 Dev and prod are separate CI workflows and separate URLs:

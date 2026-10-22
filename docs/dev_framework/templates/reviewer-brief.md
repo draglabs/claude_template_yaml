@@ -94,6 +94,12 @@ A non-zero exit is not by itself a `block` — the verdict still depends on
 severity (a one-line config tweak vs. a new feature). But it IS a
 verified signal you must address in question 6.
 
+If the diff touches a compose file that defines a ClickHouse service (a
+Dittofeed stack), also run `./scripts/check-ditto-stack.sh <that file>`
+from the worktree root. Each `FAIL:` line is a `block` finding — the floors
+are measured, not stylistic (FWADR-038). Exit 2 means the file would not
+resolve; report why, do not treat it as a pass.
+
 ## References (orientation-only files the Executor was given)
 
 {{paste `references` list verbatim from the W-item file's YAML frontmatter
