@@ -100,6 +100,11 @@ from the worktree root. Each `FAIL:` line is a `block` finding — the floors
 are measured, not stylistic (FWADR-038). Exit 2 means the file would not
 resolve; report why, do not treat it as a pass.
 
+If the diff touches an env-style file (`.env*`, `*.env`, compose YAML), run
+`./scripts/check-env-comments.sh <those files>`. Each line it prints is a
+`block` finding: at most two comment lines per value, the rest moves to a doc
+(`coding-standards.md` §"Environment variables").
+
 ## References (orientation-only files the Executor was given)
 
 {{paste `references` list verbatim from the W-item file's YAML frontmatter

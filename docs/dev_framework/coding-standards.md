@@ -75,7 +75,7 @@ When introducing any value that might change independently of the file it's in, 
 ### Environment variables
 
 - **No silent fallbacks.** If an env var is required, throw at startup if it's missing. `process.env.FOO || "default"` is almost always wrong for infrastructure values.
-- **Document every env var** in `.env.example` with its purpose and an example value.
+- **Document every env var** in `.env.example` with its purpose and an example value — in **at most two comment lines** directly above it. Longer explanation lives in the ADR or doc the comment names, never in the file; a wall of comments makes an env file unreadable. Same rule for every env-style file (`.env*`, `*.env`, compose YAML). `scripts/check-env-comments.sh` fails on any longer comment run.
 - **Dev vs prod:** If a value legitimately differs between environments, use an env var. If it's the same everywhere, use a constant with a comment pointing to why.
 
 ## Docs-first workflow

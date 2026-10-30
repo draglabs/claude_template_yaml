@@ -1,45 +1,17 @@
 <!--
   ClickHouse system-log hygiene for a Dittofeed stack (FWADR-038).
-
-  Copy this file into the stack's deploy directory and bind-mount it by name:
-
-    clickhouse-server:
-      volumes:
-        - ./clickhouse-config/system-logs.xml:/etc/clickhouse-server/config.d/system-logs.xml:ro
-
-  Mount the FILE, not the config.d directory — the image's own
-  config.d/docker_related_config.xml carries listen_host and must stay.
-  config.d merges into config.xml: elements named here override the
-  same-named children of the stock sections and add the missing ones.
-
-  Why this exists: the stock clickhouse-server image ships system.text_log
-  at <level>trace</level> with no TTL, so every internal trace line becomes
-  a MergeTree row. On the shared host that reached 24 GiB / 394M rows in six
-  weeks against ~11 MiB of tenant data, and under a small memory cap formed a
-  feedback loop: memory-limit errors wrote trace rows, trace-row merges ate
-  the memory, more errors. Evidence in FWADR-038.
-
-  Retention windows are the only tunables. They are not secrets and not
-  per-instance; a change is a compose-shape change applied the way the
-  stack's README says. A TTL change makes ClickHouse rename the live table
-  (e.g. system.text_log_0) and create a fresh one — drop the renamed copy
-  once its history is no longer wanted.
-
-  Applying to a stack that already has a large text_log: truncate first
-  (`TRUNCATE TABLE system.text_log`), then recreate the container with this
-  file mounted. Mounting first schedules a merge storm over the old parts —
-  measured at 7.5 GiB tracked on an 8 GiB cap.
+  Copy into the stack's deploy dir and bind-mount this FILE by name into
+  /etc/clickhouse-server/config.d/ — never the whole directory.
+  On a running stack: TRUNCATE TABLE system.text_log first, then recreate.
 -->
 <clickhouse>
-    <!-- The bloat source. warning+ only; errors still land here (and in
-         system.error_log + clickhouse-server.err.log), trace/debug/info
-         do not. -->
+    <!-- The bloat source: stock level is trace with no TTL. -->
     <text_log>
         <level>warning</level>
         <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
     </text_log>
 
-    <!-- High-frequency samplers (1 s default collect interval). -->
+    <!-- 1 s samplers: a week is plenty. -->
     <metric_log>
         <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
     </metric_log>
@@ -56,8 +28,7 @@
         <ttl>event_date + INTERVAL 7 DAY DELETE</ttl>
     </processors_profile_log>
 
-    <!-- Diagnostic history worth a month: what ran, what failed, what
-         merged. These are what a runbook queries. -->
+    <!-- What ran, failed and merged: a month for runbook queries. -->
     <query_log>
         <ttl>event_date + INTERVAL 30 DAY DELETE</ttl>
     </query_log>

@@ -121,6 +121,12 @@ if [[ "$PROJECT_DIR" == "$TEMPLATE_ROOT" ]]; then
     "$PROJECT_DIR/scripts/check-dead-prose.sh" \
       || echo "[sync-framework] WARN: dead-prose check FAILED — rewrite in place before committing (FWADR-036)."
   fi
+  # Template-only lint: the shipped env stub keeps to two comment lines per value.
+  if [[ -x "$PROJECT_DIR/docs/dev_framework/_stubs/scripts/check-env-comments.sh" ]]; then
+    "$PROJECT_DIR/docs/dev_framework/_stubs/scripts/check-env-comments.sh" \
+      "$PROJECT_DIR/docs/dev_framework/_stubs/.env.example" \
+      || echo "[sync-framework] WARN: env-comment check FAILED — trim the stub before committing (coding-standards.md)."
+  fi
   exit 0
 fi
 
@@ -380,7 +386,8 @@ fi
 #         whenever they differ, so framework fixes reach existing adopters.
 #         promote_dev_to_main.sh, check-touches.sh, check-researcher-scope.sh,
 #         check-curator-scope.sh, doc_churn_audit.sh, port_ledger.sh,
-#         setup_dev_slots.sh, spawn_worker.sh, pr_link.sh, check-ditto-stack.sh.
+#         setup_dev_slots.sh, spawn_worker.sh, pr_link.sh, check-ditto-stack.sh,
+#         check-env-comments.sh.
 #       - Seed-once stubs (project bodies or project values): copied when
 #         missing, never overwritten. launch_local.sh, teardown_local.sh,
 #         main_to_prod.sh (FWADR-019), docs/dev/slots.yaml, and .env.example
@@ -405,6 +412,7 @@ DEV_SLOT_STUBS=(
   "scripts/port_ledger.sh"
   "scripts/pr_link.sh"
   "scripts/check-ditto-stack.sh"
+  "scripts/check-env-comments.sh"
   "docs/dev/slots.yaml"
   ".env.example"
 )
