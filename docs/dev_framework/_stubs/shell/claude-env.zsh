@@ -18,12 +18,14 @@
 # session-start sync hook emits a NOTICE when it detects a session that was
 # launched unbound.
 #
-# Three named variants — the choice is made at every launch by name (FWADR-032):
-#   claude-env       [dir]  → source .env, launch claude (normal permission prompts)
-#   claude-env-yolo  [dir]  → same, + --dangerously-skip-permissions
-#   load-env         [dir]  → source .env into the CURRENT shell, no claude launch
-#                             (for running framework scripts by hand, or getting
-#                             FWADR-030 git auth in a plain terminal)
+# Four named variants — the choice is made at every launch by name (FWADR-032):
+#   claude-env             [dir] → source .env, launch claude (normal permission prompts)
+#   claude-env-yolo        [dir] → same, + --dangerously-skip-permissions
+#   claude-env-extra-yolo  [dir] → same as yolo, + CLAUDE_CODE_EVEN_MORE_DANGEROUSLY_SKIP_PERMISSIONS=1
+#                                  in claude's process env only (never exported to your shell)
+#   load-env               [dir] → source .env into the CURRENT shell, no claude launch
+#                                  (for running framework scripts by hand, or getting
+#                                  FWADR-030 git auth in a plain terminal)
 
 _claude_env_source() {
   if [ -n "$1" ]; then
@@ -54,11 +56,20 @@ _claude_env_source() {
 _claude_env_launch() {
   local mode="$1"; shift
   local -a flags
-  [ "$mode" = "yolo" ] && flags=(--dangerously-skip-permissions)
+  case "$mode" in
+    yolo|extra-yolo) flags=(--dangerously-skip-permissions) ;;
+  esac
   _claude_env_source "$@" || return 1
-  claude "${flags[@]}"
+  if [ "$mode" = "extra-yolo" ]; then
+    # Prefix assignment: the override reaches claude's process env only, so a
+    # later plain `claude` from this same shell stays unaffected.
+    CLAUDE_CODE_EVEN_MORE_DANGEROUSLY_SKIP_PERMISSIONS=1 claude "${flags[@]}"
+  else
+    claude "${flags[@]}"
+  fi
 }
 
-claude-env()      { _claude_env_launch safe "$@"; }
-claude-env-yolo() { _claude_env_launch yolo "$@"; }
-load-env()        { _claude_env_source "$@"; }
+claude-env()            { _claude_env_launch safe "$@"; }
+claude-env-yolo()       { _claude_env_launch yolo "$@"; }
+claude-env-extra-yolo() { _claude_env_launch extra-yolo "$@"; }
+load-env()              { _claude_env_source "$@"; }

@@ -115,11 +115,13 @@ Claude Code expands env vars from its **own process env**, not `.env`. Launch vi
 ```bash
 claude-env [dir]         # source .env, then claude (normal permission prompts)
 claude-env-yolo [dir]    # same, + --dangerously-skip-permissions
+claude-env-extra-yolo [dir]  # yolo + CLAUDE_CODE_EVEN_MORE_DANGEROUSLY_SKIP_PERMISSIONS=1
+                         # (set in claude's process env only; your shell is untouched)
 load-env [dir]           # source .env into the current shell, NO claude launch
                          # (manual script runs, git auth in a bare terminal)
 ```
 
-Both refuse to launch without a `.env` in the target directory. Manual fallback: `set -a; source .env; set +a` then `claude`. Sessions launched bare get a `[sync-framework]` NOTICE at session start — MCP credentials and git auth ([FWADR-030](docs/dev_framework/adrs/fwadr-030-git-auth-recipe.md)) will not bind until relaunch.
+All of them refuse to launch without a `.env` in the target directory. Manual fallback: `set -a; source .env; set +a` then `claude`. Sessions launched bare get a `[sync-framework]` NOTICE at session start — MCP credentials and git auth ([FWADR-030](docs/dev_framework/adrs/fwadr-030-git-auth-recipe.md)) will not bind until relaunch.
 
 **Env scope ([FWADR-033](docs/dev_framework/adrs/fwadr-033-env-scope-rule.md)):** `$PROJECT_DIR/.env` is the **operator env** — framework identity, host tokens, MCP credentials; sourced wholesale at launch, ambient in every session and worker. App runtime secrets (database URLs, API keys) live in the **app env** at `$CODE_ROOT/.env` per code repo, never at the parent. Litmus: belongs in the deployed container's environment → app env; consumed by the tooling around the code → operator env. The pre-push guard blocks pushes that track a `.env`; session-start sync maintains `.env.<subdir>` read-convenience links at the parent (never sourced).
 

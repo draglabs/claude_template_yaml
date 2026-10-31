@@ -2,7 +2,8 @@
 # install-claude-env.sh — wire the claude-env launchers into a shell rc (FWADR-032).
 #
 # Installs by appending ONE line to your rc:  source <abs-path>/claude-env.zsh
-# The snippet defines claude-env / claude-env-yolo / load-env; despite the
+# The snippet defines claude-env / claude-env-yolo / claude-env-extra-yolo /
+# load-env; despite the
 # .zsh name its functions are bash-compatible, so the same file serves both
 # shells. Idempotent: if the rc already mentions claude-env, does nothing.
 #
@@ -44,7 +45,7 @@ if [[ -f "$RC" ]] && grep -q 'claude-env' "$RC"; then
 fi
 
 {
-  printf '\n# claude-env / claude-env-yolo / load-env launchers (FWADR-032)\n'
+  printf '\n# claude-env / claude-env-yolo / claude-env-extra-yolo / load-env launchers (FWADR-032)\n'
   printf 'source %q\n' "$SNIPPET"
 } >> "$RC"
 echo "[install-claude-env] Added to $RC:"
