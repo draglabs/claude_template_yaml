@@ -123,11 +123,11 @@ Every mockup should look good at 375px width first, then scale up.
 1440px  — desktop
 ```
 
-## How the Orchestrator consumes mockups
+## How builders consume mockups
 
-The Orchestrator reads `mockups/src/` directly when building production pages. No branch merging needed — the mockups are right there on `main`.
+Executors and the Developer read `mockups/src/` and `mockups/docs/README.md` directly on `main` when building production pages. No branch merging.
 
-The Orchestrator reads `mockups/docs/README.md` for the user-approved UX direction. It does NOT need to match mockups pixel-for-pixel. Mockups set direction; production code adapts to real constraints.
+**Mockups set direction; the builder holds the override** ([FWADR-039](adrs/fwadr-039-builder-override-over-mockups.md)). When a real constraint the mockup never saw — an empty ad slot, a simplified data shape, a skipped viewport — makes it wrong, the builder deviates without asking and records it on the W-item. Permanent, not an exception: you explore on fixtures and cannot pre-empt production. The Live concept brings it back to you at your next session start; propose a better answer as a new concept if you have one.
 
 ## Multi-surface apps
 

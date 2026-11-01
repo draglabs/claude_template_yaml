@@ -108,7 +108,7 @@ Subagent briefs (load on spawn, not at session start):
 | Instance | Coordinates via |
 |---|---|
 | Strategist | Opens `planning:` PRs with feature specs and roadmap changes |
-| Designer | Opens `design:` PRs with mockup concepts (user approves before actionable) |
+| Designer | Opens `design:` PRs with mockup concepts (user approves before actionable; direction, not binding — builders override on real constraints, [FWADR-039](adrs/fwadr-039-builder-override-over-mockups.md)) |
 | Orchestrator | Reads `planning:` and `design:` PRs via the host CLI (`gh pr list --label` / `glab mr list --label`), merges to acknowledge, then dispatches Executors on `w-<id>/<slug>` branches |
 
 This is async-safe: each instance operates on its own surface, signals work via PR labels, and never blocks the others.

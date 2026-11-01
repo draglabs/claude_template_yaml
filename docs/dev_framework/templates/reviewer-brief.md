@@ -105,6 +105,11 @@ If the diff touches an env-style file (`.env*`, `*.env`, compose YAML), run
 `block` finding: at most two comment lines per value, the rest moves to a doc
 (`coding-standards.md` §"Environment variables").
 
+A diff that deviates from `mockups/` is not a finding — the builder holds
+the override ([FWADR-039](../adrs/fwadr-039-builder-override-over-mockups.md)).
+A deviation with no line under Execution notes / the Implementation log
+saying what changed and why is a LOW, never a block.
+
 ## References (orientation-only files the Executor was given)
 
 {{paste `references` list verbatim from the W-item file's YAML frontmatter

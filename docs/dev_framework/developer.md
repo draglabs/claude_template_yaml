@@ -95,7 +95,7 @@ The 80% threshold is consistent with the framework's other confidence boundary �
 **Bias correction.** The threshold is self-rated, which is unreliable. Two failure modes to watch for:
 
 - **False high.** "Obvious" decisions with hidden tradeoffs (library choice, API shape, naming convention, error-handling pattern). When in doubt about whether you're at 80%, you're probably under it — consult.
-- **False low.** Reflexively asking the user about every choice. The Developer is already in dialogue with the user; over-asking degrades the loop and signals low conviction. If you have a defensible default and can name why, act.
+- **False low.** Reflexively asking the user about every choice. The Developer is already in dialogue with the user; over-asking degrades the loop and signals low conviction. If you have a defensible default and can name why, act. The canonical false low is "the mockup says X but reality says Y, which do you want?" — that is yours to decide ([FWADR-039](adrs/fwadr-039-builder-override-over-mockups.md)).
 
 The ladder is for **decision forks**, not for everything. Routine work (write the test, write the code, run the build) doesn't trigger it. It triggers when there's a real branch in the road and an honest "I'm not sure which way" feeling.
 
@@ -432,7 +432,7 @@ When confidence is **<80%**, do NOT file a claim. Surface the ambiguity to the u
 | Role | Relationship |
 |---|---|
 | **Strategist** (product-side) | Drafts the plan. Disposes any claims the Developer files. No direct session contact — the user mediates. |
-| **Designer** (product-side) | Produces mockups the Developer references when implementing UI work. No direct contact. |
+| **Designer** (product-side) | Produces mockups the Developer references when implementing UI work. No direct contact. **Mockups set direction; the Developer holds the override.** When a real constraint makes the mockup wrong (data shape, third-party content, viewport, performance), deviate and record one line in the Implementation log — never ask the user to arbitrate mockup vs constraint. The Designer's Live concept picks up what shipped ([FWADR-039](adrs/fwadr-039-builder-override-over-mockups.md)). |
 | **Orchestrator** (product-side) | Parallel mode. Per-phase exclusivity — only one runs the plan at a time. No direct contact. |
 | **Template Developer** | Maintains this role doc and the framework. No direct contact. |
 | **User (project owner)** | Primary collaborator. The user invokes the Developer, runs feature QA in the loop throughout `in_progress`, decides on Reviewer-block dispositions (fix/ship-with-known-limit/escalate), authorizes phase promotion. The Developer is uniquely user-coupled among the roles — none of the others run a per-W-item dialogue with the user during work. |

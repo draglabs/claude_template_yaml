@@ -115,6 +115,11 @@ STEP 3 — Write.
 ## Locked decisions that constrain this work
 {{paste relevant locked decisions from CLAUDE.md}}
 
+Mockups under `mockups/` are direction, not locked decisions. When a real
+constraint makes a mockup wrong, deviate and write one line under
+`## Execution notes` (what the mockup showed, what you built, why). Do not
+stall or return a question on it ([FWADR-039](../adrs/fwadr-039-builder-override-over-mockups.md)).
+
 ## Prior concerns (retry-cycle only — ignore if Retry cycle = no)
 {{only populated when Orchestrator is re-dispatching on Reviewer block
   or QA fail. Verbatim concerns from the prior gate:

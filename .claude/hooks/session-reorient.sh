@@ -148,6 +148,18 @@ cat <<'EOF'
     confirmations are exempt.
 EOF
 
+# Builder override over mockups — emitted for EVERY source (FWADR-039).
+# Judgment rule with no checkable artifact; this reminder is what stops a
+# builder from handing the user a "mockup vs constraint" question after a reset.
+cat <<'EOF'
+
+[session-reorient] Mockups set direction; the builder holds the override.
+  - If you build (Developer, Executor): when a real constraint makes a mockup
+    wrong, deviate and record one line (mockup showed / shipped / why). Never
+    ask the user to arbitrate mockup vs constraint — that is your call
+    (FWADR-039). The Designer's Live concept picks up what shipped.
+EOF
+
 # PR handoffs carry the deep link — emitted for EVERY source.
 # Conversational rule from CLAUDE.md §"Handing off a PR"; the resolver is
 # scripts/pr_link.sh, this reminder is what keeps the habit across resets.
