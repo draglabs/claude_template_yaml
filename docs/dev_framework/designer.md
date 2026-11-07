@@ -13,6 +13,12 @@ The Designer is a persistent Claude Code session (work tier — see [`session-po
 5. **Writes a design brief** — `mockups/docs/README.md` describing each concept, key UX decisions, and open questions.
 6. **Commits to main** — writes are scoped to `mockups/` so there's no conflict with the Orchestrator's production code.
 
+## Under Paperclip mode
+
+As the `FW_Designer` agent on a Paperclip board the role is unchanged;
+[`paperclip-mode.md`](paperclip-mode.md) holds every difference
+([FWADR-040](adrs/fwadr-040-paperclip-mode.md)).
+
 ## What it does not do
 
 - Does not implement backend logic, API routes, or database queries.

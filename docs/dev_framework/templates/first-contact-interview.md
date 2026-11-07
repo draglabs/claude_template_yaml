@@ -85,6 +85,17 @@ Everything downstream assumes Claude Code was launched with `.env` in its proces
 | Which project-specific MCP servers does this project need beyond the defaults? Examples: postgres/mysql for direct schema queries, a gitlab server when `GIT_HOST=gitlab` (the github MCP only applies to GitHub-hosted repos), slack for alerts, linear/jira if issues live off the git host. | Each addition follows [`../approved-mcps.md`](../approved-mcps.md) §"How to add a new MCP": `.mcp.json` entry + a doc entry in the same commit. In adopter repos the doc entry goes in `dev_framework_exceptions.md` §"Project MCPs" (NOT `approved-mcps.md` — that file is destructively synced). Credentials via env — remind the user that launching via `claude-env` (Block 0) is what binds them. |
 | Any shipped default this project will never use? | User waiver, recorded in `dev_framework_exceptions.md` so the health check stops flagging it. Remove the `.mcp.json` entry or leave it waived — user's call. |
 
+**Block 4 — Paperclip (optional; fills `.env` + a "Paperclip" section in `dev_framework_exceptions.md`; [FWADR-040](../adrs/fwadr-040-paperclip-mode.md)):**
+
+Ask only if the user runs a Paperclip board. Skipping leaves the `PAPERCLIP_*` lines commented and the sync hook's pin check off.
+
+| Question | Where it lands |
+|---|---|
+| Will this project's roles run as agents on a Paperclip board? Which board URL, and under which company name? | `PAPERCLIP_API_URL=`, `PAPERCLIP_COMPANY=` (defaults to `PROJECT_NAME`); the board API key goes in `PAPERCLIP_API_KEY=` — the user pastes it, never the interviewer |
+| Which repo on the git host is the planning repo the agents read `CLAUDE.md` and the exceptions file from? | `PAPERCLIP_PLANNING_REPO=owner/repo` |
+| Where do the agents run (host, user), how do they authenticate to the git host there, what is the server map and the production definition, and what must they never touch? | A "Paperclip" section in `dev_framework_exceptions.md` — the agents read it every run; nothing of this goes into the framework package |
+| Is there already an agent in the company whose adapter and environment the `FW_*` agents should copy? | `PAPERCLIP_TEMPLATE_AGENT=` (default `Lead`); then **run, don't ask**: `./scripts/paperclip_company.py sync --dry-run`, show the user, `sync` |
+
 ## Fill format for CLAUDE.md placeholders
 
 The template ships bullets in a "scaffolding" shape:

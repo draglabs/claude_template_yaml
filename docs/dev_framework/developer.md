@@ -21,6 +21,12 @@ For multi-repo projects, check the W-item's `target-repo:` YAML frontmatter fiel
 
 `<project>` in worktree paths (e.g. `/tmp/worktrees/<project>/`) = `basename $CODE_ROOT` = the git repo name.
 
+## Under Paperclip mode
+
+As `FW_Developer` or `FW_Parallel_Developer` on a Paperclip board the role is unchanged;
+[`paperclip-mode.md`](paperclip-mode.md) holds every difference
+([FWADR-040](adrs/fwadr-040-paperclip-mode.md)).
+
 ## Invocation patterns
 
 The Developer has two named invocations sharing one role doc, lifecycle, and discipline. The user picks at session start based on whether another Developer session is already running.

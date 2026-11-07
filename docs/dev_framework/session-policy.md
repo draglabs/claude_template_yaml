@@ -17,6 +17,12 @@ The Integrator-QA additionally requires the **long-context variant** available a
 
 **Invariant: a review gate runs at a tier ≥ the tier that wrote the code.** Subagents inherit the parent session's model by default in the current harness — so the spawner sets the work-tier model *explicitly* for Executors/QA/consultants, and for a Reviewer either inherits (when the session itself runs top tier) or explicitly sets the top-tier model. Merge-commit trailers record the **actual resolved model names**, never names copied from a template. See [FWADR-022](adrs/fwadr-022-runtime-recalibration.md).
 
+## Under Paperclip mode
+
+As the `FW_Orchestrator` agent on a Paperclip board this policy is unchanged;
+[`paperclip-mode.md`](paperclip-mode.md) holds every difference
+([FWADR-040](adrs/fwadr-040-paperclip-mode.md)).
+
 ## Roles
 
 | Role | Played by | Responsibility |

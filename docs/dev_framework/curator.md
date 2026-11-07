@@ -12,6 +12,13 @@ The Curator exists to hold the **opposite** incentive. Where the Strategist asks
 
 That inversion is the entire point of the role separation. It is also why the Curator does not get to act on its own conclusions — see §"Proposes, never disposes."
 
+## Under Paperclip mode
+
+As the `FW_Curator` agent on a Paperclip board the role is unchanged;
+[`paperclip-mode.md`](paperclip-mode.md) holds every difference and two added duties: the
+issue/W-item divergence report and the recurring framework-alignment check
+([FWADR-040](adrs/fwadr-040-paperclip-mode.md)).
+
 ## What it audits
 
 - **ADRs** — deprecation candidates, dead ADRs nothing references, and **over-churned ADRs**. High commit-churn is the signal that the project is *fighting* a decision rather than following it. An ADR revised many times is usually mis-scoped: too restrictive, too broad, or describing a decision that was never actually settled. The fix is rarely another revision — it is re-scoping, splitting, or retiring it outright.

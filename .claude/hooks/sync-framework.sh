@@ -416,6 +416,7 @@ DEV_SLOT_STUBS=(
   "scripts/check-env-comments.sh"
   "scripts/check-ci-placement.sh"
   "scripts/dev_harness.sh"
+  "scripts/paperclip_company.py"
   "docs/dev/slots.yaml"
   ".env.example"
 )
@@ -513,6 +514,26 @@ if [[ -x "$CI_CHECK" ]]; then
   for subdir in "$PROJECT_DIR"/*/; do
     [[ -d "$subdir/.git" ]] && check_ci_placement "${subdir%/}"
   done
+fi
+
+# ---------------------------------------------------------------------------
+# 5f. Paperclip pin check (FWADR-040). A project that runs the framework's roles
+#     as Paperclip agents pins them to one framework commit; the template moving
+#     past it is drift the project should see. Only when the operator .env names
+#     a board (PAPERCLIP_API_URL) and the session was launched with it bound.
+#     Detection only — bumping the pin is a deliberate act:
+#     ./scripts/paperclip_company.py sync
+# ---------------------------------------------------------------------------
+
+PC_CHECK="$TEMPLATE_ROOT/docs/dev_framework/_stubs/scripts/paperclip_company.py"
+if [[ -n "${PAPERCLIP_API_URL:-}" && -n "${PAPERCLIP_API_KEY:-}" && -x "$PC_CHECK" ]]; then
+  pc_out="$(cd "$PROJECT_DIR" && timeout 20 "$PC_CHECK" status 2>&1 || true)"
+  if printf '%s\n' "$pc_out" | grep -q '^DRIFT'; then
+    echo "[sync-framework] NOTICE: Paperclip agents are pinned behind the framework (FWADR-040). Bump with ./scripts/paperclip_company.py sync"
+    printf '%s\n' "$pc_out" | grep '^DRIFT' | head -3 | sed 's/^/[sync-framework]   /'
+  elif ! printf '%s\n' "$pc_out" | grep -q '^aligned'; then
+    echo "[sync-framework] NOTICE: Paperclip pin check did not complete: $(printf '%s\n' "$pc_out" | tail -1)"
+  fi
 fi
 
 # ---------------------------------------------------------------------------

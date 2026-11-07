@@ -100,6 +100,7 @@ Subagent briefs (load on spawn, not at session start):
 | Context budget (what each role loads) | [`context-management.md`](context-management.md) | Reference — loaded on demand |
 | Approved MCPs (tools each role uses; config + health owned by Strategist) | [`approved-mcps.md`](approved-mcps.md) | Reference — loaded when adding or evaluating an MCP; Strategist runs the session-start health check per [`strategist.md`](strategist.md) §"MCP health check" |
 | Dev environment (local vs remote `{{sub}}.dev.{{website}}.com`) | [`dev-environment.md`](dev-environment.md) | Orchestrator on first-time setup; loaded on demand otherwise |
+| Paperclip mode (how a role is played from an issue; record rule; carve-outs) | [`paperclip-mode.md`](paperclip-mode.md) | Every `FW_*` agent, every run; a human only when setting a company up ([FWADR-040](adrs/fwadr-040-paperclip-mode.md)) |
 | Process exceptions (raw field reports from agents) | [`process-exceptions.md`](../framework_exceptions/process-exceptions.md) | Appended to by any agent that hits process friction; read by Strategist at phase boundaries |
 | Process incidents (analyzed: root cause + fix) | [`execution-incidents.md`](../framework_exceptions/execution-incidents.md) | Promoted from process-exceptions by Strategist when an entry warrants full post-mortem |
 
@@ -144,6 +145,21 @@ Pushing the release ref (`main`, or `v*` tags under trunk) is mechanically block
 2. **CI-only deploys to production.** Production changes land via the release push (`main` under dev-main, a `v*` tag under trunk) → CI. Never from a laptop. Never via `docker exec`. Dev environment behavior depends on mode — see [`dev-environment.md`](dev-environment.md).
 
 Code-level rules (TDD, no hardcoded lifecycle values, fail loudly) live in [`coding-standards.md`](coding-standards.md) and are enforced by the Executor (writing) and Reviewer (checking) subagent briefs. The Orchestrator and Strategist do NOT load that doc — they delegate enforcement to the subagent layer.
+
+## Paperclip mode
+
+The roles can run as agents on a [Paperclip](https://github.com/paperclipai/paperclip) board
+instead of as chat sessions ([FWADR-040](adrs/fwadr-040-paperclip-mode.md)). Nothing is
+rewritten for it: one framework project is one Paperclip company; each role is an `FW_<Role>`
+agent whose instructions are a **reading list** (the project's `CLAUDE.md` and exceptions
+file from its planning repo, the role's Layer-1 docs at a pinned framework commit) plus
+[`paperclip-mode.md`](paperclip-mode.md), the one document that says what differs when the
+user is a board rather than a chat: questions become cards, approval becomes a first
+comment, subagent dispatch becomes child issues, the Reviewer becomes the human merge, and
+working notes live on the issue between milestones and reach the W-item log by MR at each
+one. Git stays the record; Paperclip is the queue. The package that creates a company is
+[`paperclip/`](../../paperclip/) in the template repo; `scripts/paperclip_company.py`
+renders it and reports when the pin is behind the template.
 
 ## When to suspend the SOP
 

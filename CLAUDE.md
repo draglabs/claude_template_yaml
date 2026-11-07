@@ -44,6 +44,8 @@ Every role also reads this file (CLAUDE.md) as Layer 0 — the always-loaded bas
 
 **SOP overview:** [`docs/dev_framework/dev_framework.md`](docs/dev_framework/dev_framework.md) — read this if you're not sure which role you are, or you need the big picture (subagent stack, PR-based handoff, context layering).
 
+**Paperclip mode:** [`docs/dev_framework/paperclip-mode.md`](docs/dev_framework/paperclip-mode.md) — the one document that differs when a role runs as an `FW_<Role>` agent on a Paperclip board ([FWADR-040](docs/dev_framework/adrs/fwadr-040-paperclip-mode.md)).
+
 **Project deviations from the SOP:** [`docs/framework_exceptions/dev_framework_exceptions.md`](docs/framework_exceptions/dev_framework_exceptions.md) — per-project overrides maintained by the Strategist. Every role loads this alongside CLAUDE.md at session start. The framework docs themselves are canonical and are not edited per-project; deviations go in the exceptions file, not into the framework.
 
 ## Two process rules (every session)
