@@ -78,7 +78,7 @@ The goal: `curl https://{{sub}}.dev.{{website}}.com` from anywhere hits the remo
 2. **Dev server provisioned.** If one doesn't exist, that's a prerequisite — escalate to user. Don't provision infrastructure from the Orchestrator; this is a one-time user decision, often involving billing.
 3. **Wildcard DNS.** `*.dev.{{website}}.com` → dev-server IP, at the registrar or DNS provider. Orchestrator can confirm via `dig` but doesn't edit DNS records.
 4. **TLS certificate.** Let's Encrypt wildcard (`*.dev.{{website}}.com`) via DNS-01 challenge. Caddy/Traefik on the dev server handles this automatically if pointed at the right DNS provider API.
-5. **CI deploy to dev.** Add a CI workflow on the project's git host (GitHub Actions, GitLab CI, or equivalent — per `GIT_HOST`): on push to the integration branch (`dev`; `main` under trunk), build the image and deploy to the dev server. Production deploys on push to `main` (dev-main) or on a `v*` tag (trunk). Runner tags and the pipeline shape follow §"CI runners". Exact deploy mechanism is project-specific (rsync + systemctl, `docker pull` on server, Cloudron app update, …). Record the chosen mechanism in the ADR.
+5. **CI deploy to dev.** Add a CI workflow on the project's git host (GitHub Actions, GitLab CI, or equivalent — per `GIT_HOST`): on push to the integration branch (`dev`; `main` under trunk), build the image and deploy to the dev server. Production deploys on push to `main` (dev-main) or on a `v*` tag (trunk). Runner tags and the pipeline shape follow §"CI runners": the deploy job runs on the ephemeral runner host and reaches dev over SSH with a deploy key held as a protected CI variable; its last step runs the post-deploy harness on dev. Exact deploy mechanism is project-specific (rsync + systemctl, `docker pull` on server, Cloudron app update, …). Record the chosen mechanism in the ADR, and run `./scripts/check-ci-placement.sh $CODE_ROOT` before the first push.
 6. **Smoke test.** Same as local — `curl` the URL, expect hello world. CI passing is not sufficient; confirm the URL actually serves the current dev commit.
 7. **Document.** Orchestrator adds deploy mechanism + server identity to the ADR.
 
@@ -141,12 +141,15 @@ Each slot carries a `hostname` (`<slot>.{{sub}}.localhost`, auto-resolves via RF
 
 ## CI runners
 
-Self-hosted runners are split by **job kind**, never by project ([FWADR-037](adrs/fwadr-037-ci-runner-topology.md)). Hosted runners (github.com) already behave this way; this section is for projects whose host runs its own runners.
+**Every runner lives on the ephemeral host (`SERVER_EPHEMERAL`); dev and prod run none** ([FWADR-037](adrs/fwadr-037-ci-runner-topology.md)). Runners are split by **job kind**, never by project. Hosted runners (github.com) are already off-box per-job containers; for them only the datastore rule below applies.
 
-| Job kind | Tag | Executor | Where | Refs |
+| Job kind | Tag | Executor | Reaches the target by | Refs |
 |---|---|---|---|---|
-| verify / test / lint / build | `docker` | docker | CI runner (any box) | any |
-| deploy | `deploy` | shell | the deploy host, one runner per server | protected only (`main`, `dev`, `v*`) |
+| verify / test / lint / build | `docker` | docker, `image:` pins the toolchain | — | any |
+| deploy | `deploy` | shell on ephemeral | SSH with a deploy key from a protected, masked CI variable | protected only (`main`, `dev`, `v*`) |
+| *(transitional)* | `ephemeral-shell` | shell on ephemeral | — | any; reported by the check, migrate to `docker` |
+
+**What runs where.** CI is deterministic only: lint, typecheck, unit tests, diff/consistency analysis, image build. Everything progressive — integration suites, end-to-end flows, anything that needs a database or another service — is the **post-deploy harness**: the deploy job's last step runs the code repo's `scripts/dev_harness.sh` on the dev host (seeded stub; the project's ADR fills the body), against dev's own live services and seed data, and its exit code is the job's. Dev exposes the deployed branch and commit and the last harness report. **No datastore ever starts inside a CI job** — not `docker run postgres`, not `services:`. The dev Postgres exists once, on dev, seeded with dummy data; migrations carry it forward; flush-and-reseed is the rare reset. A test that must touch Postgres from a runner, for a documented reason, connects to the live dev instance (`DEV_DATABASE_URL`, protected CI variable) and never stands up its own.
 
 Per-project `.gitlab-ci.yml` shape:
 
@@ -154,14 +157,18 @@ Per-project `.gitlab-ci.yml` shape:
 verify:app:
   tags: [docker]
   image: python:3.12-slim          # real image; the executor honours it
-  services: [postgres:16-alpine]   # never `docker run postgres` in the job
+  script: [pytest tests/unit]      # deterministic only; no services:, no docker run <datastore>
 
-deploy:
+deploy:dev:
   tags: [deploy]
   resource_group: production       # same-project deploys serialize; others run alongside
+  rules: [{ if: $CI_COMMIT_BRANCH == "dev" }]
+  script:
+    - ssh deploy@$SERVER_DEV 'cd /srv/app && ./deploy.sh'
+    - ssh deploy@$SERVER_DEV 'cd /srv/app && scripts/dev_harness.sh'   # the real tests run here
 ```
 
-Rules the Developer applies when writing or touching a pipeline file: no new job against the legacy `self-hosted` tag; dependencies via `services:`; no host-toolchain assumptions (the `image:` pins the toolchain); deploy jobs only on protected refs, which the runner enforces regardless of the file. Runner registration and capacity (`concurrent`, per-runner `limit`, `request_concurrency`) are server state owned by the user, recorded in the project's deploy README.
+**Mechanism:** `./scripts/check-ci-placement.sh <repo>` (framework-owned) FAILs on `self-hosted`, on an untagged job, and on a datastore under `services:` or in a `docker run` line; WARNs on `ephemeral-shell` and on a deploy job that never calls the harness. SessionStart runs it for every code repo and emits a NOTICE while CI is unmigrated; the Reviewer runs it on any pipeline diff and each FAIL is a `block`; the first-contact interview runs it so a new project starts compliant. Runner registration and capacity (`concurrent`, per-runner `limit`, `request_concurrency`) are server state owned by the user, recorded in the project's deploy README.
 
 ## Dittofeed stack
 

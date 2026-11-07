@@ -387,10 +387,11 @@ fi
 #         promote_dev_to_main.sh, check-touches.sh, check-researcher-scope.sh,
 #         check-curator-scope.sh, doc_churn_audit.sh, port_ledger.sh,
 #         setup_dev_slots.sh, spawn_worker.sh, pr_link.sh, check-ditto-stack.sh,
-#         check-env-comments.sh.
+#         check-env-comments.sh, check-ci-placement.sh.
 #       - Seed-once stubs (project bodies or project values): copied when
 #         missing, never overwritten. launch_local.sh, teardown_local.sh,
-#         main_to_prod.sh (FWADR-019), docs/dev/slots.yaml, and .env.example
+#         main_to_prod.sh (FWADR-019), dev_harness.sh (FWADR-037),
+#         docs/dev/slots.yaml, and .env.example
 #         (the claude-env launcher seeds .env from it; the Strategist owns the
 #         values per the first-contact interview).
 #     Stubs live under $TEMPLATE_ROOT/docs/dev_framework/_stubs/<relpath> and
@@ -413,6 +414,8 @@ DEV_SLOT_STUBS=(
   "scripts/pr_link.sh"
   "scripts/check-ditto-stack.sh"
   "scripts/check-env-comments.sh"
+  "scripts/check-ci-placement.sh"
+  "scripts/dev_harness.sh"
   "docs/dev/slots.yaml"
   ".env.example"
 )
@@ -480,6 +483,36 @@ if [[ -d "$PROJECT_DIR/.git" ]] && compgen -G "$PROJECT_DIR/*/.git" >/dev/null; 
     echo "[sync-framework] NOTICE: the tracked parent still tracks $tracked framework-synced file(s); they churn on every template change. One-time fix, from $PROJECT_DIR:"
     echo "[sync-framework]   git rm -r --cached -q --ignore-unmatch -- ${SYNCED[*]#/} && git commit -m 'chore: stop tracking framework-synced files (FWADR-014)'"
   fi
+fi
+
+# ---------------------------------------------------------------------------
+# 5e. CI placement check (FWADR-037). CI runs on the ephemeral runner host and
+#     runs only deterministic checks; no datastore starts inside a CI job. For
+#     each code repo, run the template's copy of the check (always present,
+#     unlike the just-seeded scripts/ copy on a first sync) and NOTICE while
+#     the pipeline is unmigrated. Detection only — the Developer fixes the
+#     pipeline file; the Reviewer blocks on a diff that fails it.
+# ---------------------------------------------------------------------------
+
+CI_CHECK="$TEMPLATE_ROOT/docs/dev_framework/_stubs/scripts/check-ci-placement.sh"
+check_ci_placement() {
+  local repo="$1" out fails
+  [[ -d "$repo/.git" ]] || return 0
+  [[ -f "$repo/.gitlab-ci.yml" ]] || compgen -G "$repo/.github/workflows/*.y*ml" >/dev/null || return 0
+  out="$("$CI_CHECK" "$repo" 2>/dev/null || true)"
+  fails="$(printf '%s\n' "$out" | grep -c '^FAIL:' || true)"
+  if [[ "$fails" -gt 0 ]]; then
+    echo "[sync-framework] NOTICE: $(basename "$repo") CI is NOT migrated (FWADR-037) — $fails finding(s). CI runs on ephemeral, tags: [docker], no datastore in any job; the real tests run in the post-deploy harness on dev."
+    printf '%s\n' "$out" | grep '^FAIL:' | head -3 | sed "s#^FAIL: $repo/#[sync-framework]   #"
+    [[ "$fails" -gt 3 ]] && echo "[sync-framework]   … run ./scripts/check-ci-placement.sh $repo for all $fails."
+  fi
+}
+
+if [[ -x "$CI_CHECK" ]]; then
+  check_ci_placement "$PROJECT_DIR"
+  for subdir in "$PROJECT_DIR"/*/; do
+    [[ -d "$subdir/.git" ]] && check_ci_placement "${subdir%/}"
+  done
 fi
 
 # ---------------------------------------------------------------------------

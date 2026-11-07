@@ -105,6 +105,14 @@ If the diff touches an env-style file (`.env*`, `*.env`, compose YAML), run
 `block` finding: at most two comment lines per value, the rest moves to a doc
 (`coding-standards.md` §"Environment variables").
 
+If the diff touches a pipeline file (`.gitlab-ci.yml`, `.github/workflows/*`),
+run `./scripts/check-ci-placement.sh <repo root>`. Each `FAIL:` line is a
+`block` finding (FWADR-037): CI runs deterministic checks only, on the
+ephemeral runner host, and no datastore starts inside a CI job — a test that
+needs Postgres belongs in the post-deploy harness on dev, or, for a documented
+reason, connects to dev's live instance. `WARN:` lines are concerns, not
+blocks.
+
 A diff that deviates from `mockups/` is not a finding — the builder holds
 the override ([FWADR-039](../adrs/fwadr-039-builder-override-over-mockups.md)).
 A deviation with no line under Execution notes / the Implementation log
