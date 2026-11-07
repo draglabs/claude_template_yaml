@@ -64,7 +64,11 @@ launch-without-env mechanically detected:
    presenting the variants and letting the user choose what to install (safe
    only, safe + yolo, or all). Checking/editing `~/.zshrc` is outside the project tree, so
    it happens only with the user's explicit go-ahead in the interview. The
-   interview **reads `.env` first** (`templates/first-contact-interview.md`
+   check is the installer's `--check` mode, which looks for the framework
+   launchers themselves (the sourced snippet, or its pasted helpers) — a
+   user's own hand-written `claude-env` reads as not installed, and
+   installing over one reports that the framework definition now shadows it.
+   The interview **reads `.env` first** (`templates/first-contact-interview.md`
    §"Pre-flight"): set values are batch-confirmed in one table,
    `PLACEHOLDER`/empty lines are the only questions, and variables missing
    from a hand-written file are appended from `.env.example` — the file is
