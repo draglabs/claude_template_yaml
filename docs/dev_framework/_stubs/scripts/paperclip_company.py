@@ -234,7 +234,7 @@ def cmd_sync(dry: bool) -> int:
                     body["baseHash"] = have["AGENTS.md"]["contentHash"]
                 api("PUT", f"/agents/{a['id']}/instructions-bundle/file", body)
             for extra in [p for p in have if p != "AGENTS.md"]:  # older copies of framework docs are not part of this model
-                api("DELETE", f"/agents/{a['id']}/instructions-bundle/file?path={urllib.parse.quote(extra, safe='')}")
+                api("DELETE", f"/agents/{a['id']}/instructions-bundle/file?path={urllib.parse.quote(extra, safe='')}&baseHash={have[extra]['contentHash']}")
             api("PATCH", f"/agents/{a['id']}", {"reportsTo": reports_to, "title": spec["title"], "metadata": meta})
         else:
             print(f"{spec['name']}: creating; reports to {spec['reports_to']}; pin {commit[:12]}")
