@@ -17,6 +17,7 @@ Environment (the operator .env, sourced by claude-env; or an agent's own run cre
     PAPERCLIP_FRAMEWORK_REPO                  GitHub repo of the template (default draglabs/claude_template_yaml)
     PAPERCLIP_FRAMEWORK_REF                   branch to pin to (default main)
     PAPERCLIP_TEMPLATE_AGENT                  existing agent whose adapter and environment new agents copy (default Lead)
+    PAPERCLIP_PLANNING_PROJECT                Paperclip project whose workspace is the planning repo (default Planning)
     PAPERCLIP_PACKAGE_DIR                     template development only: read the package from this directory
                                               instead of GitHub (the pin still records the template's main)
     PROJECT_NAME, GIT_HOST, GIT_HOST_URL      from the project .env
@@ -197,8 +198,16 @@ def ensure_routine(co: dict, by_name: dict, commit: str, dry: bool) -> None:
             continue
         sched = re.search(r'schedule:\s*"?([^"\n]+)"?', fetch_package_file(commit, f"tasks/{slug}/TASK.md"))
         tz = re.search(r"timezone:\s*(\S+)", fetch_package_file(commit, f"tasks/{slug}/TASK.md"))
+        # The task runs in the planning repo's workspace: that project's env carries the git-host
+        # token and its checkout carries scripts/. Matched by name (PAPERCLIP_PLANNING_PROJECT).
+        projects = api("GET", f"/companies/{co['id']}/projects")
+        projects = projects if isinstance(projects, list) else projects.get("items", [])
+        planning = next((p for p in projects if p.get("name", "").lower() == E("PAPERCLIP_PLANNING_PROJECT", "Planning").lower()), None)
+        if not planning:
+            print(f"  WARN: no project named {E('PAPERCLIP_PLANNING_PROJECT', 'Planning')!r}; the task will run without a workspace")
         rt = api("POST", f"/companies/{co['id']}/routines", {
             "title": title, "description": desc, "assigneeAgentId": assignee["id"] if assignee else None,
+            "projectId": planning["id"] if planning else None,
             "priority": fm.get("priority") or "low", "status": "active",
             "concurrencyPolicy": "skip_if_active", "catchUpPolicy": "skip_missed"})
         if sched:
