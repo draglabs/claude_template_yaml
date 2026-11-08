@@ -140,9 +140,13 @@ def sha256(s: str) -> str:
 
 
 def load_company():
-    cos = api("GET", "/companies")
-    cos = cos if isinstance(cos, list) else cos.get("items", [])
-    co = next((c for c in cos if c["name"].lower() == COMPANY.lower()), None) or die(f"company {COMPANY!r} not found")
+    # An agent's run credentials may not list companies (403) but know their own company id.
+    if E("PAPERCLIP_COMPANY_ID"):
+        co = api("GET", f"/companies/{E('PAPERCLIP_COMPANY_ID')}")
+    else:
+        cos = api("GET", "/companies")
+        cos = cos if isinstance(cos, list) else cos.get("items", [])
+        co = next((c for c in cos if c["name"].lower() == COMPANY.lower()), None) or die(f"company {COMPANY!r} not found")
     agents = api("GET", f"/companies/{co['id']}/agents")
     return co, {a["name"]: a for a in agents}
 

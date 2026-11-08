@@ -38,8 +38,13 @@ exists for exactly this.
    data; migrations carry it forward and a flush-and-reseed script is the
    rare reset. If a test has a specific, documented reason to touch Postgres
    from a runner, it **connects to the live dev instance** over the network
-   (`DEV_DATABASE_URL` as a protected CI variable). It never stands up its
-   own.
+   and never stands up its own: `DEV_DATABASE_URL` is a **masked, unprotected**
+   CI variable (MR pipelines from feature branches must run the suite; dev
+   credentials are not secrets of consequence), it names a dedicated role with
+   `CREATEDB` and no rights on the dev application database, each pipeline
+   uses its own test database (`test_<app>_$CI_PIPELINE_ID`), and the port is
+   never exposed to the internet (an ssh tunnel through a forward-only user, or
+   a firewall rule for the ephemeral host with `sslmode=require`).
 3. **Progressive and integration testing is a post-deploy harness on dev.**
    The deploy job's final step runs the code repo's `scripts/dev_harness.sh`
    on the dev host; its exit code is the job's. The harness uses dev's own
