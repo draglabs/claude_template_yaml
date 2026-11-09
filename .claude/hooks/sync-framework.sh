@@ -527,7 +527,29 @@ fi
 
 PC_CHECK="$TEMPLATE_ROOT/docs/dev_framework/_stubs/scripts/paperclip_company.py"
 if [[ -n "${PAPERCLIP_API_URL:-}" && -n "${PAPERCLIP_API_KEY:-}" && -x "$PC_CHECK" ]]; then
-  pc_out="$(cd "$PROJECT_DIR" && timeout 20 "$PC_CHECK" status 2>&1 || true)"
+  # Bounded at 20s. `timeout` is GNU coreutils — absent on stock macOS, where
+  # Homebrew installs it as `gtimeout`; with neither, a watchdog kills the call.
+  pc_status() {
+    local pid dog tmp rc=0
+    if command -v timeout >/dev/null 2>&1; then
+      timeout 20 "$PC_CHECK" status
+    elif command -v gtimeout >/dev/null 2>&1; then
+      gtimeout 20 "$PC_CHECK" status
+    else
+      # Output goes through a file, not the caller's pipe: a child the kill
+      # leaves behind would otherwise hold the pipe open past the bound.
+      tmp="$(mktemp "${TMPDIR:-/tmp}/pc-status.XXXXXX")" || return 1
+      "$PC_CHECK" status >"$tmp" 2>&1 &
+      pid=$!
+      ( sleep 20; kill "$pid" 2>/dev/null ) >/dev/null 2>&1 &
+      dog=$!
+      wait "$pid" 2>/dev/null || rc=$?
+      kill "$dog" 2>/dev/null
+      cat "$tmp"; rm -f "$tmp"
+      return "$rc"
+    fi
+  }
+  pc_out="$(cd "$PROJECT_DIR" && pc_status 2>&1 || true)"
   if printf '%s\n' "$pc_out" | grep -q '^DRIFT'; then
     echo "[sync-framework] NOTICE: Paperclip agents are pinned behind the framework (FWADR-040). Bump with ./scripts/paperclip_company.py sync"
     printf '%s\n' "$pc_out" | grep '^DRIFT' | head -3 | sed 's/^/[sync-framework]   /'
