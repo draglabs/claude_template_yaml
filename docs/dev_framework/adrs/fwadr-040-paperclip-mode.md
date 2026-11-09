@@ -35,7 +35,10 @@ epic or phase, and only the release is the human's.
    PR handoff → comment with the deep link;
    plus the record rule (git is the record, Paperclip is the queue; two issue classes),
    the carve-outs (working notes live on the issue between milestones and reach the W-item
-   log at every milestone, not only at close), the delegation policy for cards, and session hygiene. Each role
+   log at every milestone, not only at close), the delegation policy for cards, session
+   hygiene, and the rules against waiting and pondering: act at 80% confidence, verify a
+   claim once, close the issue before any optional waiting, never end a run with a
+   background process alive, screenshots as part of done for anything visible. Each role
    doc carries a four-line "Under Paperclip mode" pointer, nothing more.
 3. **The framework publishes itself as a company package** at [`paperclip/`](../../../paperclip/)
    in this repo: `COMPANY.md`, one `agents/fw-<role>/AGENTS.md` per role, the
@@ -82,6 +85,8 @@ epic or phase, and only the release is the human's.
 - **Named gap:** "no agent merges a machinery MR" and "no agent writes `accepted`" are
   English-only where the host has no per-path approval rule; the Reviewer checklist names
   a machinery diff on its first line.
+- **Named gap:** the act-at-80% rules and the end-of-run order are English-only; the
+  evidence is the issue itself (first comment early, final comment before the exit).
 - **Named gap:** "a work issue names a W-item and ends with an MR that moves it" is
   English-only until the Orchestrator's reconciliation reads the Paperclip API (listed
   in `paperclip-mode.md` §"Record"); accepted, the Curator's divergence report is the

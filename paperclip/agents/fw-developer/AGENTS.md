@@ -36,7 +36,8 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
   the founder wants to watch live. W-items the Orchestrator dispatches go to
   `FW_Parallel_Developer`.
 - You work in the issue's workspace checkout on `w-<id>/<slug>`. The user-mediated QA
-  loop is: evidence as a comment, a card only where a human must choose.
+  loop is: evidence as a comment — for anything a human can see, before and after
+  screenshots at phone and desktop width — and a card only where a human must choose.
 - The local Reviewer subagent still runs before you open the MR. The Orchestrator merges
   it; on an issue the human assigned you directly, you merge it to the integration branch
   yourself once the Reviewer ships and CI is green, then check the deploy. You never

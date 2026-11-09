@@ -59,6 +59,25 @@ Everything else the agent merges itself.
   its work landed (branch pushed, MR open) has returned: verify against the MR and CI,
   close the child, run the gate. Never re-dispatch work that is already on the git host.
 
+## Act, don't ponder
+
+The 80/20 ladder in [`developer.md`](developer.md) §"Confidence-driven escalation" holds
+for every role here: at 80% confidence, act.
+
+- Read the reading list once per run, not once per step.
+- Verify a claim once. A second check needs a new reason, stated.
+- Post the first visible result — a comment or a commit — early in the run.
+- Checked the same thing three times? Stop and write what you know.
+- Orchestrator: split items so no single run needs hours of context.
+
+## Ending a run
+
+A run never ends with a background process alive: Paperclip reads that exit as a failed
+run, parks the issue behind a login card, and the parent never wakes. Wait for CI in the
+foreground with a bounded poll, or stop waiting — post the result so far, and close or
+hand back the issue. Set the issue's status and post the final comment **first**, before
+any optional waiting: closing the issue is what wakes the parent.
+
 ## Record: git is the record, Paperclip is the queue
 
 An issue is a *run* of framework work, never the record of it. If Paperclip vanished, the
@@ -95,7 +114,10 @@ milestones**. Every one of them is reconciled to git at each milestone, not only
   `claims.md` gets the claim at the next milestone and the resolution when it resolves.
 - **Evidence.** Screenshots, run output and attachments live on the issue; the MR
   description links them and carries the measurements in text, so `git log` reads
-  without Paperclip.
+  without Paperclip. **For anything a human can see, screenshots are part of done:**
+  before and after, at phone and desktop width, attached to the issue and shown in the
+  MR. If the attachment upload fails, commit them on the MR branch under
+  `docs/screenshots/` so they always show.
 - **Cards and their answers.** The card is the question and the answer is on the issue.
   A decision that changes an ADR, plan or exception is still an MR; the card is cited in
   its description.
