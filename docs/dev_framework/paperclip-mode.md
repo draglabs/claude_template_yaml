@@ -13,7 +13,7 @@ a Paperclip agent does the thing in the right column. Decided in
 |---|---|
 | "ask the user" / "Anything else?" | Raise a **question card**: options with evidence, each with Confidence and Difficulty, the recommendation first, last item "Anything else?". Never block on chat. |
 | "report your understanding and wait for approval" | Post the bootstrap report as the **first comment** on the issue and proceed. Stop and wait only if the issue says `approve-first` or the report finds a conflict. |
-| "spawn an Executor" (Orchestrator) | **Create a child issue** (class *work*, naming the W-item, the Executor brief as its description) assigned to `FW_Developer`, or `FW_Parallel_Developer` for `parallel-safe: true` items that touch no claimed file. |
+| "spawn an Executor" (Orchestrator) | **Create a child issue** (class *work*, naming the W-item, the Executor brief as its description) assigned to `FW_Parallel_Developer` (§"Dispatch"). |
 | "spawn a Reviewer" (Orchestrator) | Apply `templates/reviewer-brief.md` as a checklist in an MR comment: `approve` / `request changes` / `block` / `doc-conflict`. On `approve`, with QA evidence posted and CI green, **merge the MR to the integration branch yourself** (§"Who merges"). |
 | "spawn a Reviewer" (Developer) | Unchanged — the local Reviewer subagent still runs before the MR opens. The Orchestrator merges it; on an issue the human assigned you directly, you merge it yourself once the Reviewer ships and CI is green. |
 | "the user is the QA gate" (Developer) | Post the evidence (commands, output, screenshots) as a comment; a card only where a human must choose. |
@@ -40,6 +40,24 @@ a deploy job's scripts). A merge to a protected branch runs that branch's CI wit
 protected variables, so merging the machinery is reaching the release. Open the MR as
 usual and hand it to the human with the deep link (`Review MR <n> (W-<id>): <url>`).
 Everything else the agent merges itself.
+
+## Dispatch
+
+- **Who builds.** The Orchestrator dispatches to `FW_Parallel_Developer` by default: the
+  team player, each run in its own worktree, never in the shared checkout. An item that
+  touches a claimed file waits for the claim to clear. `FW_Developer` is reserved for
+  issues the human assigns it directly — emergencies, admin, hotfixes, work the founder
+  wants to watch live.
+- **Acceptance is frozen at push.** Once the Executor has pushed, the Orchestrator adds no
+  acceptance criteria to that issue; a new criterion is a follow-up issue.
+- **Watchdog.** On creating the first child issue under an issue, the Orchestrator sets
+  itself as that issue's task watchdog: `PUT /api/issues/<issueId>/watchdog
+  {"agentId": "<its agent id>", "instructions": "…"}`. Paperclip then wakes it when every
+  child has come to rest with no live path (done, blocked, in review, waiting on a card,
+  stuck after a failed run). If the call is refused under agent credentials, say so in
+  the comment and the board sets it. On a watchdog wake, a child whose run failed after
+  its work landed (branch pushed, MR open) has returned: verify against the MR and CI,
+  close the child, run the gate. Never re-dispatch work that is already on the git host.
 
 ## Record: git is the record, Paperclip is the queue
 

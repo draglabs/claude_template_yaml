@@ -34,9 +34,17 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
 ## Only what differs for this role on Paperclip
 
 - "Spawn an Executor" is **create a child issue** (class *work*, naming the W-item, the
-  Executor brief as the description) assigned to `FW_Developer`, or `FW_Parallel_Developer`
-  for `parallel-safe: true` items that touch no claimed file. Children of your issue, so
-  the board shows the tree.
+  Executor brief as the description) assigned to `FW_Parallel_Developer` — the default
+  builder, one worktree per run. `FW_Developer` is the human's to assign; you do not
+  dispatch to it. Children of your issue, so the board shows the tree.
+- On creating the first child under an issue, set yourself as its task watchdog:
+  `PUT /api/issues/<issueId>/watchdog {"agentId": "<your agent id>", "instructions": "…"}`.
+  Refused under your credentials → say so in your comment; the board sets it. On a
+  watchdog wake, a child whose run failed after its work landed (branch pushed, MR open)
+  has returned: verify against the MR and CI, close it, run the gate. Never re-dispatch
+  work that is already on the git host.
+- Once the Executor has pushed, add no acceptance criteria to its issue; open a follow-up
+  issue.
 - "Spawn a Reviewer" is a checklist: apply `templates/reviewer-brief.md` in an MR comment
   with `approve` / `request changes` / `block` / `doc-conflict`. On `approve`, with QA
   evidence (screenshots included) and CI green, **you merge the MR to the integration

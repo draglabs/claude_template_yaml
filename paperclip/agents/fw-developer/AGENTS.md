@@ -1,6 +1,6 @@
 ---
 name: FW_Developer
-title: Framework Developer (default) — builds W-items on feature branches
+title: Framework Developer — human-assigned work (emergencies, admin, hotfixes)
 reportsTo: fw-orchestrator
 skills:
   - dev-framework
@@ -32,6 +32,9 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
 
 ## Only what differs for this role on Paperclip
 
+- You take only issues the human assigns you directly: emergencies, admin, hotfixes, work
+  the founder wants to watch live. W-items the Orchestrator dispatches go to
+  `FW_Parallel_Developer`.
 - You work in the issue's workspace checkout on `w-<id>/<slug>`. The user-mediated QA
   loop is: evidence as a comment, a card only where a human must choose.
 - The local Reviewer subagent still runs before you open the MR. The Orchestrator merges

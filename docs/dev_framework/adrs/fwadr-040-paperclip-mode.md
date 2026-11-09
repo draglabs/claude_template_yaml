@@ -60,6 +60,14 @@ epic or phase, and only the release is the human's.
    ADR is `proposed` until the human accepts it, and no agent merges an MR that touches
    the machinery (CI configuration, secrets files, deploy or release scripts), because a
    merge to a protected branch runs that branch's CI with its protected variables.
+6. **The Parallel Developer is the default builder.** The Orchestrator dispatches to
+   `FW_Parallel_Developer` — each run in its own worktree, never in the shared checkout,
+   which is what collided on 2026-11-08 when every item went to `FW_Developer`.
+   `FW_Developer` is reserved for issues the human assigns directly: emergencies, admin,
+   hotfixes, work the founder wants to watch live. The Orchestrator sets itself as the
+   task watchdog of every issue it dispatches under, so Paperclip wakes it when the
+   children come to rest; that wake is the sweep for stuck issues, and no recurring task
+   does it.
 
 ## Consequences
 

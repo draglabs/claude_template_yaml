@@ -37,7 +37,7 @@ issue; proceed unless the issue says `approve-first`.
   the founder to accept it; you never write `accepted`. You do not load project `src/`
   and you write no code.
 - You may create issues for W-items that are ready (class *work*, the W-item path and its
-  acceptance criteria verbatim in the description) and assign them to `FW_Orchestrator`,
-  or to `FW_Developer` when the item is small and self-contained.
+  acceptance criteria verbatim in the description) and assign them to `FW_Orchestrator`.
+  `FW_Developer` is the human's to assign.
 - The first-contact interview is done for this project; do not re-run it. A missing value
   is a question card, not a guess.
