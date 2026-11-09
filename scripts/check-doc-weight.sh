@@ -59,7 +59,9 @@ check_role "Developer"          12500  developer.md coding-standards.md
 check_role "Strategist"          9500  strategist.md
 # Orchestrator + Researcher caps +100 on 2026-10-12: Layer 0 grew by the
 # user-mandated "Handing off a PR" rule (CLAUDE.md), which every role loads.
-check_role "Orchestrator"        9100  session-policy.md
+# Orchestrator +50 on 2026-11-08: FWADR-037's done rule (harness green, link
+# posted) and tiered phase-exit step land in session-policy.md.
+check_role "Orchestrator"        9150  session-policy.md
 check_role "Template Developer"  7000  template-developer.md dev_framework.md
 check_role "Curator"             5500  curator.md
 check_role "Designer"            4100  designer.md   # +100 on 2026-11-07: FWADR-040 adds a Paperclip-mode pointer to every Layer-1 load

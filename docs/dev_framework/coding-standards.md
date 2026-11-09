@@ -33,12 +33,18 @@ A test lands **alongside the fix** — not retroactively across the whole module
 
 Tests live **collocated** with source — `src/foo/bar.ts` → `src/foo/bar.test.ts`. No `__tests__/` directories.
 
-### CI gate
+### Test tiers and the CI gate
 
-Tests run as a CI gate alongside type checking. A red test blocks deploy.
+Every test declares its tier with a marker the project's test runner supports (a pytest marker, a jest project or tag, a Go build tag, a directory per tier). A test with no tier fails collection.
+
+- **Tier 1** — fast, deterministic, no database, no network. The CI gate, alongside type checking; a red Tier 1 test blocks deploy.
+- **Tier 2** — needs the database or another service. Never runs in CI: it runs on the dev site after each deploy, in the dev harness.
+- **Tier 3** — slow, end-to-end, browser-driven. Runs on dev, on demand or nightly.
+
+CI never starts a database and never reaches one. Full rule, the harness page and the definition of done: [`dev-environment.md`](dev-environment.md) §"Test tiers and the dev harness" ([FWADR-037](adrs/fwadr-037-ci-runner-topology.md)).
 
 ```bash
-# CI runs these in order — all must pass
+# CI runs these in order — all must pass. {{test_command}} selects Tier 1 only.
 {{typecheck_command}} && {{test_command}}
 ```
 

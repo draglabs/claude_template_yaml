@@ -107,11 +107,14 @@ If the diff touches an env-style file (`.env*`, `*.env`, compose YAML), run
 
 If the diff touches a pipeline file (`.gitlab-ci.yml`, `.github/workflows/*`),
 run `./scripts/check-ci-placement.sh <repo root>`. Each `FAIL:` line is a
-`block` finding (FWADR-037): CI runs deterministic checks only, on the
-ephemeral runner host, and no datastore starts inside a CI job — a test that
-needs Postgres belongs in the post-deploy harness on dev, or, for a documented
-reason, connects to dev's live instance. `WARN:` lines are concerns, not
-blocks.
+`block` finding (FWADR-037): CI runs Tier 1 only, on the ephemeral runner
+host, and a CI job never starts a database and never reaches one — a test
+that needs one is Tier 2 and runs in the dev harness, on dev. `WARN:` lines
+are concerns, not blocks.
+
+If the diff adds or changes a test, the test declares its tier (1, 2 or 3 —
+`coding-standards.md` §"Test tiers and the CI gate"). A test with no tier,
+or a Tier 1 test that touches a database or the network, is a `block`.
 
 A diff that deviates from `mockups/` is not a finding — the builder holds
 the override ([FWADR-039](../adrs/fwadr-039-builder-override-over-mockups.md)).

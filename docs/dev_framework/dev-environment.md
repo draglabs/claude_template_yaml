@@ -78,8 +78,8 @@ The goal: `curl https://{{sub}}.dev.{{website}}.com` from anywhere hits the remo
 2. **Dev server provisioned.** If one doesn't exist, that's a prerequisite — escalate to user. Don't provision infrastructure from the Orchestrator; this is a one-time user decision, often involving billing.
 3. **Wildcard DNS.** `*.dev.{{website}}.com` → dev-server IP, at the registrar or DNS provider. Orchestrator can confirm via `dig` but doesn't edit DNS records.
 4. **TLS certificate.** Let's Encrypt wildcard (`*.dev.{{website}}.com`) via DNS-01 challenge. Caddy/Traefik on the dev server handles this automatically if pointed at the right DNS provider API.
-5. **CI deploy to dev.** Add a CI workflow on the project's git host (GitHub Actions, GitLab CI, or equivalent — per `GIT_HOST`): on push to the integration branch (`dev`; `main` under trunk), build the image and deploy to the dev server. Production deploys on push to `main` (dev-main) or on a `v*` tag (trunk). Runner tags and the pipeline shape follow §"CI runners": the deploy job runs on the ephemeral runner host and reaches dev over SSH with a deploy key held as a protected CI variable; its last step runs the post-deploy harness on dev. Exact deploy mechanism is project-specific (rsync + systemctl, `docker pull` on server, Cloudron app update, …). Record the chosen mechanism in the ADR, and run `./scripts/check-ci-placement.sh $CODE_ROOT` before the first push.
-6. **Smoke test.** Same as local — `curl` the URL, expect hello world. CI passing is not sufficient; confirm the URL actually serves the current dev commit.
+5. **CI deploy to dev.** Add a CI workflow on the project's git host (GitHub Actions, GitLab CI, or equivalent — per `GIT_HOST`): on push to the integration branch (`dev`; `main` under trunk), build the image and deploy to the dev server. Production deploys on push to `main` (dev-main) or on a `v*` tag (trunk). Runner tags and the pipeline shape follow §"CI runners": the deploy job runs on the ephemeral runner host and reaches dev over SSH with a deploy key held as a protected CI variable; its last step runs the dev harness (Tier 2) on dev — §"Test tiers and the dev harness". Exact deploy mechanism is project-specific (rsync + systemctl, `docker pull` on server, Cloudron app update, …). Record the chosen mechanism in the ADR, and run `./scripts/check-ci-placement.sh $CODE_ROOT` before the first push.
+6. **Smoke test.** Same as local — `curl` the URL, expect hello world. CI passing is not sufficient; confirm the URL actually serves the current dev commit and the harness page at `/__dev/` loads.
 7. **Document.** Orchestrator adds deploy mechanism + server identity to the ADR.
 
 ## Why the Orchestrator (not an Executor) for bootstrap
@@ -141,7 +141,7 @@ Each slot carries a `hostname` (`<slot>.{{sub}}.localhost`, auto-resolves via RF
 
 ## CI runners
 
-**Every runner lives on the ephemeral host (`SERVER_EPHEMERAL`); dev and prod run none** ([FWADR-037](adrs/fwadr-037-ci-runner-topology.md)). Runners are split by **job kind**, never by project. Hosted runners (github.com) are already off-box per-job containers; for them only the datastore rule below applies.
+**Every runner lives on the ephemeral host (`SERVER_EPHEMERAL`); dev and prod run none** ([FWADR-037](adrs/fwadr-037-ci-runner-topology.md)). Runners are split by **job kind**, never by project. Hosted runners (github.com) are already off-box per-job containers; for them only the database rules below apply.
 
 | Job kind | Tag | Executor | Reaches the target by | Refs |
 |---|---|---|---|---|
@@ -149,7 +149,7 @@ Each slot carries a `hostname` (`<slot>.{{sub}}.localhost`, auto-resolves via RF
 | deploy | `deploy` | shell on ephemeral | SSH with a deploy key from a protected, masked CI variable | protected only (`main`, `dev`, `v*`) |
 | *(transitional)* | `ephemeral-shell` | shell on ephemeral | — | any; reported by the check, migrate to `docker` |
 
-**What runs where.** CI is deterministic only: lint, typecheck, unit tests, diff/consistency analysis, image build. Everything progressive — integration suites, end-to-end flows, anything that needs a database or another service — is the **post-deploy harness**: the deploy job's last step runs the code repo's `scripts/dev_harness.sh` on the dev host (seeded stub; the project's ADR fills the body), against dev's own live services and seed data, and its exit code is the job's. Dev exposes the deployed branch and commit and the last harness report. **No datastore ever starts inside a CI job** — not `docker run postgres`, not `services:`. The dev Postgres exists once, on dev, seeded with dummy data; migrations carry it forward; flush-and-reseed is the rare reset. A test that must touch Postgres from a runner, for a documented reason, connects to the live dev instance (`DEV_DATABASE_URL`: masked, **unprotected** so MR pipelines can run it; a dedicated `CREATEDB` role; one test database per pipeline; never a port open to the internet — FWADR-037 §2) and never stands up its own.
+**What a runner runs.** Tier 1 tests (§"Test tiers and the dev harness"), lint, typecheck, diff/consistency analysis, image build. **A CI job never starts a database and never reaches one** — not `services:`, not `docker run postgres`, not a connection string to dev's instance, not a tunnel. Reaching dev's Postgres from a runner was built and measured: 93,029 statements × a 107 ms network round trip ≈ 3 hours per run, against 19 minutes co-located.
 
 Per-project `.gitlab-ci.yml` shape:
 
@@ -157,7 +157,7 @@ Per-project `.gitlab-ci.yml` shape:
 verify:app:
   tags: [docker]
   image: python:3.12-slim          # real image; the executor honours it
-  script: [pytest tests/unit]      # deterministic only; no services:, no docker run <datastore>
+  script: [pytest -m tier1 -n auto]   # Tier 1 only, in parallel; no services:, no database
 
 deploy:dev:
   tags: [deploy]
@@ -165,10 +165,30 @@ deploy:dev:
   rules: [{ if: $CI_COMMIT_BRANCH == "dev" }]
   script:
     - ssh deploy@$SERVER_DEV 'cd /srv/app && ./deploy.sh'
-    - ssh deploy@$SERVER_DEV 'cd /srv/app && scripts/dev_harness.sh'   # the real tests run here
+    - ssh deploy@$SERVER_DEV 'cd /srv/app && scripts/dev_harness.sh'   # Tier 2 runs here, on dev
 ```
 
-**Mechanism:** `./scripts/check-ci-placement.sh <repo>` (framework-owned) FAILs on `self-hosted`, on an untagged job, and on a datastore under `services:` or in a `docker run` line; WARNs on `ephemeral-shell` and on a deploy job that never calls the harness. SessionStart runs it for every code repo and emits a NOTICE while CI is unmigrated; the Reviewer runs it on any pipeline diff and each FAIL is a `block`; the first-contact interview runs it so a new project starts compliant. Runner registration and capacity (`concurrent`, per-runner `limit`, `request_concurrency`) are server state owned by the user, recorded in the project's deploy README.
+**Mechanism:** `./scripts/check-ci-placement.sh <repo>` (framework-owned) FAILs on `self-hosted`, on an untagged job, on a datastore under `services:` or in a `docker run` line, and on a non-deploy job that names a database connection (`*DATABASE_URL`, a `postgres://`-style URL, `psql`, an `ssh -L` tunnel); WARNs on `ephemeral-shell` and on a deploy job that never calls the harness. SessionStart runs it for every code repo and emits a NOTICE while CI is unmigrated; the Reviewer runs it on any pipeline diff and each FAIL is a `block`; the first-contact interview runs it so a new project starts compliant. Runner registration and capacity (`concurrent`, per-runner `limit`, `request_concurrency`) are server state owned by the user, recorded in the project's deploy README.
+
+## Test tiers and the dev harness
+
+Every test declares its tier with a marker the project's test runner supports — a pytest marker, a jest project or tag, a Go build tag, a directory per tier. A test with no tier fails collection ([FWADR-037](adrs/fwadr-037-ci-runner-topology.md)).
+
+| Tier | What it is | Where and when it runs |
+|---|---|---|
+| **1** | Fast, deterministic, no database, no network | CI, in parallel, on every push. The only tier CI runs. Budget: a few minutes. Target: at most about 5% of the project's test cases. |
+| **2** | Needs the database or another service | On the dev site after each deploy: the deploy job's last step runs `scripts/dev_harness.sh` on the dev host; its exit code is the job's. |
+| **3** | Slow, end-to-end, browser-driven | On the dev site, on demand or nightly. |
+
+**The harness is a page.** Tier 2 and Tier 3 are code that runs on dev, against dev's own services and seed data. The dev site lists every Tier 2 and Tier 3 case at `https://{{sub}}.dev.{{website}}.com/__dev/`: run one or all from the page, last result per case, history, the deployed branch and commit. The user runs it from the browser; an agent runs it over HTTP and reads the result. Every run has a permanent URL. Building the tests into dev makes them visible by forcing function. The page exists on dev only — never in production. Local-hosted dev has no deploy step: the same harness runs against the local runtime.
+
+**A runner is not an agent.** A CI runner runs Tier 1 and never reaches a database. An agent's own run environment — a chat session, a Paperclip agent host — may reach dev, and only dev, never production: it starts the harness, reads the results, and runs a Tier 2 or Tier 3 case it is writing against dev's services. Whole suites go through the harness, which runs next to the database.
+
+**Done, for a code item:** merged → deployed to dev → harness green on the dev page → the link to that result posted on the item (the W-item, or the issue). The agent that merged checks its own deploy; it does not wait for a human to look. A red harness is that agent's to resolve before it takes the next item.
+
+**Dev data.** The dev Postgres exists once, on dev, seeded with dummy data; migrations carry it forward. A wipe-and-reseed script, run by a human, is the rare reset.
+
+`scripts/dev_harness.sh` ships as a seed-once stub; the project's own ADR fills the body, the page and the seed script.
 
 ## Dittofeed stack
 

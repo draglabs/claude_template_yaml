@@ -1,32 +1,39 @@
 #!/usr/bin/env bash
-# Post-deploy test harness — runs ON THE DEV SERVER after a deploy lands.
+# Dev test harness — runs ON THE DEV SERVER. Tier 2 and Tier 3 live here.
 #
-# CI runs only deterministic checks (lint, typecheck, unit tests, build) on the
-# ephemeral runner host. Everything progressive — integration suites,
-# end-to-end flows, anything that needs Postgres or another service — runs
-# HERE, against dev's own live services and dev's seed data. No datastore ever
-# starts inside a CI job (FWADR-037).
+# Tier 1 (fast, deterministic, no database, no network) is the only tier CI
+# runs. A CI job never starts a database and never reaches one (FWADR-037).
+#   Tier 2  needs the database or another service — runs here after each deploy
+#   Tier 3  slow, end-to-end, browser-driven      — runs here on demand or nightly
+# Both run against dev's own live services and dev's seed data.
 #
-# Contract: the deploy job's last step runs this script on the dev host; its
-# exit code is the job's. It writes a report (branch, commit, timestamp,
-# pass/fail, per-suite summary) where the dev deployment serves it, so dev
-# shows what it is running and how the last harness went.
+# Contract:
+#   dev_harness.sh               every Tier 2 case. The deploy job's last step
+#                                runs this on the dev host; its exit code is the job's.
+#   dev_harness.sh --tier 3      every Tier 3 case
+#   dev_harness.sh --case <id>   one case
+#   dev_harness.sh --list        every Tier 2 and Tier 3 case, with its tier
+# Each run writes a record (run id, branch, commit, timestamp, pass/fail per
+# case) where the dev site's harness page reads it. That page — /__dev/ on the
+# dev site, never in production — lists every case, runs one or all for the
+# user or an agent, and shows the last result per case and the history. Each
+# run has a permanent URL: the link an agent posts on its item as "done".
 #
-# THIS IS A STUB. The project's own ADR decides the body: which suites run,
-# the seed script it depends on (seed with dummy data; flush-and-reseed is the
-# rare reset — migrations carry dev forward), where the report lands, and how
-# dev exposes it.
+# THIS IS A STUB. The project's own ADR decides the body: how the test runner
+# selects a tier, the seed script (dummy data; migrations carry dev forward; a
+# human-run wipe-and-reseed is the rare reset), where run records land, and how
+# the page serves and starts runs.
 
 set -euo pipefail
 
-echo "scripts/dev_harness.sh is the post-deploy test harness entry point (FWADR-037)."
+echo "scripts/dev_harness.sh is the dev test harness entry point (FWADR-037)."
 echo "This is a developer-managed stub and is not implemented yet."
 echo ""
 echo "Before first use, the agent scopes with the user and fills in:"
-echo "  - which suites run here (integration, e2e, anything that touches Postgres or another service)"
-echo "  - the seed script this depends on, and the flush-and-reseed reset"
-echo "  - where the report is written so the dev deployment can serve it"
-echo "  - how dev shows branch, commit and the last report"
+echo "  - how a test declares its tier, and how this script selects Tier 2 / Tier 3 / one case"
+echo "  - the seed script this depends on, and the human-run wipe-and-reseed"
+echo "  - where each run's record is written"
+echo "  - the /__dev/ page on the dev site: list cases, run one or all, last result per case, history"
 echo ""
 echo "Until then the deploy job does not call this script; check-ci-placement.sh WARNs on that."
 echo "Canonical doctrine: docs/dev_framework/adrs/fwadr-037-ci-runner-topology.md"

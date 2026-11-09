@@ -150,8 +150,9 @@ Do NOT merge. Do NOT push. The Orchestrator handles those after gates pass.
 
 STEP 3a — Run your own tests before returning.
 
-  Inside the worktree, run the project's unit/integration test command
-  ({{test_command}} from CLAUDE.md). Do NOT start a live dev server — in
+  Inside the worktree, run the project's Tier 1 test command
+  ({{test_command}} from CLAUDE.md). Every test you write declares its
+  tier; Tier 2 and Tier 3 cases run in the dev harness, on dev (FWADR-037). Do NOT start a live dev server — in
   batch mode multiple Executors run concurrently, and dev-server ports
   collide across worktrees. Live/Playwright/browser testing is the
   Integrator-QA's job, which runs after all Executors in the batch
@@ -275,7 +276,7 @@ Hard rules:
 - Do NOT start a live dev server in the worktree. In batch mode, parallel
   Executors would collide on dev-server ports. Live/browser/Playwright
   testing runs in the Integrator-QA pass, not here. Your testing is
-  unit/integration only via {{test_command}}.
+  Tier 1 only via {{test_command}}.
 - Do NOT delete files unless acceptance explicitly requires it.
 - Do NOT modify .env, .mcp.json, or CLAUDE.md unless the brief names them.
 - If you touch more than "Files you will touch", include it under

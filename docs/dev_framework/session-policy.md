@@ -309,13 +309,13 @@ Every W-item follows one of two flows depending on its `Parallel-safe` field (se
 
    **Mechanism, not intention.** The Agent tool's `isolation: "worktree"` flag creates a worktree from the parent session's current HEAD. If the Orchestrator happens to be sitting on `main` (or any other branch) when it dispatches, the worktree — and therefore the feature branch — inherits THAT base. Rule compliance here requires the Orchestrator to pre-create the worktree off `origin/${INTEGRATION_BRANCH}` explicitly so the base becomes a literal command-line argument. "I read the rule" is not enforcement. The command is.
 
-2. **Executor** writes code + tests inside the worktree, commits to the feature branch, runs its own unit/integration tests + coding-standards self-check, returns a code-only package to the Orchestrator.
+2. **Executor** writes code + tests inside the worktree, commits to the feature branch, runs its own Tier 1 tests + coding-standards self-check, returns a code-only package to the Orchestrator.
 
 3. **Orchestrator** spawns the Reviewer (top tier) as a peer Agent-tool call, passing the worktree path and the latest commit SHA. On `block`, Orchestrator runs one Executor fix cycle — continuation or fresh dispatch per §"Orchestrator-owned retry mechanics" — and re-spawns the Reviewer. Retry cap per tier.
 
 4. **Orchestrator** (if tier L/XL or marker 🧪 or ⚠️) spawns the QA as a peer Agent-tool call after Reviewer ships. Same retry pattern on `fail`.
 
-5. **Orchestrator** verifies the return per §"Trust but verify", merges the feature branch to **`dev`**, pushes `dev`. If remote-hosted dev, CI now deploys to `{{sub}}.dev.{{website}}.com`. Auto-advance to next W-item.
+5. **Orchestrator** verifies the return per §"Trust but verify", merges the feature branch to **`dev`**, pushes `dev`. If remote-hosted dev, CI now deploys to `{{sub}}.dev.{{website}}.com`: confirm the dev harness is green on that deploy and post the result link on the W-item ([`dev-environment.md`](dev-environment.md) §"Test tiers and the dev harness"). Auto-advance to next W-item.
 
 ### Batch mode (Parallel-safe: true)
 
@@ -385,7 +385,7 @@ All W-items done is necessary but not sufficient. Phase exit requires **demonstr
 ### Steps
 
 1. Confirm every W-item in the phase is merged to the integration branch (no `blocked` items outstanding).
-2. Run the full test suite against the integration branch — all green.
+2. Tier 1 green in CI on the integration branch; Tier 2 and Tier 3 green on the dev harness page.
 3. Apply all pending migrations (on the dev environment or locally if local-hosted).
 4. Push the integration branch to origin (if any unpushed commits). Wait for its CI to pass. Under trunk this is the push that CI deploys to the dev environment — and the exact commit the tag will release.
 5. **Orchestrator spawns a QA subagent against `{{sub}}.dev.{{website}}.com`** (this is the same peer-dispatch pattern as per-W-item QA; spawn context is "phase exit"). Record pass/fail per criterion.

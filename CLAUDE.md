@@ -149,7 +149,7 @@ npm install              # dependencies
 npm run dev              # dev server
 npm run build            # production build
 npm run typecheck        # type check (CI gate)
-npm test                 # test suite (CI gate)
+npm test                 # Tier-1 tests (CI gate)
 ./scripts/check-consistency.sh  # hardcode/drift check (CI gate)
 
 # Dev slots (FWADR-019) — one-time setup, then launch/teardown by slot name.

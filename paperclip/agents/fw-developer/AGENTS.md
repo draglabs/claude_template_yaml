@@ -40,5 +40,6 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
   W-item log by MR to the planning repo while the issue is open; the W-item's frontmatter
   carries `paperclip_issue: <this issue>`. Done = MR open with evidence, W-item row moved,
   end-of-run comment with both deep links.
-- Full suites (`tests/run.sh` and the like) never run on the agent host; CI and the dev
-  harness run them.
+- Tier 1 runs in your worktree. Tier 2 and Tier 3 run on dev: start the dev harness there
+  and read the result (dev only, never production). Whole suites never run on the agent
+  host.

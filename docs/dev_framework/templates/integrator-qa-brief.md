@@ -158,7 +158,7 @@ pre-merge worktree state — the integrated state is what would ship):
 
 **2c. Run the full test suite** on the integrated state:
 
-- Unit/integration tests: {{test_command}} from CLAUDE.md.
+- Tier 1 tests: {{test_command}} from CLAUDE.md.
 - Type check: {{typecheck_command}} from CLAUDE.md.
 - Consistency check: ./scripts/check-consistency.sh if present.
 - **Live/Playwright tests (if enabled in this project):** start the dev

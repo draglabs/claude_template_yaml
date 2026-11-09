@@ -488,7 +488,7 @@ fi
 
 # ---------------------------------------------------------------------------
 # 5e. CI placement check (FWADR-037). CI runs on the ephemeral runner host and
-#     runs only deterministic checks; no datastore starts inside a CI job. For
+#     runs Tier 1 only; a CI job never starts or reaches a database. For
 #     each code repo, run the template's copy of the check (always present,
 #     unlike the just-seeded scripts/ copy on a first sync) and NOTICE while
 #     the pipeline is unmigrated. Detection only — the Developer fixes the
@@ -503,7 +503,7 @@ check_ci_placement() {
   out="$("$CI_CHECK" "$repo" 2>/dev/null || true)"
   fails="$(printf '%s\n' "$out" | grep -c '^FAIL:' || true)"
   if [[ "$fails" -gt 0 ]]; then
-    echo "[sync-framework] NOTICE: $(basename "$repo") CI is NOT migrated (FWADR-037) — $fails finding(s). CI runs on ephemeral, tags: [docker], no datastore in any job; the real tests run in the post-deploy harness on dev."
+    echo "[sync-framework] NOTICE: $(basename "$repo") CI is NOT migrated (FWADR-037) — $fails finding(s). CI runs on ephemeral, tags: [docker], Tier 1 only, no database started or reached; Tier 2 and 3 run in the dev harness on dev."
     printf '%s\n' "$out" | grep '^FAIL:' | head -3 | sed "s#^FAIL: $repo/#[sync-framework]   #"
     [[ "$fails" -gt 3 ]] && echo "[sync-framework]   … run ./scripts/check-ci-placement.sh $repo for all $fails."
   fi

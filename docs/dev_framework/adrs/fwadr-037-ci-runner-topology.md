@@ -1,7 +1,7 @@
-# FWADR-037: CI runs on the ephemeral host and runs only deterministic checks
+# FWADR-037: CI runs on the ephemeral host and runs Tier 1 only; Tier 2 and 3 are the dev harness
 
 **Status:** accepted
-**Date:** 2026-11-07
+**Date:** 2026-11-08
 **Deciders:** user (framework author) + Template Developer
 
 ## Context
@@ -21,6 +21,12 @@ competes with dev or prod for a processor. A disposable 8-core box,
 **ephemeral** (`SERVER_EPHEMERAL` in every project's `.env` server table), now
 exists for exactly this.
 
+One escape was tried and measured: a runner test that needed Postgres
+connected to dev's live instance over the network. thankmu built it. Its
+suite issues 93,029 statements; each waited a 107 ms round trip between the
+two hosts — about 3 hours per run, against 19 minutes co-located. A test that
+needs a database is not a CI test.
+
 ## Decision
 
 1. **Every runner lives on the ephemeral host. Dev and prod run none.** This
@@ -31,28 +37,42 @@ exists for exactly this.
    needs beyond the deploy user's `authorized_keys`. Capacity is a number on
    the runner process (`concurrent`, per-runner `limit`), not a count of
    boxes.
-2. **CI is deterministic only.** Lint, typecheck, unit tests, diff and
-   consistency analysis, image build. **No datastore ever starts inside a CI
-   job** — not `docker run postgres`, not `services: [postgres]`. The dev
-   Postgres exists once, on the dev server, seeded with the project's dummy
-   data; migrations carry it forward and a flush-and-reseed script is the
-   rare reset. If a test has a specific, documented reason to touch Postgres
-   from a runner, it **connects to the live dev instance** over the network
-   and never stands up its own: `DEV_DATABASE_URL` is a **masked, unprotected**
-   CI variable (MR pipelines from feature branches must run the suite; dev
-   credentials are not secrets of consequence), it names a dedicated role with
-   `CREATEDB` and no rights on the dev application database, each pipeline
-   uses its own test database (`test_<app>_$CI_PIPELINE_ID`), and the port is
-   never exposed to the internet (an ssh tunnel through a forward-only user, or
-   a firewall rule for the ephemeral host with `sslmode=require`).
-3. **Progressive and integration testing is a post-deploy harness on dev.**
-   The deploy job's final step runs the code repo's `scripts/dev_harness.sh`
-   on the dev host; its exit code is the job's. The harness uses dev's own
-   services and dev's seed data. Dev, knowing it is dev, exposes the deployed
-   branch and commit and the last harness report. Seeded stub ships with the
-   framework; the body, the seed script and the report surface are the
-   project's, decided in its own ADR.
-4. **Tags.** Verify/build jobs: `docker` (docker executor, `image:` pins the
+2. **CI runs Tier 1 only. A CI job never starts a database and never
+   reaches one.** Not `docker run postgres`, not `services: [postgres]`, not a
+   connection string to dev's instance, not a tunnel. Alongside Tier 1 a
+   runner does lint, typecheck, diff and consistency analysis, and the image
+   build.
+3. **Three tiers; every test declares its tier** with a marker the project's
+   test runner supports (a pytest marker, a jest project or tag, a Go build
+   tag, a directory per tier). A test with no tier fails collection.
+   - **Tier 1** — fast, deterministic, no database, no network. The only
+     tier CI runs; run in parallel; budget a few minutes; target at most
+     about 5% of the project's test cases.
+   - **Tier 2** — needs the database or another service. Code that runs **on
+     the dev site** after each deploy: the deploy job's last step runs the
+     code repo's `scripts/dev_harness.sh` on the dev host; its exit code is
+     the job's.
+   - **Tier 3** — slow, end-to-end, browser-driven. Runs on dev, on demand
+     or nightly.
+4. **The dev harness is a page.** The dev site lists every Tier 2 and Tier 3
+   case at `/__dev/`, runnable one-or-all from that page by the user or an
+   agent, with the last result per case, history, and the deployed branch and
+   commit; every run has a permanent URL. Building the tests into dev makes
+   them visible by forcing function. The harness uses dev's own services and
+   seed data: the dev Postgres exists once, on dev, seeded with dummy data;
+   migrations carry it forward; a wipe-and-reseed script, run by a human, is
+   the rare reset. The page exists on dev only. Seeded stub ships with the
+   framework; the body, the page and the seed script are the project's,
+   decided in its own ADR.
+5. **A runner is not an agent.** The rule in 2 binds CI jobs. An agent's own
+   run environment (a chat session, a Paperclip agent host) may reach dev —
+   only dev, never production — to start the harness, read its results, and
+   run a Tier 2 or Tier 3 case it is writing against dev's services. Whole
+   suites go through the harness, which runs next to the database.
+6. **Done, for a code item:** merged → deployed to dev → harness green on the
+   dev page → the link to that result posted on the item or issue. The agent
+   that merged checks its own deploy; it does not wait for a human to look.
+7. **Tags.** Verify/build jobs: `docker` (docker executor, `image:` pins the
    toolchain). Deploy jobs: `deploy` (shell executor on ephemeral, protected
    refs only, `resource_group: production`). `ephemeral-shell` is
    **transitional** — right host, host toolchain implied — accepted and
@@ -65,8 +85,10 @@ exists for exactly this.
 - **Mechanism:** [`check-ci-placement.sh`](../_stubs/scripts/check-ci-placement.sh)
   (framework-owned, synced into every adopter's `scripts/`) lints
   `.gitlab-ci.yml` and `.github/workflows/*`: FAIL on `self-hosted`, on an
-  untagged job, on a datastore under `services:` or in a `docker run` line;
-  WARN on `ephemeral-shell` and on a deploy job that never calls the harness.
+  untagged job, on a datastore under `services:` or in a `docker run` line,
+  and on a non-deploy job that names a database connection (`*DATABASE_URL`,
+  a `postgres://`-style URL, `psql`, an `ssh -L` tunnel); WARN on
+  `ephemeral-shell` and on a deploy job that never calls the harness.
   It runs at SessionStart for every code repo (`sync-framework.sh` emits a
   NOTICE while a project's CI is unmigrated), in the Reviewer brief as a
   `block` on any pipeline diff, and in the first-contact interview so new
@@ -78,17 +100,24 @@ exists for exactly this.
   loudly, instead of running on the deploy host. Runner registration and
   capacity are recorded in the project's deploy README per
   [FWADR-019](fwadr-019-dev-slots-and-deploy-stubs.md).
-- **Named gap:** "a runner test that needs Postgres uses the live dev
-  instance" is English-only — the check can see a datastore being *started*,
-  not where a connection goes. Acceptable: the rare case is documented in the
-  job and the Reviewer reads it.
+- **Named gap:** the tier of a test is the project's to enforce — its
+  runner configuration fails collection on an untiered test and its CI test
+  command selects Tier 1. The framework's check reads pipeline files, not
+  test files; the Reviewer blocks on a new test with no tier. The Tier 1
+  share (about 5%) and time budget are targets, not checks.
+- **Named gap:** "the agent that merged checks its own deploy" is
+  English-only. The link on the item is the evidence; an item closed without
+  one is visible to whoever reads it.
 - **Security shape changes.** Deploy keys move from the deploy host's runner
   user to protected CI variables; the disposable box holds them only for the
   duration of a protected-ref job. A compromised MR job on ephemeral reaches
   ephemeral's Docker daemon, not dev's.
 - **Host-neutral.** github.com hosted runners are already per-job containers
-  off every box of ours; only the datastore rule applies to Actions files.
+  off every box of ours; only the database rules apply to Actions files.
 - **Coherence surfaces:** this ADR; [`dev-environment.md`](../dev-environment.md)
-  §"CI runners" and step 5; `templates/reviewer-brief.md`;
-  `templates/first-contact-interview.md` Block 1; `sync-framework.sh` 5c/5e;
-  stubs `check-ci-placement.sh`, `dev_harness.sh`.
+  §"CI runners", §"Test tiers and the dev harness" and step 5;
+  `coding-standards.md` §"Test tiers and the CI gate"; `session-policy.md`
+  §"Dispatch flow"; `developer.md` §"Code review"; `paperclip-mode.md`
+  §"Tests and done"; `templates/reviewer-brief.md`, `executor-brief.md`,
+  `integrator-qa-brief.md`; `templates/first-contact-interview.md` Block 1;
+  `sync-framework.sh` 5c/5e; stubs `check-ci-placement.sh`, `dev_harness.sh`.

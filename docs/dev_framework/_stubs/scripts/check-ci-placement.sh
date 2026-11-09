@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# check-ci-placement.sh — CI runs on the ephemeral runner host, and runs only
-# deterministic checks. No datastore ever starts inside a CI job.
+# check-ci-placement.sh — CI runs on the ephemeral runner host, and runs Tier 1
+# only. A CI job never starts a database and never reaches one.
 # FRAMEWORK-OWNED — overwritten on every sync; do not edit (FWADR-014).
 #
 # Usage:
@@ -23,17 +23,24 @@
 #                         compose` line, names a datastore image (postgres,
 #                         pgvector, mysql, mariadb, redis, clickhouse, mongo,
 #                         rabbitmq, elasticsearch, opensearch, minio, kafka).
-#                         A test that needs Postgres connects to the dev
-#                         server's live instance over the network.
+#                         A test that needs one is Tier 2: it runs in the
+#                         dev harness, on dev.
+#   FAIL database-in-ci   a job without the `deploy` tag names a database
+#                         connection: a `*DATABASE_URL` / `PGHOST` variable, a
+#                         postgres:// mysql:// mongodb:// redis:// URL, `psql`,
+#                         `pg_isready`, or an `ssh -L` tunnel. Reaching dev's
+#                         instance from a runner measured ~3 h per run.
+#                         (sqlite lines are not flagged.)
 #   WARN transitional     tags contain `ephemeral-shell` — on the right host,
 #                         but the host toolchain is still implied. Canonical
 #                         is `docker` with a pinned `image:`.
 #   WARN no-harness       a `deploy`-tagged job never mentions dev_harness.sh:
-#                         the post-deploy harness is where the real tests run.
+#                         Tier 2 runs in the dev harness after each deploy.
 #   WARN include          the file pulls in `include:` — jobs defined there are
 #                         not followed; run the check in that repo too.
-# GitHub Actions: only the datastore-in-ci rule applies (hosted runners are
-# already per-job containers off every box of ours).
+# GitHub Actions: only datastore-in-ci and database-in-ci apply (hosted runners
+# are already per-job containers off every box of ours); a job whose name
+# contains `deploy` is exempt from database-in-ci.
 #
 # Heuristic YAML reader: two-space-indented blocks, inline `[a, b]` or `- item`
 # lists, `extends:` up to three deep, `default:` tags. YAML anchors/merges
@@ -44,6 +51,8 @@
 set -euo pipefail
 
 DATASTORE_RE='(postgres|pgvector|timescale|mysql|mariadb|redis|valkey|clickhouse|mongo|rabbitmq|elasticsearch|opensearch|minio|kafka|memcached|nats)'
+# A line that reaches a database. No backslashes: awk -v would eat them.
+DBREACH_RE='(DATABASE_URL|PGHOST|PGPASSWORD|postgres(ql)?://|mysql://|mongodb([+]srv)?://|rediss?://|pg_isready|(^|[^A-Za-z_])psql([ ]|$)|ssh[ ][^|;&]*-[A-Za-z]*L[ ])'
 
 repos=()
 if [[ $# -gt 0 ]]; then
@@ -63,7 +72,7 @@ fail=0
 # --- GitLab -----------------------------------------------------------------
 check_gitlab() {
   local file="$1"
-  awk -v FILE="$file" -v DS="$DATASTORE_RE" '
+  awk -v FILE="$file" -v DS="$DATASTORE_RE" -v DBR="$DBREACH_RE" '
   function indent(s) { match(s, /^ */); return RLENGTH }
   function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
   function strip_comment(s) { sub(/[ \t]#.*$/, "", s); return s }
@@ -135,6 +144,7 @@ check_gitlab() {
     if (line ~ /^[ \t]*trigger:/) TRIGGER[cur] = 1
     if (line ~ /^[ \t]*(script|before_script|after_script):/) HAS_SCRIPT[cur] = 1
     if (line ~ /dev_harness\.sh/) HARNESS[cur] = 1
+    if (line ~ DBR && tolower(line) !~ /sqlite/ && !(cur in DBRL)) { DBRL[cur] = NR; DBRTXT[cur] = trim(line) }
     if (tolower(line) ~ ("docker[ \t]+(run|compose|container[ \t]+run|create|service[ \t]+create)[^\n]*" DS) ||
         tolower(line) ~ ("image:[ \t]*[\"'\'']?[a-z0-9./-]*" DS)) {
       if (!((cur, "dsline") in DSL)) { DSL[cur, "dsline"] = NR; DSTXT[cur] = trim(line) }
@@ -156,9 +166,10 @@ check_gitlab() {
       if (t ~ /(^| )self-hosted( |$)/) { print "FAIL: " FILE ":" SEEN[b] " " b " — legacy-tag: self-hosted is the retired dev runner; verify jobs take tags: [docker]"; rc = 1 }
       else if (t == "" && !(b in TRIGGER)) { print "FAIL: " FILE ":" SEEN[b] " " b " — untagged: lands on whichever runner takes untagged work; add tags: [docker] (verify) or [deploy]"; rc = 1 }
       if (t ~ /(^| )ephemeral-shell( |$)/) print "WARN: " FILE ":" SEEN[b] " " b " — transitional: ephemeral-shell runs on the right host but implies the host toolchain; canonical is tags: [docker] + image:"
-      if (LIST["services", b] ~ DS) { print "FAIL: " FILE ":" SVC_LINE[b] " " b " — datastore-in-ci: services: starts " trim(LIST["services", b]) "; a test that needs it connects to the dev server'\''s live instance"; rc = 1 }
+      if (LIST["services", b] ~ DS) { print "FAIL: " FILE ":" SVC_LINE[b] " " b " — datastore-in-ci: services: starts " trim(LIST["services", b]) "; a test that needs it is Tier 2 and runs in the dev harness"; rc = 1 }
+      if ((b in DBRL) && t !~ /(^| )deploy( |$)/) { print "FAIL: " FILE ":" DBRL[b] " " b " — database-in-ci: `" DBRTXT[b] "`; a CI job never reaches a database — the test is Tier 2 and runs in the dev harness"; rc = 1 }
       if ((b, "dsline") in DSL) { print "FAIL: " FILE ":" DSL[b, "dsline"] " " b " — datastore-in-ci: `" DSTXT[b] "`; no datastore starts inside a CI job"; rc = 1 }
-      if (t ~ /(^| )deploy( |$)/ && !(b in HARNESS)) print "WARN: " FILE ":" SEEN[b] " " b " — no-harness: deploy job never runs scripts/dev_harness.sh; the post-deploy harness is where integration tests belong"
+      if (t ~ /(^| )deploy( |$)/ && !(b in HARNESS)) print "WARN: " FILE ":" SEEN[b] " " b " — no-harness: deploy job never runs scripts/dev_harness.sh; Tier 2 runs in the dev harness after each deploy"
     }
     exit rc
   }' "$file" || return 1
@@ -167,7 +178,7 @@ check_gitlab() {
 # --- GitHub Actions ---------------------------------------------------------
 check_github() {
   local file="$1"
-  awk -v FILE="$file" -v DS="$DATASTORE_RE" '
+  awk -v FILE="$file" -v DS="$DATASTORE_RE" -v DBR="$DBREACH_RE" '
   function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
   {
     line = $0; sub(/[ \t]#.*$/, "", line)
@@ -178,9 +189,10 @@ check_github() {
     if (insvc) {
       ind = match(line, /[^ ]/) - 1
       if (ind <= svc_ind) insvc = 0
-      else if (tolower(line) ~ ("image:[ \t]*[\"'\'']?[a-z0-9./-]*" DS)) { print "FAIL: " FILE ":" NR " " job " — datastore-in-ci: services: starts `" trim(line) "`; a test that needs it connects to the dev server'\''s live instance"; rc = 1 }
+      else if (tolower(line) ~ ("image:[ \t]*[\"'\'']?[a-z0-9./-]*" DS)) { print "FAIL: " FILE ":" NR " " job " — datastore-in-ci: services: starts `" trim(line) "`; a test that needs it is Tier 2 and runs in the dev harness"; rc = 1 }
     }
     if (tolower(line) ~ ("docker[ \t]+(run|compose|container[ \t]+run|create)[^\n]*" DS)) { print "FAIL: " FILE ":" NR " " job " — datastore-in-ci: `" trim(line) "`; no datastore starts inside a CI job"; rc = 1 }
+    if (line ~ DBR && tolower(line) !~ /sqlite/ && tolower(job) !~ /deploy/) { print "FAIL: " FILE ":" NR " " job " — database-in-ci: `" trim(line) "`; a CI job never reaches a database — the test is Tier 2 and runs in the dev harness"; rc = 1 }
   }
   END { exit rc }' "$file" || return 1
 }

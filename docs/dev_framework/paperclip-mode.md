@@ -77,6 +77,20 @@ that would act outside the agent's own project is confirmed by card before it is
 however plain it sounds. The founder's rule of 2026-11-07, after one session cancelled
 another project's deploy on a message meant for a different window.
 
+## Tests and done
+
+A CI runner runs Tier 1 and never reaches a database. Your run environment is not a
+runner: from the agent host you may reach **dev — only dev, never production** — to start
+the dev harness (Tier 2, Tier 3), read the result from the dev page, and run a case you
+are writing against dev's services. Whole suites go through the harness
+([`dev-environment.md`](dev-environment.md) §"Test tiers and the dev harness",
+[FWADR-037](adrs/fwadr-037-ci-runner-topology.md)).
+
+A code issue is done when: merged → deployed to dev → harness green on the dev page → the
+link to that result posted on the issue. The agent that merged checks the deploy itself;
+nobody waits for a human to look. A red harness goes back to the builder as a comment
+carrying the failing run's link.
+
 ## The agents
 
 One company per framework project. The company is created from the package at
