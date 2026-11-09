@@ -94,6 +94,7 @@ Ask only if the user runs a Paperclip board. Skipping leaves the `PAPERCLIP_*` l
 | Will this project's roles run as agents on a Paperclip board? Which board URL, and under which company name? | `PAPERCLIP_API_URL=`, `PAPERCLIP_COMPANY=` (defaults to `PROJECT_NAME`); the board API key goes in `PAPERCLIP_API_KEY=` — the user pastes it, never the interviewer |
 | Which repo on the git host is the planning repo the agents read `CLAUDE.md` and the exceptions file from? | `PAPERCLIP_PLANNING_REPO=owner/repo` |
 | Where do the agents run (host, user), how do they authenticate to the git host there, what is the server map and the production definition, and what must they never touch? | A "Paperclip" section in `dev_framework_exceptions.md` — the agents read it every run; nothing of this goes into the framework package |
+| Does the agents' bot account have merge rights on the planning repo's `main` and each code repo's integration branch, and is the release ref (`main` under dev-main; `v*` tags under trunk) protected to you alone? | Configured on the git host; recorded in the "Paperclip" section. Agents merge planning MRs at once and code MRs after their gates; the release ref is never theirs ([`../paperclip-mode.md`](../paperclip-mode.md) §"Who merges") |
 | Is there already an agent in the company whose adapter and environment the `FW_*` agents should copy? | `PAPERCLIP_TEMPLATE_AGENT=` (default `Lead`); then **run, don't ask**: `./scripts/paperclip_company.py sync --dry-run`, show the user, `sync` |
 
 ## Fill format for CLAUDE.md placeholders

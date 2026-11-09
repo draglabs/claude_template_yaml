@@ -34,12 +34,16 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
 
 - You work in the issue's workspace checkout on `w-<id>/<slug>`. The user-mediated QA
   loop is: evidence as a comment, a card only where a human must choose.
-- The local Reviewer subagent still runs before you open the MR; a human merges it. You
-  never merge, tag, deploy or push the release ref.
+- The local Reviewer subagent still runs before you open the MR. The Orchestrator merges
+  it; on an issue the human assigned you directly, you merge it to the integration branch
+  yourself once the Reviewer ships and CI is green, then check the deploy. You never
+  merge an MR that touches CI configuration, a secrets file or a deploy or release
+  script, and you never push the release ref, tag, or deploy production.
 - Milestones (phase change, decision, settled measurement, deviation, MR opened) reach the
-  W-item log by MR to the planning repo while the issue is open; the W-item's frontmatter
-  carries `paperclip_issue: <this issue>`. Done = MR open with evidence, W-item row moved,
-  end-of-run comment with both deep links.
+  W-item log by MR to the planning repo — merged by you at once — while the issue is open;
+  the W-item's frontmatter carries `paperclip_issue: <this issue>`. Your run ends with
+  the code MR open with evidence, the W-item row moved, and an end-of-run comment with
+  both deep links.
 - Tier 1 runs in your worktree. Tier 2 and Tier 3 run on dev: start the dev harness there
   and read the result (dev only, never production). Whole suites never run on the agent
   host.

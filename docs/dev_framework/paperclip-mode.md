@@ -14,13 +14,32 @@ a Paperclip agent does the thing in the right column. Decided in
 | "ask the user" / "Anything else?" | Raise a **question card**: options with evidence, each with Confidence and Difficulty, the recommendation first, last item "Anything else?". Never block on chat. |
 | "report your understanding and wait for approval" | Post the bootstrap report as the **first comment** on the issue and proceed. Stop and wait only if the issue says `approve-first` or the report finds a conflict. |
 | "spawn an Executor" (Orchestrator) | **Create a child issue** (class *work*, naming the W-item, the Executor brief as its description) assigned to `FW_Developer`, or `FW_Parallel_Developer` for `parallel-safe: true` items that touch no claimed file. |
-| "spawn a Reviewer" (Orchestrator) | The review gate is the **human merge** of the MR. Apply `templates/reviewer-brief.md` as a checklist in an MR comment: `approve` / `request changes` / `block` / `doc-conflict`. Never merge. |
-| "spawn a Reviewer" (Developer) | Unchanged — the local Reviewer subagent still runs before the MR opens. The MR is then merged by a human. |
+| "spawn a Reviewer" (Orchestrator) | Apply `templates/reviewer-brief.md` as a checklist in an MR comment: `approve` / `request changes` / `block` / `doc-conflict`. On `approve`, with QA evidence posted and CI green, **merge the MR to the integration branch yourself** (§"Who merges"). |
+| "spawn a Reviewer" (Developer) | Unchanged — the local Reviewer subagent still runs before the MR opens. The Orchestrator merges it; on an issue the human assigned you directly, you merge it yourself once the Reviewer ships and CI is green. |
 | "the user is the QA gate" (Developer) | Post the evidence (commands, output, screenshots) as a comment; a card only where a human must choose. |
-| "hand off the PR" | The end-of-run comment carries the deep link: `Review MR <n> (W-<id>): <url>`. The comment or card is the handoff. |
+| "hand off the PR" | The end-of-run comment carries the deep link: `Review MR <n> (W-<id>): <url>`. The comment is the handoff — to the Orchestrator, or to the human for an MR no agent merges (§"Who merges"). |
 | "`/compact`", "fresh session" | A run is a session. State that must outlive the run is in the issue (comments) or in git (MR, W-item log) — nowhere else. |
 | "worktree at `/tmp/worktrees/…`" (Parallel) | Same path, off the workspace checkout Paperclip gives the run, never in the checkout itself. |
-| "push `main` / tag `v*` / deploy" | **Never.** Agents open MRs; a human releases. The pre-push guard does not run on the agent host, so this is a standing instruction, enforced by the host's branch protection and the bot's permissions. |
+| "push the release ref" / "deploy production" | **Never.** The release ref — a push to `main` under dev-main, a `v*` tag under trunk — is the human's alone. The pre-push guard does not run on the agent host, so this is a standing instruction, enforced by the host's branch and tag protection and the bot's permissions. |
+
+## Who merges
+
+| Where | Who merges | When |
+|---|---|---|
+| Planning repo `main` — everyone's shared page | The agent that wrote the change | At once: open the MR, merge it yourself, the MR stays as the record. No stacked or long-lived planning branches. |
+| Code repo, integration branch | `FW_Orchestrator`; `FW_Developer` on an issue the human assigned it directly | When the gates pass: reviewer checklist `approve`, QA evidence including screenshots, CI green. |
+| Release ref (`main` under dev-main; `v*` tags under trunk) | The human, never an agent | After the human's hands-on E2E at the end of an epic or phase. |
+
+**ADRs.** An ADR lands with status `proposed`, and a card asks the founder to accept it.
+An ADR is `proposed` until the human accepts it; no agent writes `accepted`.
+
+**The machinery is the human's.** An agent never merges an MR that touches CI
+configuration (`.gitlab-ci.yml`, workflow files), a secrets file (`env.enc.yaml`,
+`.sops.yaml`), or a deploy or release script (`promote_dev_to_main.sh`, `main_to_prod.sh`,
+a deploy job's scripts). A merge to a protected branch runs that branch's CI with its
+protected variables, so merging the machinery is reaching the release. Open the MR as
+usual and hand it to the human with the deep link (`Review MR <n> (W-<id>): <url>`).
+Everything else the agent merges itself.
 
 ## Record: git is the record, Paperclip is the queue
 
@@ -33,7 +52,8 @@ plan, the W-items, the ADRs and the MRs must still tell the whole story.
   infrastructure, release mechanics) needs no W-item and is done when an MR touches a doc
   (README, runbook, ADR, plan log). Done with no doc touched is not done.
 - **Status flows one direction.** Paperclip status is live; W-items, `plan.md` and ADRs
-  move only by MR to the planning repo. Nothing on the git side is edited without an MR.
+  move only by MR to the planning repo, merged by its author at once (§"Who merges").
+  Nothing on the git side is edited without an MR.
 - **"Waiting on the world."** A ticket only a human can close (an account, counsel, a
   payment) is `blocked` with *who* and *for what* in the blocker text, so the board
   distinguishes "needs a review" from "needs the founder to make a phone call".
@@ -115,5 +135,7 @@ act, like every framework sync.
    in the operator `.env` (interview Block 4).
 2. A "Paperclip" section in `dev_framework_exceptions.md`: agent host, git-push recipe,
    server map, production definition, what the agents must never touch.
-3. `./scripts/paperclip_company.py sync` — creates or refreshes the six agents.
-4. One ops issue that proves the loop end to end before any work issue.
+3. On the git host: the agents' bot may merge MRs into the planning repo's `main` and
+   each code repo's integration branch; the release ref is protected to the human.
+4. `./scripts/paperclip_company.py sync` — creates or refreshes the six agents.
+5. One ops issue that proves the loop end to end before any work issue.

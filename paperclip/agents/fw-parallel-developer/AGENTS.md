@@ -34,5 +34,6 @@ fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framew
 - The non-competing scan reads the board: list this company's `in_progress` issues and
   their W-items' `touches:`; refuse an item that overlaps a claimed file, and say so in a
   comment on both issues.
-- Everything under `FW_Developer` applies: evidence as comments, human merge, milestones
-  into the W-item log by MR, no full suites on the agent host.
+- Everything under `FW_Developer` applies: evidence as comments, the Orchestrator merges
+  your code MR, milestones into the W-item log by MR you merge at once, no whole suites
+  on the agent host.

@@ -1,7 +1,7 @@
 # FWADR-040: Paperclip is an execution layer; the roles stay single-sourced
 
 **Status:** accepted
-**Date:** 2026-11-07
+**Date:** 2026-11-08
 **Deciders:** user (framework author) + Template Developer
 
 ## Context
@@ -17,6 +17,12 @@ Paperclip's own answer to shared agent definitions is the Agent Companies packag
 (`agentcompanies/v1`): markdown files, external content referenced at a pinned commit,
 skills in the Agent Skills format, upgrade as an explicit act.
 
+On 2026-11-08 six `FW_*` agents ran a full day on that board. The mode document then made
+every merge a human's: finished work sat in the human's queue for more than five hours,
+and planning changes stacked on branches no other agent could read. The founder's working
+model is the opposite: agents merge as they go, the human tests hands-on at the end of an
+epic or phase, and only the release is the human's.
+
 ## Decision
 
 1. **Paperclip is an execution layer, not a second framework.** The role docs are the
@@ -25,7 +31,8 @@ skills in the Agent Skills format, upgrade as an explicit act.
    docs at a pinned framework commit) plus one mode document.
 2. **One mode document, [`paperclip-mode.md`](../paperclip-mode.md),** holds every
    substitution: ask-the-user → question card; approval → first comment, then proceed;
-   spawn → child issue; Reviewer → human merge; PR handoff → comment with the deep link;
+   spawn → child issue; Reviewer → a checklist the Orchestrator applies before it merges;
+   PR handoff → comment with the deep link;
    plus the record rule (git is the record, Paperclip is the queue; two issue classes),
    the carve-outs (working notes live on the issue between milestones and reach the W-item
    log at every milestone, not only at close), the delegation policy for cards, and session hygiene. Each role
@@ -43,6 +50,16 @@ skills in the Agent Skills format, upgrade as an explicit act.
    `FW_Curator` run the same check daily and report, so a project nobody opens still
    learns it is behind. Live-mounting the template on the Paperclip server was rejected:
    a bad framework commit would be live in every company at once.
+5. **Agents merge; the release is the human's.** The planning repo's `main` is everyone's
+   shared page: any agent writing to it opens an MR and merges it itself at once, the MR
+   staying as the record — no stacked or long-lived planning branches. In a code repo the
+   Orchestrator merges to the integration branch once its gates pass (reviewer checklist,
+   QA evidence including screenshots, CI green); the human does hands-on E2E at the end of
+   an epic or phase. **The release ref — a push to `main` under dev-main, a `v*` tag under
+   trunk — is never an agent's.** Two things stay with the human short of the release: an
+   ADR is `proposed` until the human accepts it, and no agent merges an MR that touches
+   the machinery (CI configuration, secrets files, deploy or release scripts), because a
+   merge to a protected branch runs that branch's CI with its protected variables.
 
 ## Consequences
 
@@ -50,6 +67,13 @@ skills in the Agent Skills format, upgrade as an explicit act.
   a company and checks the pin; `sync-framework.sh` 5f runs the check; the
   `framework-alignment` task runs it from inside Paperclip. The reading-list shape means
   a framework change needs no agent change — only a pin bump.
+- **Mechanism for 5:** the git host. The bot's permissions allow merging MRs into the
+  planning repo's `main` and a code repo's integration branch; branch and tag protection
+  reserve the release ref to the human (adoption step 3 in `paperclip-mode.md`, interview
+  Block 4). The pre-push guard does not run on the agent host.
+- **Named gap:** "no agent merges a machinery MR" and "no agent writes `accepted`" are
+  English-only where the host has no per-path approval rule; the Reviewer checklist names
+  a machinery diff on its first line.
 - **Named gap:** "a work issue names a W-item and ends with an MR that moves it" is
   English-only until the Orchestrator's reconciliation reads the Paperclip API (listed
   in `paperclip-mode.md` §"Record"); accepted, the Curator's divergence report is the
@@ -57,4 +81,5 @@ skills in the Agent Skills format, upgrade as an explicit act.
 - **Coherence surfaces:** this ADR; `paperclip-mode.md`; the five role docs' pointer
   sections; `dev_framework.md` §"Paperclip mode"; `context-management.md` Layer 1;
   CLAUDE.md managed block; `first-contact-interview.md` Block 4; `.env.example`
-  (`PAPERCLIP_*`); `sync-framework.sh` 5f; the `paperclip/` package; the stub script.
+  (`PAPERCLIP_*`); `sync-framework.sh` 5f; the `paperclip/` package; the stub script;
+  `templates/reviewer-brief.md` (machinery line).

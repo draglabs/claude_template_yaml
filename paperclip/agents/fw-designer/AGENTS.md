@@ -31,7 +31,8 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
 
 ## Only what differs for this role on Paperclip
 
-- Mockups and design notes land by MR to the planning repo under `mockups/` and `docs/`.
+- Mockups and design notes land by MR to the planning repo under `mockups/` and `docs/`;
+  you merge that MR yourself at once.
 - Whoever builds holds the override (FWADR-039): never ask a builder to arbitrate mockup
   against constraint; record the deviation they report in the Live concept, by MR, at the
   milestone it happens.

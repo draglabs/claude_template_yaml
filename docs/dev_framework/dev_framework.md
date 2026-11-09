@@ -155,7 +155,8 @@ agent whose instructions are a **reading list** (the project's `CLAUDE.md` and e
 file from its planning repo, the role's Layer-1 docs at a pinned framework commit) plus
 [`paperclip-mode.md`](paperclip-mode.md), the one document that says what differs when the
 user is a board rather than a chat: questions become cards, approval becomes a first
-comment, subagent dispatch becomes child issues, the Reviewer becomes the human merge, and
+comment, subagent dispatch becomes child issues, the Reviewer becomes a checklist the Orchestrator
+applies before it merges to the integration branch (the release ref stays the human's), and
 working notes live on the issue between milestones and reach the W-item log by MR at each
 one. Git stays the record; Paperclip is the queue. The package that creates a company is
 [`paperclip/`](../../paperclip/) in the template repo; `scripts/paperclip_company.py`

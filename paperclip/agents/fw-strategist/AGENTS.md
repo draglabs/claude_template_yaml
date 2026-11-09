@@ -33,7 +33,9 @@ issue; proceed unless the issue says `approve-first`.
 ## Only what differs for this role on Paperclip
 
 - Every plan, W-item, ADR, exception and runbook you write lands by MR to the planning
-  repo. You do not load project `src/` and you write no code.
+  repo, and you merge that MR yourself at once. An ADR lands `proposed` with a card asking
+  the founder to accept it; you never write `accepted`. You do not load project `src/`
+  and you write no code.
 - You may create issues for W-items that are ready (class *work*, the W-item path and its
   acceptance criteria verbatim in the description) and assign them to `FW_Orchestrator`,
   or to `FW_Developer` when the item is small and self-contained.

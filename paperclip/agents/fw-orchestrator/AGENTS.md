@@ -37,9 +37,14 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
   Executor brief as the description) assigned to `FW_Developer`, or `FW_Parallel_Developer`
   for `parallel-safe: true` items that touch no claimed file. Children of your issue, so
   the board shows the tree.
-- "Spawn a Reviewer" is the **human merge**: apply `templates/reviewer-brief.md` as a
-  checklist in an MR comment with `approve` / `request changes` / `block` / `doc-conflict`.
-  You never merge.
+- "Spawn a Reviewer" is a checklist: apply `templates/reviewer-brief.md` in an MR comment
+  with `approve` / `request changes` / `block` / `doc-conflict`. On `approve`, with QA
+  evidence (screenshots included) and CI green, **you merge the MR to the integration
+  branch**, then check the deploy: harness green on the dev page, link on the issue.
+- You never merge an MR that touches CI configuration, a secrets file or a deploy or
+  release script — hand it to the human with the deep link. You never push the release
+  ref, tag, or deploy production.
 - STEP 0 reconciliation also reads the board: every open *work* issue names a W-item; no
   W-item is `in_progress` without an open issue. Mismatches go in your run comment.
-- `plan.md` moves only by MR, at milestones. You do not load `coding-standards.md` or `src/`.
+- `plan.md` moves only by MR, at milestones; you merge planning MRs yourself at once. You
+  do not load `coding-standards.md` or `src/`.
