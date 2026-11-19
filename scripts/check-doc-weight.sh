@@ -10,9 +10,11 @@
 # CANONICAL numbers (context-management.md deliberately does not duplicate
 # them). They were set from measured reality + ~10% headroom on 2026-08-27.
 #
-# Raising a cap is legal but deliberate: bump it in the same commit as the doc
-# growth it licenses, with a one-line justification in the commit message.
-# After compacting a doc, re-tauten its cap to the new measured reality.
+# Budgets are per agent. Going over one is a WARNING TO THE USER, who decides:
+# raise that agent's budget, or refine the content. The Template Developer puts
+# the choice to the user and does neither on its own. A raised budget ships in
+# the same commit as the growth it licenses, with a one-line why. After
+# compacting a doc, re-tauten its budget to the new measured reality.
 #
 # Run from the template repo root. Invoked by sync-framework.sh's template-self
 # branch on every SessionStart; safe to run by hand any time. Template-only —
@@ -55,7 +57,9 @@ check_role() {
 # Role                          cap    Layer 1 framework docs
 # Developer + Strategist caps re-tautened 2026-08-27 after the FWADR-034
 # compaction review (F1-F3, F5) — measured 11,595 / 8,814 + ~8% headroom.
-check_role "Developer"          12500  developer.md coding-standards.md
+# Developer re-tautened 2026-11-19 after compacting developer.md (8,429 -> 4,181
+# words, same rules) — measured 8,079 + ~8% headroom.
+check_role "Developer"           8700  developer.md coding-standards.md
 check_role "Strategist"          9500  strategist.md
 # Orchestrator + Researcher caps +100 on 2026-10-12: Layer 0 grew by the
 # user-mandated "Handing off a PR" rule (CLAUDE.md), which every role loads.
@@ -73,9 +77,9 @@ check_role "Designer"            4100  designer.md   # +100 on 2026-11-07: FWADR
 check_role "Researcher"          3650  researcher.md
 
 if (( fail )); then
-  echo "[check-doc-weight] FAILED — a role's bootstrap load exceeds its cap (FWADR-034)."
-  echo "[check-doc-weight] Compact the doc, demote content to Layer 2, or — deliberately —"
-  echo "[check-doc-weight] raise the cap in this script in the same commit, with a one-line why."
+  echo "[check-doc-weight] WARNING FOR THE USER — an agent's bootstrap load is over its budget (FWADR-034)."
+  echo "[check-doc-weight] Your decision, per agent above: raise its budget (the number in this script),"
+  echo "[check-doc-weight] or have the content refined (compact the doc, or demote content to Layer 2)."
   exit 1
 fi
 

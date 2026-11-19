@@ -114,7 +114,7 @@ if [[ "$PROJECT_DIR" == "$TEMPLATE_ROOT" ]]; then
   # Template-only lint: per-role framework load vs caps (FWADR-034).
   if [[ -x "$PROJECT_DIR/scripts/check-doc-weight.sh" ]]; then
     "$PROJECT_DIR/scripts/check-doc-weight.sh" \
-      || echo "[sync-framework] WARN: doc weight check FAILED — compact or deliberately re-cap before committing (FWADR-034)."
+      || echo "[sync-framework] WARN: an agent is over its doc budget — tell the user and ask: raise the budget, or refine the content (FWADR-034)."
   fi
   # Template-only lint: no appended-history markers in spec docs (FWADR-036).
   if [[ -x "$PROJECT_DIR/scripts/check-dead-prose.sh" ]]; then

@@ -49,21 +49,24 @@ needs a database is not a CI test.
      tier CI runs; run in parallel; budget a few minutes; target at most
      about 5% of the project's test cases.
    - **Tier 2** — needs the database or another service. Code that runs **on
-     the dev site** after each deploy: the deploy job's last step runs the
-     code repo's `scripts/dev_harness.sh` on the dev host; its exit code is
-     the job's.
+     the dev site**, inside the app, after each deploy and on demand.
    - **Tier 3** — slow, end-to-end, browser-driven. Runs on dev, on demand
      or nightly.
-4. **The dev harness is a page.** The dev site lists every Tier 2 and Tier 3
-   case at `/__dev/`, runnable one-or-all from that page by the user or an
-   agent, with the last result per case, history, and the deployed branch and
-   commit; every run has a permanent URL. Building the tests into dev makes
-   them visible by forcing function. The harness uses dev's own services and
-   seed data: the dev Postgres exists once, on dev, seeded with dummy data;
-   migrations carry it forward; a wipe-and-reseed script, run by a human, is
-   the rare reset. The page exists on dev only. Seeded stub ships with the
-   framework; the body, the page and the seed script are the project's,
-   decided in its own ADR.
+4. **The dev harness is reached through the QA overlay.** The overlay exists
+   only on the dev server; opening it shows what was tested for the deployed
+   commit, in plain language, above the release checklist
+   ([FWADR-042](fwadr-042-qa-view-release.md)). The stakeholder starts a run
+   from there and an agent starts one over HTTP, which is why Tier 2 and
+   Tier 3 cases run from test code inside the app; the checks that must be
+   outside it (health by loopback and public name, assets) are a host script
+   shipped with the deploy, `scripts/dev_harness.sh`, whose exit code is the
+   deploy job's. A detailed page the overlay links into is a project's
+   detail. Building the tests into dev makes them visible by forcing
+   function. The harness uses dev's own services and seed data: the dev
+   Postgres exists once, on dev, seeded with dummy data; migrations carry it
+   forward; a wipe-and-reseed script, run by a human, is the rare reset.
+   Seeded stub ships with the framework; the body, the in-app runner and the
+   seed script are the project's, decided in its own ADR.
 5. **A runner is not an agent.** The rule in 2 binds CI jobs. An agent's own
    run environment (a chat session, a Paperclip agent host) may reach dev —
    only dev, never production — to start the harness, read its results, and
@@ -117,7 +120,7 @@ needs a database is not a CI test.
 - **Coherence surfaces:** this ADR; [`dev-environment.md`](../dev-environment.md)
   §"CI runners", §"Test tiers and the dev harness" and step 5;
   `coding-standards.md` §"Test tiers and the CI gate"; `session-policy.md`
-  §"Dispatch flow"; `developer.md` §"Code review"; `paperclip-mode.md`
+  §"Dispatch flow"; `developer.md` §"Phase discipline"; `paperclip-mode.md`
   §"Tests and done"; `templates/reviewer-brief.md`, `executor-brief.md`,
   `integrator-qa-brief.md`; `templates/first-contact-interview.md` Block 1;
   `sync-framework.sh` 5c/5e; stubs `check-ci-placement.sh`, `dev_harness.sh`.

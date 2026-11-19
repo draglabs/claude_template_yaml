@@ -51,21 +51,22 @@ reading its full operating contract.
    that can edit framework docs — sees any violation at the start of every
    session in this repo. It is a template-repo lint; it does not sync to
    adopters.
-6. **The ratchet doctrine.** Raising a cap is legal but deliberate: the bump
-   ships in the same commit as the doc growth it licenses, diff-visible,
-   with a one-line justification in the commit message. Lowering caps after
-   a compaction is encouraged — re-tauten to the new measured reality.
+6. **Over budget is a warning to the user, who decides.** Budgets are per
+   agent. When a role's load exceeds its budget the check says so, to the
+   user, with the two ways out: raise that agent's budget, or refine the
+   content. The Template Developer puts the choice to the user and does
+   neither on its own. A raised budget ships in the same commit as the growth
+   it licenses, with a one-line justification. Lowering budgets after a
+   compaction is encouraged — re-tauten to the new measured reality.
 
 ## Explicitly out of scope / accepted gaps
 
-- **`doc_churn_audit.sh` is untouched** (user decision). Its core — churn,
-  revision markers, inbound references, archive candidates, exception age —
-  is the Curator's contested-decision detector and was never the gap. Its
-  trailing "Doc size vs budget" section still prints the legacy line-count
-  signals; the Curator routes any framework-doc finding as `fwreq-*` exactly
-  as before (FWADR-026). Accepted incoherence, named here: that section's
-  caption cites line budgets this ADR retires. If it misleads in practice,
-  fixing the stub is a one-line follow-up.
+- **`doc_churn_audit.sh` reports sizes in words and judges none.** Its core —
+  churn, revision markers, inbound references, archive candidates, exception
+  age — is the Curator's contested-decision detector. Its trailing "Doc
+  size" section prints each role doc's word count with no budget of its own;
+  the per-agent budgets are checked in the template only, and the Curator
+  routes any framework-doc finding as `fwreq-*` (FWADR-026).
 - **Project-side structural limits stay line-denominated.** The plan-index
   (<150 lines) and W-item SOW (≤200 lines, FWADR-017/018) caps bound the
   *structure* of template-shaped artifacts rather than measure framework

@@ -25,7 +25,9 @@ and how dev takes feedback.
    project, hosted by the project's main app on dev, covering every code repo of the
    project. Specified in [`dev-environment.md`](../dev-environment.md) §"The QA view".
 2. **The checklist is in the code.** `qa/checklist.yaml` in each code repo, read at the
-   deployed commit. Every change adds the items the stakeholder should check.
+   deployed commit. Every change adds the items the stakeholder should check. Beside it
+   the view links the PRs merged since the last release: agents merge on their own gates
+   ([FWADR-040](fwadr-040-paperclip-mode.md)), and this is where the human reviews them.
 3. **Three marks:** approved, rejected, postponed (a soft approval). **Nothing blocks
    Approve.** When something is unsettled — an open or rejected item, a failed or skipped
    harness suite — the view says exactly what and asks the stakeholder to confirm; the

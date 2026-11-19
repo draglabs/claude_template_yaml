@@ -158,15 +158,15 @@ fi
 
 # ------------------------------------------------------- Layer budget signals
 echo
-echo "=== Doc size vs budget ==="
-echo "Layer 0 CLAUDE.md < 100 lines; Layer 1 role docs < 200 (context-management.md)."
+echo "=== Doc size (words) ==="
+echo "Sizes only. Budgets are per agent and checked in the template (FWADR-034)."
 hr
-[[ -f CLAUDE.md ]] && awk 'END{printf "  %5d  CLAUDE.md%s\n", NR, (NR>100?"   OVER (Layer 0 budget 100)":"")}' CLAUDE.md
+[[ -f CLAUDE.md ]] && printf '  %6d  CLAUDE.md\n' "$(wc -w < CLAUDE.md)"
 for f in docs/dev_framework/*.md; do
   [[ -e "$f" ]] || continue
   case "$(basename "$f")" in
     strategist.md|designer.md|developer.md|researcher.md|curator.md|template-developer.md|session-policy.md)
-      awk -v n="$(basename "$f")" 'END{printf "  %5d  %s%s\n", NR, n, (NR>200?"   OVER (Layer 1 budget 200)":"")}' "$f" ;;
+      printf '  %6d  %s\n' "$(wc -w < "$f")" "$(basename "$f")" ;;
   esac
 done
 

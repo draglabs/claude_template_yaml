@@ -126,7 +126,7 @@ Reference material pulled only when actively needed for a specific task.
 
 **What is measured: per-role framework load** — the template-owned words a role reads at bootstrap: CLAUDE.md (Layer 0) plus that role's Layer 1 framework docs.
 
-**Who it constrains: the Template Developer.** The budget is an authoring ratchet against framework bloat; it never restricts an agent from reading its full operating contract. The canonical per-role caps live in ONE place — `scripts/check-doc-weight.sh` in the template repo, run on every template SessionStart — so the one role that can fix an overweight framework doc is the one that sees the violation, and prose never drifts from the numbers. Caps are set taut (measured reality + ~10%); raising one is a deliberate, diff-visible edit shipping in the same commit as the growth it licenses, with a one-line justification.
+**Who it constrains: the Template Developer.** The budget is an authoring ratchet against framework bloat; it never restricts an agent from reading its full operating contract. The canonical per-role caps live in ONE place — `scripts/check-doc-weight.sh` in the template repo, run on every template SessionStart — so the one role that can fix an overweight framework doc is the one that sees the violation, and prose never drifts from the numbers. Budgets are per agent and set taut (measured reality + ~10%). Going over one is a warning to the user, who chooses: raise that agent's budget, or refine the content.
 
 Project-side artifacts keep their own structural limits, owned project-side (these bound the shape of template-shaped artifacts rather than measure framework load, and stay as their ADRs state them):
 
