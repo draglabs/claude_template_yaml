@@ -20,8 +20,8 @@ review gates from its own context.
 - Feature branch: w-{{id}}/{{slug}}  (already created by Orchestrator)
 - **Worktree path:** {{absolute-path}}  (already created off `origin/${INTEGRATION_BRANCH}`)
 - **Worktree base: `origin/${INTEGRATION_BRANCH}`** (verified — Orchestrator
-  created it with an explicit arg; `dev` under GIT_FLOW=dev-main, `main`
-  under trunk). The eventual merge target is the same branch.
+  created it with an explicit arg; always `main`). The eventual merge
+  target is the same branch.
 - **Retry cycle:** {{yes | no}}  (yes = Orchestrator re-dispatched you to
   address Reviewer or QA concerns; see "Prior concerns" below)
 
@@ -222,7 +222,7 @@ STEP 4 — Return to Orchestrator.
     - 1-3 short bullets. Not a novel. Not empty padding. If nothing
       interesting happened, write "Nothing surprising."
     - The Orchestrator will paste this verbatim into the merge commit on
-      `dev`, so it ends up in `git log` where the user reads it.
+      `main`, so it ends up in `git log` where the user reads it.
 
     Process exceptions guidance:
     - File when the friction is PLAUSIBLY PREVENTABLE BY A PROCESS CHANGE.
@@ -272,7 +272,7 @@ Hard rules:
 - Do NOT spawn Reviewer, QA, Integrator-QA, or any other subagent. That's
   not your job under peer dispatch. If you find yourself trying to invoke
   the Agent tool, stop — the Orchestrator will run the peer calls itself.
-- Do NOT merge. Do NOT push. The Orchestrator owns `dev` and `main`.
+- Do NOT merge. Do NOT push. The Orchestrator owns landing on `main`.
 - Do NOT start a live dev server in the worktree. In batch mode, parallel
   Executors would collide on dev-server ports. Live/browser/Playwright
   testing runs in the Integrator-QA pass, not here. Your testing is

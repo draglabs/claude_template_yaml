@@ -82,10 +82,18 @@ launch-without-env mechanically detected:
    fail: env-less quick sessions (doc reads) stay legal, and hooks are
    value-add, never session-start blockers (FWADR-014).
 
-4. **`.env.example` leads with a `MINIMUM TO BOOT` block** — the variables
+4. **The launcher sources `.env` as it stands; it does not render it.** Once a
+   project has an `env.yaml` ([FWADR-041](fwadr-041-env-yaml.md)), the shared
+   values in `.env` are a generated block and the rest is hand-kept (the
+   Bitwarden token, anything personal, the derived shell section). Rendering
+   needs the age key and `sops`; a launch that depended on them would fail
+   where today it works. The block carries a stamp of the `env.yaml` it came
+   from, and `sync-framework.sh` step 4g NOTICEs when `.env` is behind — the
+   same detect-then-relaunch shape as the binding check.
+
+5. **`.env.example` leads with a `MINIMUM TO BOOT` block** — the variables
    every role needs (`PROJECT_NAME`, `PROJECT_SUB`, `PROJECT_WEBSITE`,
    `PROJECT_PORTS`, `DEV_ENVIRONMENT_MODE`, `GIT_HOST`, the host token,
-   `GIT_FLOW` per [FWADR-035](fwadr-035-git-flow-mode.md),
    `DEFAULT_CODE_SUBDIR`); everything else sits under "Optional", including
    `CLAUDE_TEMPLATE_ROOT`. The README quick start copies `.env.example`, fills
    that block, and launches via `claude-env`, not bare `claude`.

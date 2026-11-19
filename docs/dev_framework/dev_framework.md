@@ -19,7 +19,7 @@ A fifth product-side session audits the corpus the other four produce:
 
 An optional sixth product-side session exists for projects that configure it:
 
-- **Researcher** ([FWADR-024](adrs/fwadr-024-researcher-role.md)) — finds and acquires content/data missing from the project's corpus and delivers it through the project's sanctioned intake. **Finder, not a builder**: write scope is one named directory (mechanical pre-merge check via `scripts/check-researcher-scope.sh`), the server API is an opaque contract (capability gaps become `req-*` server-work requests the Strategist triages, never server-side edits), merges to `dev` only. Refuses to bootstrap unless the project has set its parameters. See [`researcher.md`](researcher.md).
+- **Researcher** ([FWADR-024](adrs/fwadr-024-researcher-role.md)) — finds and acquires content/data missing from the project's corpus and delivers it through the project's sanctioned intake. **Finder, not a builder**: write scope is one named directory (mechanical pre-merge check via `scripts/check-researcher-scope.sh`), the server API is an opaque contract (capability gaps become `req-*` server-work requests the Strategist triages, never server-side edits), lands on `main` by PR only. Refuses to bootstrap unless the project has set its parameters. See [`researcher.md`](researcher.md).
 
 Work gets done via two parallel modes — **a phase runs end-to-end under one mode**:
 
@@ -35,7 +35,7 @@ User ↔ Strategist          (doc-only, opens planning: PRs)
 User ↔ Designer            (mockups/ only, opens design: PRs)
 User ↔ Orchestrator        (dispatcher + review coordinator + merger)
            │
-           ├─▶ Executor (work tier, worktree off `dev`) ── code-only return
+           ├─▶ Executor (work tier, worktree off `main`) ── code-only return
            │
            ├─▶ Reviewer (top tier)                      ── verdict to Orchestrator
            │       │
@@ -48,21 +48,21 @@ User ↔ Orchestrator        (dispatcher + review coordinator + merger)
            │       └─ fail? same retry loop
            │
            ▼  all gates green
-       Orchestrator ──▶ merge to `dev` ──▶ push ──▶ auto-advance
+       Orchestrator ──▶ merge PR to `main` ──▶ auto-advance
                                                        │
                          (when phase complete ─────────┘
                           + phase-exit QA + user OK)
                                 │
                                 ▼
-                        merge `dev` → `main`
+                        user approves in the QA view → release tag
                                 │
                                 ▼
                      production CI deploy
 ```
 
-Every subagent is a peer under the Orchestrator — no subagent spawns another subagent (hard constraint of the Claude Agent SDK; see [FWADR-013](adrs/fwadr-013-peer-dispatch.md)). The Orchestrator never opens diffs or source files; it reads Reviewer, QA, and Integrator-QA verdicts (which cite `file:line`). Main only moves at phase-exit promotion.
+Every subagent is a peer under the Orchestrator — no subagent spawns another subagent (hard constraint of the Claude Agent SDK; see [FWADR-013](adrs/fwadr-013-peer-dispatch.md)). The Orchestrator never opens diffs or source files; it reads Reviewer, QA, and Integrator-QA verdicts (which cite `file:line`). Production only moves at the phase-exit release.
 
-The stack above shows sequential (per-task) Orchestrator dispatch. For W-items marked `Parallel-safe: true` on the plan, the Orchestrator uses **batch mode** ([FWADR-016](adrs/fwadr-016-batch-mode-integrator-qa.md)): up to ~3 Executors dispatched concurrently, followed by a single **Integrator-QA** (top tier, long-context) call that absorbs per-task Reviewer + pre-merge QA for the batch, writes fix commits within acceptance, files integration claims for scope changes (routed through Strategist + user), and merges the clean items to dev. Sequential mode and batch mode coexist within Orchestrator dispatch — the choice is per-item at dispatch time, based on the `Parallel-safe` field.
+The stack above shows sequential (per-task) Orchestrator dispatch. For W-items marked `Parallel-safe: true` on the plan, the Orchestrator uses **batch mode** ([FWADR-016](adrs/fwadr-016-batch-mode-integrator-qa.md)): up to ~3 Executors dispatched concurrently, followed by a single **Integrator-QA** (top tier, long-context) call that absorbs per-task Reviewer + pre-merge QA for the batch, writes fix commits within acceptance, files integration claims for scope changes (routed through Strategist + user), and merges the clean items to `main`. Sequential mode and batch mode coexist within Orchestrator dispatch — the choice is per-item at dispatch time, based on the `Parallel-safe` field.
 
 **Developer mode** ([FWADR-018](adrs/fwadr-018-developer-role.md)) is a parallel mode to the Orchestrator dispatch chain shown above. The user invokes the Developer directly. The user is the QA gate (real-time, in the loop, throughout `in_progress`); a **spawned Reviewer subagent** is the code-review gate (fresh process, sees only the diff + W-item brief). The Developer codes one W-item at a time, runs the user-mediated QA loop, optionally `/compact`s its session context at user-confirmation, then dispatches the Reviewer brief and acts on the verdict. State machine adds one state, `code_review`, that exists only in Developer-mode lifecycles. **Mixed-mode phases are allowed** — items lock into a mode at claim time via the Status path they take, so Orchestrator-driven items and Developer-driven items can coexist on the same plan with no per-plan exclusivity. The plan's `Mode` field is the Strategist's recommendation, not a lock.
 
@@ -84,7 +84,7 @@ Subagent briefs (load on spawn, not at session start):
 |---|---|---|
 | Executor | [`templates/executor-brief.md`](templates/executor-brief.md) | Orchestrator (both modes) |
 | Reviewer | [`templates/reviewer-brief.md`](templates/reviewer-brief.md) | Orchestrator — **sequential mode only**, peer of Executor |
-| QA | [`templates/qa-brief.md`](templates/qa-brief.md) | Orchestrator — per-W-item pre-merge (**sequential mode only**), phase exit (both modes), post-promotion smoke (both modes) |
+| QA | [`templates/qa-brief.md`](templates/qa-brief.md) | Orchestrator — per-W-item pre-merge (**sequential mode only**), phase exit (both modes), post-release smoke (both modes) |
 | Integrator-QA | [`templates/integrator-qa-brief.md`](templates/integrator-qa-brief.md) | Orchestrator — **batch mode only**, end of parallel batch; absorbs per-task Reviewer + pre-merge QA |
 | Doc Consultant | [`templates/doc-consultant-brief.md`](templates/doc-consultant-brief.md) | Any role |
 | Code Consultant | [`templates/code-consultant-brief.md`](templates/code-consultant-brief.md) | Primarily Strategist |
@@ -100,6 +100,7 @@ Subagent briefs (load on spawn, not at session start):
 | Context budget (what each role loads) | [`context-management.md`](context-management.md) | Reference — loaded on demand |
 | Approved MCPs (tools each role uses; config + health owned by Strategist) | [`approved-mcps.md`](approved-mcps.md) | Reference — loaded when adding or evaluating an MCP; Strategist runs the session-start health check per [`strategist.md`](strategist.md) §"MCP health check" |
 | Dev environment (local vs remote `{{sub}}.dev.{{website}}.com`) | [`dev-environment.md`](dev-environment.md) | Orchestrator on first-time setup; loaded on demand otherwise |
+| Env values (one encrypted `env.yaml`; places; delivery by hand; key backup) | [FWADR-041](adrs/fwadr-041-env-yaml.md) | Strategist, when a value or place changes; the push guard and sync hook enforce it for everyone |
 | Paperclip mode (how a role is played from an issue; record rule; carve-outs) | [`paperclip-mode.md`](paperclip-mode.md) | Every `FW_*` agent, every run; a human only when setting a company up ([FWADR-040](adrs/fwadr-040-paperclip-mode.md)) |
 | Process exceptions (raw field reports from agents) | [`process-exceptions.md`](../framework_exceptions/process-exceptions.md) | Appended to by any agent that hits process friction; read by Strategist at phase boundaries |
 | Process incidents (analyzed: root cause + fix) | [`execution-incidents.md`](../framework_exceptions/execution-incidents.md) | Promoted from process-exceptions by Strategist when an entry warrants full post-mortem |
@@ -128,21 +129,21 @@ The framework's git policy is **host-neutral**. GitHub and GitLab (including sel
 ## Branch model
 
 ```
-feature  ──▶  dev  ──(phase exit + user authorizes)──▶  main
+feature  ──PR──▶  main  ──(phase exit + user approves in the QA view)──▶  release tag
               │                                          │
               ▼                                          ▼
      dev environment                            production
      (local or remote)                          (always CI-deployed)
 ```
 
-Feature branches merge to the integration branch per W-item (Orchestrator decision) — `dev` under `GIT_FLOW=dev-main`, `main` under `GIT_FLOW=trunk` ([FWADR-035](adrs/fwadr-035-git-flow-mode.md); set at the first-contact interview). Production moves only at phase-exit, gated by QA against `{{sub}}.dev.{{website}}.com` and explicit user authorization: a promotion merge `dev → main`, or a `v*` release tag under trunk. See [`session-policy.md`](session-policy.md) §"Branching and isolation" and §"Phase exit gate."
+Feature branches land on `main` by PR per W-item (Orchestrator decision) — the branch model is trunk ([FWADR-035](adrs/fwadr-035-git-flow-mode.md)). Production moves only at phase-exit, gated by QA against `{{sub}}.dev.{{website}}.com` and the user's approval in the QA view on dev, which cuts a `v*` release tag ([`dev-environment.md`](dev-environment.md) §"Release by approval"). See [`session-policy.md`](session-policy.md) §"Branching and isolation" and §"Phase exit gate."
 
-Pushing the release ref (`main`, or `v*` tags under trunk) is mechanically blocked by a git pre-push guard installed on every SessionStart sync ([FWADR-023](adrs/fwadr-023-main-push-guard.md)); the only sanctioned push path is `scripts/promote_dev_to_main.sh` (default = phase-exit release, `--bypass` = emergency path).
+Every tag push and every direct push to `main` in a code repo is mechanically blocked, with no bypass, by a git pre-push guard installed on every SessionStart sync ([FWADR-023](adrs/fwadr-023-main-push-guard.md)); the release tag is cut on the git host by the project's `release` CI job.
 
 ## Two process rules (every session)
 
 1. **Docs before code — for *additions*.** Architectural additions get documented by the Strategist and merged before the Orchestrator dispatches implementation. Enforced at the merge boundary by the Reviewer (`block` if no matching doc) and at the phase boundary by the Strategist's alignment audit. **This does NOT make an existing ADR outrank a live instruction from you.** When your instruction conflicts with an accepted ADR, the resolution is *doc-follows-instruction*: the deviation is recorded on the W-item, the review gate reports `doc-conflict` rather than blocking, and the ADR is **rewritten** (never appended to) to state the decision that now holds — or escalated to you if your intent isn't clear. The ADR log is living architecture, not doctrine ([FWADR-027](adrs/fwadr-027-living-architecture.md)).
-2. **CI-only deploys to production.** Production changes land via the release push (`main` under dev-main, a `v*` tag under trunk) → CI. Never from a laptop. Never via `docker exec`. Dev environment behavior depends on mode — see [`dev-environment.md`](dev-environment.md).
+2. **CI-only deploys to production.** Production changes land via the release tag (`v*`) → CI. Never from a laptop. Never via `docker exec`. Dev environment behavior depends on mode — see [`dev-environment.md`](dev-environment.md).
 
 Code-level rules (TDD, no hardcoded lifecycle values, fail loudly) live in [`coding-standards.md`](coding-standards.md) and are enforced by the Executor (writing) and Reviewer (checking) subagent briefs. The Orchestrator and Strategist do NOT load that doc — they delegate enforcement to the subagent layer.
 
@@ -156,7 +157,7 @@ file from its planning repo, the role's Layer-1 docs at a pinned framework commi
 [`paperclip-mode.md`](paperclip-mode.md), the one document that says what differs when the
 user is a board rather than a chat: questions become cards, approval becomes a first
 comment, subagent dispatch becomes child issues, the Reviewer becomes a checklist the Orchestrator
-applies before it merges to the integration branch (the release ref stays the human's), and
+applies before it merges to `main` (the release tag stays the human's), and
 working notes live on the issue between milestones and reach the W-item log by MR at each
 one. Git stays the record; Paperclip is the queue. The package that creates a company is
 [`paperclip/`](../../paperclip/) in the template repo; `scripts/paperclip_company.py`

@@ -16,7 +16,7 @@ Target: **under 30 lines of active content.** If the active section is growing p
 
 - A framework rule actively blocks a project-specific reality that has been explored and can't be worked around without deviating.
 - A project-specific tool, environment, or constraint requires a different default (e.g. this project doesn't have a Designer, so the designer.md role never activates).
-- A policy has been explicitly suspended for this project with the user's knowledge (e.g. "this project merges feature → main directly; no dev branch").
+- A policy has been explicitly suspended for this project with the user's knowledge (e.g. "this project skips phase-exit QA for docs-only phases").
 
 ## When NOT to file
 
@@ -35,7 +35,7 @@ Append new entries to the **Active** section below. Use this shape:
 **Project reality:** the specific project constraint forcing the deviation.
 **New rule:** the replacement rule that applies here. Must be as mechanically stated as the rule it replaces.
 **Enforcement:** how the deviation is enforced (command, check, brief edit, …). If there's no mechanism, the exception is an English-only rule, which the template doctrine treats as drift bait.
-**Retire when:** criteria under which this exception should be deleted (e.g. "when the project adopts a Designer," "when the CI pipeline supports dev-branch deploys").
+**Retire when:** criteria under which this exception should be deleted (e.g. "when the project adopts a Designer," "when the CI pipeline deploys the dev environment").
 ```
 
 ## Retiring an exception

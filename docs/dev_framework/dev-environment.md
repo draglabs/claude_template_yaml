@@ -1,6 +1,6 @@
 # Dev environment
 
-How this project's integration-branch code (`dev`, or `main` under `GIT_FLOW=trunk` — session-policy §"Branching and isolation") becomes something a QA subagent can test. Every project running on this template picks one of two modes; the rest of the framework stays identical either way.
+How this project's `main` becomes something a person and a QA subagent can test, how the person reviewing it on dev releases it, and how their feedback comes back. Every project has a dev mode, and every project running on this template picks one of two hosting modes for it; the rest of the framework stays identical either way.
 
 ## Naming convention (fixed)
 
@@ -15,7 +15,7 @@ Example: `myapp.dev.draglabs.com`. Every project that uses this template follows
 | | **Local-hosted dev** | **Remote-hosted dev** |
 |---|---|---|
 | Where dev runs | User's machine | A real server (VPS, Fly, Cloudron, …) |
-| Push to the integration branch (`dev` / `main` under trunk) | No deploy. User runs `docker compose up` locally. | CI deploys to the dev server. |
+| Push to `main` | No deploy. User runs `docker compose up` locally. | CI deploys to the dev server. |
 | QA target | `{{sub}}.dev.{{website}}.com` (resolves to localhost via local redirect) | `{{sub}}.dev.{{website}}.com` (resolves to dev-server IP via wildcard DNS) |
 | Infra cost | Zero beyond user's machine | A server + DNS + CI deploy path |
 | When to pick | Solo dev, early stage, iteration-heavy | Multiple contributors, stable architecture, QA needs to run while laptop is closed |
@@ -29,17 +29,17 @@ The choice is an ADR — see `docs/architecture/stack.md` "Dev environment hosti
 │  feature branch        │
 │  w-<id>/<slug>         │
 └────────────┬───────────┘
-             │ Orchestrator merges after Executor pass
+             │ one PR per finished W-item, merged on the git host
              ▼
 ┌────────────────────────┐        CI on push:
-│  dev                   │  ───▶  LOCAL:  no deploy (user runs locally)
+│  main                  │  ───▶  LOCAL:  no deploy (user runs locally)
 │                        │  ───▶  REMOTE: deploy to dev server
 └────────────┬───────────┘
-             │ Phase-boundary promotion
-             │ (user/Strategist authorizes after QA passes on dev)
+             │ Approve in the QA view on dev
+             │ (§"Release by approval": the release job cuts the tag)
              ▼
-┌────────────────────────┐        CI on push:
-│  main                  │  ───▶  deploy to production
+┌────────────────────────┐        CI on the tag:
+│  release tag (v*)      │  ───▶  deploy to production
 └────────────────────────┘
 ```
 
@@ -72,13 +72,13 @@ The goal: `curl https://{{sub}}.dev.{{website}}.com` from the user's laptop hits
 
 ### Remote-hosted bootstrap walkthrough
 
-The goal: `curl https://{{sub}}.dev.{{website}}.com` from anywhere hits the remote dev server, fresh with whatever was last pushed to `dev`.
+The goal: `curl https://{{sub}}.dev.{{website}}.com` from anywhere hits the remote dev server, fresh with whatever was last merged to `main`.
 
 1. **Confirm project variables** (same as local, step 1).
 2. **Dev server provisioned.** If one doesn't exist, that's a prerequisite — escalate to user. Don't provision infrastructure from the Orchestrator; this is a one-time user decision, often involving billing.
 3. **Wildcard DNS.** `*.dev.{{website}}.com` → dev-server IP, at the registrar or DNS provider. Orchestrator can confirm via `dig` but doesn't edit DNS records.
 4. **TLS certificate.** Let's Encrypt wildcard (`*.dev.{{website}}.com`) via DNS-01 challenge. Caddy/Traefik on the dev server handles this automatically if pointed at the right DNS provider API.
-5. **CI deploy to dev.** Add a CI workflow on the project's git host (GitHub Actions, GitLab CI, or equivalent — per `GIT_HOST`): on push to the integration branch (`dev`; `main` under trunk), build the image and deploy to the dev server. Production deploys on push to `main` (dev-main) or on a `v*` tag (trunk). Runner tags and the pipeline shape follow §"CI runners": the deploy job runs on the ephemeral runner host and reaches dev over SSH with a deploy key held as a protected CI variable; its last step runs the dev harness (Tier 2) on dev — §"Test tiers and the dev harness". Exact deploy mechanism is project-specific (rsync + systemctl, `docker pull` on server, Cloudron app update, …). Record the chosen mechanism in the ADR, and run `./scripts/check-ci-placement.sh $CODE_ROOT` before the first push.
+5. **CI deploy to dev.** Add a CI workflow on the project's git host (GitHub Actions, GitLab CI, or equivalent — per `GIT_HOST`): on push to `main`, build the image and deploy to the dev server. Production deploys on a release tag. Runner tags and the pipeline shape follow §"CI runners": the deploy job runs on the ephemeral runner host and reaches dev over SSH with a deploy key held as a protected CI variable (§"How a build reaches a host"); its last step runs the dev harness (Tier 2) on dev — §"Test tiers and the dev harness". The same change adds the QA view and the `release` job (§"The QA view", §"Release by approval"). Record the chosen mechanism in the ADR, and run `./scripts/check-ci-placement.sh $CODE_ROOT` before the first push.
 6. **Smoke test.** Same as local — `curl` the URL, expect hello world. CI passing is not sufficient; confirm the URL actually serves the current dev commit and the harness page at `/__dev/` loads.
 7. **Document.** Orchestrator adds deploy mechanism + server identity to the ADR.
 
@@ -92,9 +92,9 @@ Under peer dispatch, the Orchestrator dispatches Executors for all code work. Bo
 
 Same reasoning as 🔍 spikes: research-flavored work with no diff, run by Orchestrator directly. The first-time dev-environment setup is documented in the project's first ADR(s) so it's not lost.
 
-## After bootstrap: routine dev-branch operation
+## After bootstrap: routine operation
 
-Once set up, dev is just another branch in the flow. The Orchestrator's STEP 4 merges feature branches to `dev`. Phase exit QAs against `{{sub}}.dev.{{website}}.com`. Promotion to main happens when the user authorizes at the phase boundary.
+Once set up, dev follows `main`: every merged PR deploys there. The stakeholder reviews on `{{sub}}.dev.{{website}}.com`, works the checklist in the QA view, and approves the release from that page.
 
 The user doesn't interact with dev-environment details again unless:
 - A new subdomain is needed (spawns a mini-bootstrap).
@@ -146,7 +146,7 @@ Each slot carries a `hostname` (`<slot>.{{sub}}.localhost`, auto-resolves via RF
 | Job kind | Tag | Executor | Reaches the target by | Refs |
 |---|---|---|---|---|
 | verify / test / lint / build | `docker` | docker, `image:` pins the toolchain | — | any |
-| deploy | `deploy` | shell on ephemeral | SSH with a deploy key from a protected, masked CI variable | protected only (`main`, `dev`, `v*`) |
+| deploy, release | `deploy` | shell on ephemeral | SSH with a deploy key from a protected CI variable | protected only (`main`, release tags) |
 | *(transitional)* | `ephemeral-shell` | shell on ephemeral | — | any; reported by the check, migrate to `docker` |
 
 **What a runner runs.** Tier 1 tests (§"Test tiers and the dev harness"), lint, typecheck, diff/consistency analysis, image build. **A CI job never starts a database and never reaches one** — not `services:`, not `docker run postgres`, not a connection string to dev's instance, not a tunnel. Reaching dev's Postgres from a runner was built and measured: 93,029 statements × a 107 ms network round trip ≈ 3 hours per run, against 19 minutes co-located.
@@ -162,13 +162,53 @@ verify:app:
 deploy:dev:
   tags: [deploy]
   resource_group: production       # same-project deploys serialize; others run alongside
-  rules: [{ if: $CI_COMMIT_BRANCH == "dev" }]
+  rules: [{ if: $CI_COMMIT_BRANCH == "main" }]
   script:
-    - ssh deploy@$SERVER_DEV 'cd /srv/app && ./deploy.sh'
+    - deploy/remote-deploy.sh dev                                      # ships the image, runs deploy.sh on dev
     - ssh deploy@$SERVER_DEV 'cd /srv/app && scripts/dev_harness.sh'   # Tier 2 runs here, on dev
 ```
 
 **Mechanism:** `./scripts/check-ci-placement.sh <repo>` (framework-owned) FAILs on `self-hosted`, on an untagged job, on a datastore under `services:` or in a `docker run` line, and on a non-deploy job that names a database connection (`*DATABASE_URL`, a `postgres://`-style URL, `psql`, an `ssh -L` tunnel); WARNs on `ephemeral-shell` and on a deploy job that never calls the harness. SessionStart runs it for every code repo and emits a NOTICE while CI is unmigrated; the Reviewer runs it on any pipeline diff and each FAIL is a `block`; the first-contact interview runs it so a new project starts compliant. Runner registration and capacity (`concurrent`, per-runner `limit`, `request_concurrency`) are server state owned by the user, recorded in the project's deploy README.
+
+## How a build reaches a host
+
+The image is built on the ephemeral host and the deploy job, on the same host, ships it: `docker save | gzip | ssh | docker load`, skipped when the target already holds that image. No registry. The job then copies the repo's deploy files to the target and runs the repo's `deploy.sh` **there**, so every check (compose up, migrate, health, public name) is made on the host being deployed, by the same script in every environment. Dev and production use the same path; only the target differs.
+
+- **Build and deploy run on the same host.** A build tagged for one host and a deploy tagged for another fails with "image not found"; `check-ci-placement.sh` does not see this, so the first deploy is the test.
+- **Connection, per environment:** `<ENV>_SSH_PRIVATE_KEY` and `<ENV>_SSH_KNOWN_HOSTS` (file-type variables), `<ENV>_HOST`, `<ENV>_USER`; protected, scoped to that environment, strict host-key checking. They are `env.yaml` entries routed to that environment's CI place ([FWADR-041](adrs/fwadr-041-env-yaml.md)).
+- **The target has a login, not a runner:** one deploy user per project, in the docker group, owning the project's deploy root, with the CI public key authorized.
+- **The app env is written at deploy,** whole, from that environment's CI variables plus the committed non-secret settings; secrets travel on stdin, never argv.
+- **A retried deploy may need a rebuild.** The ephemeral host prunes images daily.
+
+Building the image where the deploy runs, or a registry, are a project's to choose instead; record it in the dev-environment ADR.
+
+## The QA view
+
+**Every project's dev site carries a QA view: the one place the stakeholder reviews what is deployed, sends feedback, and releases** ([FWADR-042](adrs/fwadr-042-qa-view-release.md)). It is hosted by the project's main app, on dev only, and covers every code repo of the project. A repo with no dev mode at all has no QA and does not use this; that is recorded as an exception in `dev_framework_exceptions.md`, with how it releases.
+
+- **The way in.** On dev, a QA bubble on every page opens the view. In production it does not exist: `QA_VIEW` is a required setting, `on` or `off`, with no default.
+- **What it shows, per repo:** the deployed commit, whether that commit is `main`'s head, its checklist, and what has already been said about it.
+- **The checklist** is `qa/checklist.yaml` in each code repo, read at the deployed commit. Every change adds the items the stakeholder should check; an item names the W-item or issue it came from.
+- **Three marks per item:** **approved**, **rejected**, **postponed** (a soft approval). Each can carry a note. There is also free feedback on the commit.
+- **State lives on the commit, in the git host.** Every mark, note and approval is one comment on the commit whose first line is machine-readable: `qa:item <id> approved|rejected|postponed`, `qa:feedback [<id>]`, `qa:approve <version>`. The latest comment for an item wins. The app keeps no QA state, so there is nothing to migrate and agents read the same record.
+- **The dev server's key cannot push.** It holds one token per repo with the lowest role that reads commits and writes comments. It cannot push, merge, tag or change settings.
+- **Dev is behind a login.** `SITE_ACCESS` is a required setting, `restricted` or `open`. Dev is `restricted`: per-user passwords, so every mark records who made it. Machine callers (inbound webhooks, the harness, a client's dev build) are an explicit list of exempt paths in the repo, each with its caller named; the harness and each QA agent get a user of their own.
+
+## Release by approval
+
+**The release tag is cut on the git host when the stakeholder presses Approve in the QA view. Nobody pushes a tag: not an agent, not a laptop.**
+
+1. **Approve is one deliberate action.** It is enabled only when no item is open or rejected, it names the version (default: the next patch after the highest release tag), and it is bound to the commit the page showed: if dev was redeployed in between, it is refused.
+2. **Approval is a comment** (`qa:approve <version>`) on that commit. A webhook on comment events starts a pipeline on `main`.
+3. **The `release` job re-checks everything itself** before it tags: the comment is an approval; its author is the QA token's own bot user; the commit is on `main`; the commit's pipeline is green; every checklist item at that commit is approved or postponed; nothing was marked after the approval; the version is new and the commit carries no release tag. Then it creates the annotated tag with a token only that job receives (protected, scoped to a `release` environment).
+4. **The tag deploys production.** Each repo is released on its own tag; a repo declares its tag pattern when it is not `v*`.
+5. **Postponed items carry over:** the next change that touches them puts them back on the checklist.
+
+Emergencies take the same path, faster: an expedited PR to `main`, dev deploys, Approve. If the QA view itself is down, the user creates the tag in the git host's own interface. The pre-push guard refuses every tag push and every direct push to `main` in a code repo, and has no bypass ([FWADR-023](adrs/fwadr-023-main-push-guard.md)).
+
+## Feedback from the QA view
+
+A rejection or a note is a comment on the commit, where every agent can read it. What turns it into work is the project's to build and is not yet proven anywhere: the intended shape is **one issue per approval round** listing every rejected item (each reopening the W-item or issue its checklist entry names), never one run per comment. Until a project has that, the Strategist reads the commit's comments at session start and files the work.
 
 ## Test tiers and the dev harness
 
@@ -220,17 +260,17 @@ Dev and prod are separate CI workflows and separate URLs:
 - Dev: `{{sub}}.dev.{{website}}.com` (local or remote)
 - Prod: `{{sub}}.{{website}}.com` (the live URL from CLAUDE.md — no `dev` subdomain)
 
-The "CI-only deploys" rule from CLAUDE.md applies to prod. Dev is whatever the mode says — local means "run it yourself," remote means "CI deploys on dev push." Both are allowed; neither counts as a prod deploy.
+The "CI-only deploys" rule from CLAUDE.md applies to prod. Dev is whatever the mode says — local means "run it yourself," remote means "CI deploys every merge to `main`." Both are allowed; neither counts as a prod deploy.
 
-### Pointing prod at a non-main branch (escape hatch)
+### Pointing prod at a branch (escape hatch)
 
-Sometimes WIP needs to be reachable at the prod URL before it's been promoted to `main` — usually because the work depends on prod-only data, integrations, or auth surfaces that dev doesn't carry. The "CI-only deploys to prod" rule still holds; what changes is the branch CI deploys *from*.
+Sometimes WIP needs to be reachable at the prod URL before it has been released — usually because the work depends on prod-only data, integrations, or auth surfaces that dev doesn't carry. The "CI-only deploys to prod" rule still holds; what changes is what CI deploys *from*.
 
 Discipline:
 
-1. **Pre-flight.** User flips the branch CI deploys to prod from `main` → `dev` or `<feature>`. Whatever surface CI watches (workflow file, deploy config, manual trigger) is project-specific. Confirm the flip took effect at the prod URL before the Developer starts iterating.
-2. **Work normally.** Developer (or Orchestrator) drives the W-item through its standard lifecycle. The user-mediated QA loop runs against the prod URL since that's where the WIP is now reachable. Plan-writes still go on `dev` per PLAN-WRITE DISCIPLINE — the prod-pointer flip changes deploy mechanics, not branching mechanics.
-3. **Merge to `main`.** Standard Ship path: feature → dev → main, all via CI. The just-shipped work is now on `main`.
-4. **Post-flight: flip back.** Switch CI's prod deploy branch back to `main`. **This is easy to forget** — if you skip it, prod silently keeps deploying dev/feature, and the next item that merges to `main` doesn't reach the live URL until someone notices the divergence.
+1. **Pre-flight.** User flips CI's prod deploy from release tags to `main` or `<feature>`. Whatever surface CI watches (workflow file, deploy config, manual trigger) is project-specific. Confirm the flip took effect at the prod URL before the Developer starts iterating.
+2. **Work normally.** Developer (or Orchestrator) drives the W-item through its standard lifecycle. The user-mediated QA loop runs against the prod URL since that's where the WIP is now reachable. Plan-writes follow PLAN-WRITE DISCIPLINE as usual — the prod-pointer flip changes deploy mechanics, not branching mechanics.
+3. **Land and release.** Standard path: PR to `main`, then Approve in the QA view.
+4. **Post-flight: flip back.** Switch CI's prod deploy back to release tags. **This is easy to forget** — if you skip it, prod silently keeps deploying a branch, and the next release tag doesn't reach the live URL until someone notices the divergence.
 
-Forcing function: the Developer's `Cleanup at done-flip` discipline (in `developer.md`) includes a prod-pointer check before the W-item closes. The Orchestrator's phase-exit promotion should do the same when a phase was driven under this escape hatch. Both ask the user directly because the CI surface is project-specific — the agent can't probe it generically.
+Forcing function: the Developer's `Cleanup at done-flip` discipline (in `developer.md`) includes a prod-pointer check before the W-item closes. The Orchestrator's phase exit should do the same when a phase was driven under this escape hatch. Both ask the user directly because the CI surface is project-specific — the agent can't probe it generically.

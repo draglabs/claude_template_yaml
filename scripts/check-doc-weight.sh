@@ -61,11 +61,16 @@ check_role "Strategist"          9500  strategist.md
 # user-mandated "Handing off a PR" rule (CLAUDE.md), which every role loads.
 # Orchestrator +50 on 2026-11-08: FWADR-037's done rule (harness green, link
 # posted) and tiered phase-exit step land in session-policy.md.
-check_role "Orchestrator"        9150  session-policy.md
-check_role "Template Developer"  7000  template-developer.md dev_framework.md
+# Orchestrator + Researcher +50, Template Developer +100 on 2026-11-19: Layer 0
+# gained the env.yaml rule (FWADR-041: who changes env values, who never edits
+# the file), which every role must load; dev_framework.md gained its table row.
+# Orchestrator re-tautened the same day: trunk only (FWADR-035) cut the two-mode
+# text from session-policy.md — measured 8,734 + ~3% headroom.
+check_role "Orchestrator"        9000  session-policy.md
+check_role "Template Developer"  7100  template-developer.md dev_framework.md
 check_role "Curator"             5500  curator.md
 check_role "Designer"            4100  designer.md   # +100 on 2026-11-07: FWADR-040 adds a Paperclip-mode pointer to every Layer-1 load
-check_role "Researcher"          3600  researcher.md
+check_role "Researcher"          3650  researcher.md
 
 if (( fail )); then
   echo "[check-doc-weight] FAILED — a role's bootstrap load exceeds its cap (FWADR-034)."

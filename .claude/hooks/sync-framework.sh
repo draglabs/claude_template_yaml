@@ -335,6 +335,37 @@ if [[ -f "$USERLOG_GI" ]] && ! grep -qxF '.env.*' "$USERLOG_GI" 2>/dev/null; the
 fi
 
 # ---------------------------------------------------------------------------
+# 4g. env.yaml state (FWADR-041). Shared env values live in one tracked,
+#     SOPS-encrypted env.yaml; the operator .env carries a generated block
+#     stamped with the env.yaml it was rendered from. Detection only — creating
+#     the file, rendering and delivering are the operator's acts, on the machine
+#     that holds the key.
+#       - no env.yaml yet            → NOTICE: not adopted.
+#       - .env block missing/behind  → NOTICE: render.
+#       - key file not gitignored    → guarded append (same pattern as 4d).
+# ---------------------------------------------------------------------------
+
+if [[ -f "$PROJECT_DIR/env.yaml" ]]; then
+  if command -v shasum >/dev/null 2>&1; then
+    ey_stamp="$(shasum -a 256 "$PROJECT_DIR/env.yaml" | cut -c1-16)"
+  else
+    ey_stamp="$(sha256sum "$PROJECT_DIR/env.yaml" 2>/dev/null | cut -c1-16)"
+  fi
+  ey_have="$(grep -m1 '^# >>> env.yaml ' "$PROJECT_DIR/.env" 2>/dev/null | awk '{print $4}')"
+  if [[ -z "$ey_have" ]]; then
+    echo "[sync-framework] NOTICE: env.yaml exists but .env has no generated block — the session's env is hand-written and may differ from env.yaml (FWADR-041). Fix: ./scripts/env_yaml.py render, then relaunch."
+  elif [[ -n "$ey_stamp" && "$ey_have" != "$ey_stamp" ]]; then
+    echo "[sync-framework] NOTICE: .env is behind env.yaml (FWADR-041). Fix: ./scripts/env_yaml.py render, then relaunch."
+  fi
+  if [[ -f "$USERLOG_GI" ]] && ! grep -qxF '.sops-age-key.txt' "$USERLOG_GI" 2>/dev/null; then
+    printf '\n# env.yaml is tracked and encrypted (FWADR-041). These are never tracked.\n.sops-age-key.txt\n.decrypted~*\nenv.yaml.bak\n' >> "$USERLOG_GI"
+    echo "[sync-framework] added .sops-age-key.txt to .gitignore (FWADR-041)"
+  fi
+elif [[ -f "$PROJECT_DIR/.env" ]] && grep -qE '^PROJECT_NAME=' "$PROJECT_DIR/.env" 2>/dev/null; then
+  echo "[sync-framework] NOTICE: this project has no env.yaml — its env values are hand-placed (FWADR-041). The Strategist adopts it with the first-contact interview's Block 5: ./scripts/env_yaml.py init"
+fi
+
+# ---------------------------------------------------------------------------
 # 5. Initialize docs/framework_exceptions/ if missing.
 #    Idempotent: only creates files that don't exist. On repeat runs, leaves
 #    adopter's accumulated exceptions untouched.
@@ -384,13 +415,14 @@ fi
 #     Two kinds, told apart by a marker in the template copy:
 #       - FRAMEWORK-OWNED scripts (no project-specific body): overwritten
 #         whenever they differ, so framework fixes reach existing adopters.
-#         promote_dev_to_main.sh, check-touches.sh, check-researcher-scope.sh,
+#         check-touches.sh, check-researcher-scope.sh,
 #         check-curator-scope.sh, doc_churn_audit.sh, port_ledger.sh,
 #         setup_dev_slots.sh, spawn_worker.sh, pr_link.sh, check-ditto-stack.sh,
 #         check-env-comments.sh, check-ci-placement.sh.
 #       - Seed-once stubs (project bodies or project values): copied when
 #         missing, never overwritten. launch_local.sh, teardown_local.sh,
 #         main_to_prod.sh (FWADR-019), dev_harness.sh (FWADR-037),
+#         env_yaml.py, env_key_backup.py (FWADR-041),
 #         docs/dev/slots.yaml, and .env.example
 #         (the claude-env launcher seeds .env from it; the Strategist owns the
 #         values per the first-contact interview).
@@ -405,7 +437,6 @@ DEV_SLOT_STUBS=(
   "scripts/main_to_prod.sh"
   "scripts/setup_dev_slots.sh"
   "scripts/check-touches.sh"
-  "scripts/promote_dev_to_main.sh"
   "scripts/check-researcher-scope.sh"
   "scripts/doc_churn_audit.sh"
   "scripts/check-curator-scope.sh"
@@ -417,6 +448,8 @@ DEV_SLOT_STUBS=(
   "scripts/check-ci-placement.sh"
   "scripts/dev_harness.sh"
   "scripts/paperclip_company.py"
+  "scripts/env_yaml.py"
+  "scripts/env_key_backup.py"
   "docs/dev/slots.yaml"
   ".env.example"
 )
@@ -444,6 +477,15 @@ for relpath in "${DEV_SLOT_STUBS[@]}"; do
     else
       echo "[sync-framework] WARN: failed to update framework-owned $relpath"
     fi
+  fi
+done
+
+# Retired framework-owned stubs: removed from a project when the copy there
+# still carries the marker (so a project's own file of the same name is kept).
+for relpath in "scripts/promote_dev_to_main.sh"; do
+  dst="$PROJECT_DIR/$relpath"
+  if [[ -f "$dst" ]] && grep -qF "$OWNED_MARK" "$dst" 2>/dev/null; then
+    rm -f "$dst" && echo "[sync-framework] removed retired $relpath — the release tag is cut from the QA view on dev (FWADR-042)"
   fi
 done
 
@@ -515,6 +557,33 @@ if [[ -x "$CI_CHECK" ]]; then
     [[ -d "$subdir/.git" ]] && check_ci_placement "${subdir%/}"
   done
 fi
+
+# ---------------------------------------------------------------------------
+# 5g. Trunk and QA-view adoption (FWADR-035, FWADR-042). Every code repo lands
+#     work on main by PR and releases by approval in the QA view on dev, whose
+#     checklist is qa/checklist.yaml in the repo. Detection only.
+#       - origin/dev still exists          → NOTICE: convert to trunk.
+#       - CI but no qa/checklist.yaml      → NOTICE: no QA view yet, unless the
+#         repo is listed in QA_EXEMPT_REPOS (.env; no dev mode, by exception).
+# ---------------------------------------------------------------------------
+
+QA_EXEMPT="$(grep -E '^QA_EXEMPT_REPOS=' "$PROJECT_DIR/.env" 2>/dev/null | head -1 | cut -d= -f2- | tr -d '"'"'"'"' )"
+check_trunk_and_qa() {
+  local repo="$1" name
+  [[ -d "$repo/.git" ]] || return 0
+  name="$(basename "$repo")"
+  if git -C "$repo" rev-parse --verify -q refs/remotes/origin/dev >/dev/null 2>&1; then
+    echo "[sync-framework] NOTICE: $name still has a dev branch — the framework is trunk only (FWADR-035). Convert: docs/dev_framework/migration-guide-trunk.md"
+  fi
+  [[ -f "$repo/.gitlab-ci.yml" ]] || compgen -G "$repo/.github/workflows/*.y*ml" >/dev/null || return 0
+  case ",$QA_EXEMPT," in *",$name,"*) return 0 ;; esac
+  if [[ ! -f "$repo/qa/checklist.yaml" ]]; then
+    echo "[sync-framework] NOTICE: $name has no qa/checklist.yaml — no QA view, so nothing can approve its release (FWADR-042). Build it per docs/dev_framework/dev-environment.md §\"The QA view\", or list the repo in QA_EXEMPT_REPOS with its exception."
+  fi
+}
+for subdir in "$PROJECT_DIR"/*/; do
+  [[ -d "$subdir/.git" ]] && check_trunk_and_qa "${subdir%/}"
+done
 
 # ---------------------------------------------------------------------------
 # 5f. Paperclip pin check (FWADR-040). A project that runs the framework's roles

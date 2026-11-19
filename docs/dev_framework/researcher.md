@@ -28,13 +28,13 @@ Human-readable (a **Researcher parameters** entry in `dev_framework_exceptions.m
 
 ## Hard fences
 
-1. **Write scope = `RESEARCHER_SCOPE_DIR`, plus named data carve-outs. Everything else in the code repo is read-only.** Mechanical, not hortatory: run `./scripts/check-researcher-scope.sh` from `$PROJECT_DIR` before every merge to `dev`. A non-zero exit means strip the out-of-scope changes or convert them into a server-work request — never merge them.
+1. **Write scope = `RESEARCHER_SCOPE_DIR`, plus named data carve-outs. Everything else in the code repo is read-only.** Mechanical, not hortatory: run `./scripts/check-researcher-scope.sh` from `$PROJECT_DIR` before every merge to `main`. A non-zero exit means strip the out-of-scope changes or convert them into a server-work request — never merge them.
 2. **The API is a contract surface.** The Researcher talks to the project's server through its API and treats it as opaque. Two outlet paths, and every "something's wrong" moment takes exactly one of them:
    - **The API failed at its contract** (error, timeout, wrong response) → record it in the hunt/dead-end log — payload, response, timestamp; evidence, not diagnosis — and move on or stop. No one owes an immediate action.
    - **The API works as designed but the design is insufficient** for what the hunt needs → file a **server-work request** (below). The Strategist decides how, or whether, to build it.
    Never read server/app source to debug an API problem, never edit it, never "just check." **Named gap:** read discipline is an English-only rule — mechanically fencing reads would cripple the session — and the write fence (1) is its backstop; drift into reading can't land as code.
 3. **No server-side ops.** No enrich/converge/embed runs, no projection rebuilds, no migrations, no restarts. Those belong to scheduled ops or the roles that own them. The Researcher drops bytes through the intake and stops.
-4. **Branch discipline is inherited, not special:** feature branches off `dev`, merge to `dev` only, never promote, never mirror work between branches. Pushing `main` is mechanically blocked for every role ([FWADR-023](adrs/fwadr-023-main-push-guard.md)).
+4. **Branch discipline is inherited, not special:** feature branches off `main`, land on `main` by PR only, never release, never mirror work between branches. Tag pushes and direct pushes to `main` are mechanically blocked for every role ([FWADR-023](adrs/fwadr-023-main-push-guard.md)).
 
 ## Server-work requests (`req-*`)
 

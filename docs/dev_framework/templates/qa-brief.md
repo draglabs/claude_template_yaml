@@ -3,8 +3,8 @@
 QA is always spawned by the **Orchestrator** under peer dispatch. Three spawn contexts:
 
 - **Per-W-item (pre-merge):** Orchestrator spawns QA after the Reviewer ships, when the tier is L/XL or markers include 🧪 or ⚠️. Target is the worktree dev server. Verdict returns to the Orchestrator. **Sequential-mode only** (W-items with `Parallel-safe: false` or unset) — in batch mode ([FWADR-016](../adrs/fwadr-016-batch-mode-integrator-qa.md)) this per-W-item pre-merge pass is absorbed into the end-of-batch Integrator-QA ([`integrator-qa-brief.md`](integrator-qa-brief.md)), which runs unit/integration + live/Playwright on the integrated state.
-- **Phase exit (pre-promotion):** Orchestrator spawns QA to walk every exit criterion live against the **dev environment** (`{{sub}}.dev.{{website}}.com`) — NOT production. This is the gate between dev and main. Verdict returns to the Orchestrator. **Unchanged by batch mode** — phase-exit runs against the live dev environment regardless of whether the phase's W-items went through per-task or batch dispatch.
-- **Post-promotion smoke test (optional):** Orchestrator spawns QA against the production URL after the dev → main merge has landed. Minimal idempotent checks only. **Unchanged by batch mode.**
+- **Phase exit (pre-release):** Orchestrator spawns QA to walk every exit criterion live against the **dev environment** (`{{sub}}.dev.{{website}}.com`) — NOT production. This is the gate between dev and production. Verdict returns to the Orchestrator. **Unchanged by batch mode** — phase-exit runs against the live dev environment regardless of whether the phase's W-items went through per-task or batch dispatch.
+- **Post-release smoke test (optional):** Orchestrator spawns QA against the production URL after the release tag has deployed. Minimal idempotent checks only. **Unchanged by batch mode.**
 
 The brief below works for all three; fill in Spawn context + Target accordingly.
 
@@ -17,8 +17,8 @@ to verify the acceptance criteria below.
 ## Spawn context
 {{one of:
   - Orchestrator (per-W-item, pre-merge)
-  - Orchestrator (phase exit — pre-promotion)
-  - Orchestrator (post-promotion smoke test)
+  - Orchestrator (phase exit — pre-release)
+  - Orchestrator (post-release smoke test)
 }}
 
 ## Target
@@ -26,7 +26,7 @@ to verify the acceptance criteria below.
   - per-W-item pre-merge: http://localhost:<worktree-dev-port> (start
     the dev server inside the worktree the Orchestrator passed you)
   - phase exit: https://{{sub}}.dev.{{website}}.com
-  - post-promotion smoke test: https://{{sub}}.{{website}}.com (prod)
+  - post-release smoke test: https://{{sub}}.{{website}}.com (prod)
 }}
 
 ## What to verify
@@ -44,7 +44,7 @@ Before running any live check on a per-W-item dispatch, inspect the diff:
 This is a QA-layer safety net. The Reviewer is the primary TDD enforcer;
 QA catches what the Reviewer missed.
 
-Skip pre-flight on phase-exit and post-promotion contexts — those target
+Skip pre-flight on phase-exit and post-release contexts — those target
 running environments, not fresh diffs.
 
 ## Test approach
@@ -89,10 +89,10 @@ Hard rules:
 - Per-W-item context: you are testing a worktree dev server, NOT
   production. Any production-targeted check is a policy violation.
 - Phase-exit context: target is the dev URL ({{sub}}.dev.{{website}}.com),
-  NOT production. Promotion to main happens AFTER your verdict. You are
-  the gate that decides whether dev's current state can become main.
-- Post-promotion context: target is prod. Run minimal idempotent checks
+  NOT production. The release happens AFTER your verdict. You are
+  the gate that decides whether dev's current state can be released.
+- Post-release context: target is prod. Run minimal idempotent checks
   only. Do not create test data on production. Report failure loudly —
-  it means the dev → main promotion surfaced a divergence needing
+  it means the release surfaced a divergence needing
   incident-report treatment.
 ```

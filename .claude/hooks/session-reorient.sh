@@ -173,11 +173,11 @@ cat <<'EOF'
 EOF
 
 # Code-repo staleness check — runs for EVERY session-start source (FWADR-012).
-# CI and auto-promotion keep origin moving while local
+# CI and merged PRs keep origin moving while local
 # checkouts sit idle; a stale tree is misleading exactly when it looks normal
 # (field case: an audit session reasoned from a checkout 87 commits behind
 # origin and produced false conclusions). Quietly fetch each repo's origin,
-# then NOTICE when local dev/main trail their remotes. Soft-fail throughout:
+# then NOTICE when local main trails its remote. Soft-fail throughout:
 # a failed fetch reports "staleness UNKNOWN" (never blocks session start), and
 # GIT_TERMINAL_PROMPT=0 + http.lowSpeed* keep a dead network from hanging the
 # hook on a credential prompt or stalled transfer.
@@ -195,7 +195,7 @@ check_repo_staleness() {
     echo "  - $name: could not fetch origin (offline or unauthenticated) — staleness UNKNOWN; do not trust local branch freshness."
     return 0
   fi
-  for branch in dev main; do
+  for branch in main; do
     git -C "$repo" rev-parse --verify -q "refs/heads/$branch" >/dev/null || continue
     git -C "$repo" rev-parse --verify -q "refs/remotes/origin/$branch" >/dev/null || continue
     behind="$(git -C "$repo" rev-list --count "refs/heads/$branch..refs/remotes/origin/$branch" 2>/dev/null)"

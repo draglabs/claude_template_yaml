@@ -32,7 +32,7 @@ Hook coverage:
 For **every** `source`, the hook also checks freshness of the flat/tracked-parent repo (`$PROJECT_DIR/.git`) and every immediate subdirectory with `.git/` (split layout, multi-repo):
 
 1. **Quiet `git fetch --no-tags origin` per repo, guarded against hangs:** `GIT_TERMINAL_PROMPT=0` (a credential prompt fails instead of blocking — relevant for sessions launched without `.env`, [FWADR-032](fwadr-032-claude-env-launcher.md)) and `http.lowSpeedLimit/lowSpeedTime` (a stalled transfer aborts in ~10s).
-2. **NOTICE on lag.** Emits `[session-reorient] Code-repo staleness NOTICE` naming each repo whose local `dev`/`main` trails its origin counterpart, with the commit count — same pattern as the sync hook's flat-layout NOTICE.
+2. **NOTICE on lag.** Emits `[session-reorient] Code-repo staleness NOTICE` naming each repo whose local `main` trails its origin counterpart, with the commit count — same pattern as the sync hook's flat-layout NOTICE.
 3. **Failed fetch → "staleness UNKNOWN"** for that repo, never silence — silence is indistinguishable from freshness, which is the failure being prevented. Repos without an `origin` remote are skipped.
 4. **Everything current → no output.** Quiet means healthy. Soft-fail throughout; the hook never blocks session start.
 

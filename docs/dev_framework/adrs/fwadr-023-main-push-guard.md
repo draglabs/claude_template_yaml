@@ -1,4 +1,4 @@
-# FWADR-023: Mechanical release-ref push guard + sanctioned promotion script
+# FWADR-023: Mechanical push guard — no direct push to `main`, no tag push, in a code repo
 
 **Status:** accepted
 **Date:** 2026-07-28
@@ -6,16 +6,14 @@
 
 ## Context
 
-The framework's branch model has always said that `main` only moves at
-phase-exit promotion (or explicit emergency bypass) with user authorization —
-`session-policy.md` §"Branching and isolation", §"Phase exit gate",
-CLAUDE.md §"Branch model". But the rule was English-only: nothing on the
+The framework's branch model says how code reaches `main` and how production
+is released, but for a long time the rule was English-only: nothing on the
 machine stopped a session from running `git push origin main`.
 
 The gap was demonstrated live on an adopter project (makinrate, 2026-07-28):
 a research-focused session committed work directly to `main` and mirrored the
-same changes to `dev` as separate commits — same feature, different SHAs on
-both branches — producing four-file merge conflicts at the next promotion.
+same changes to another branch as separate commits — same feature, different
+SHAs on both — producing four-file merge conflicts at the next release.
 Under the framework's own doctrine ("a rule of the shape 'X always happens on
 Y' must ship with the command or check that makes X mechanical"), this was a
 named drift attractor waiting for exactly this incident.
@@ -25,22 +23,29 @@ named drift attractor waiting for exactly this incident.
 Ship the mechanism, framework-wide:
 
 1. **Git pre-push guard.** `.claude/hooks/git-guard-pre-push.sh` (template-
-   owned, synced to adopters like every hook) is a git `pre-push` hook that
-   rejects any push updating the project's **release ref** unless
-   `FRAMEWORK_ALLOW_MAIN_PUSH=1` is set. The release ref follows `GIT_FLOW`
-   ([FWADR-035](fwadr-035-git-flow-mode.md)): `refs/heads/main` under
-   `dev-main` (the default); `refs/tags/v*` under `trunk`, where the guard
-   also rejects direct pushes to `main` in code repos because work lands
-   there by PR (the tracking parent, which holds plans, pushes `main`
-   freely — [FWADR-035](fwadr-035-git-flow-mode.md) §"Landing under
-   trunk"). The guard resolves `GIT_FLOW`
-   from the process env or `$PROJECT_DIR/.env` (via the common git dir, so
-   worktrees resolve too). It checks the real refspecs on the hook's stdin —
-   not command strings — so `git push origin main`, `push origin HEAD:main`,
-   `push --all`, `push --tags`, and ref deletions are all caught regardless
-   of phrasing.
+   owned, synced to adopters like every hook) is a git `pre-push` hook. In a
+   **code repo** it rejects:
+   - any push that updates `refs/heads/main` — work lands there by PR,
+     merged on the git host ([FWADR-035](fwadr-035-git-flow-mode.md)
+     §"Landing on main");
+   - any push that creates, moves or deletes a tag — a release tag is cut on
+     the git host by the repo's `release` job when the stakeholder approves
+     in the QA view ([FWADR-042](fwadr-042-qa-view-release.md)).
 
-2. **SessionStart installation.** `sync-framework.sh` step 4b installs the
+   The tracking parent (a repo that holds code repos, and carries plans
+   rather than code) pushes `main` and tags freely. The guard checks the real
+   refspecs on the hook's stdin — not command strings — so
+   `git push origin main`, `push origin HEAD:main`, `push --all`,
+   `push --tags`, and ref deletions are all caught regardless of phrasing.
+
+2. **No bypass.** There is no allow variable and no sanctioned script. A
+   variable sourced from `.env` under `set -a` would disable the guard
+   permanently and silently; a script that sets one is a second release path.
+   The paths that exist are the PR and the Approve button. When the QA view
+   itself is down, the user creates the tag in the git host's interface,
+   where the guard does not run and the host's own protection applies.
+
+3. **SessionStart installation.** `sync-framework.sh` step 4b installs the
    guard into `.git/hooks/pre-push` of every code repo it can see: the
    project dir itself (flat layout) and every immediate subdirectory with
    `.git/` (split layout, including multi-repo projects). Install is
@@ -50,40 +55,12 @@ Ship the mechanism, framework-wide:
    the check manually. Worktrees share the parent repo's hooks directory, so
    Executor/Developer worktrees are covered automatically.
 
-3. **Sanctioned bypass = one named script.** The stub
-   `scripts/promote_dev_to_main.sh` (a framework-owned stub, overwritten on
-   every sync — [FWADR-014](fwadr-014-framework-sync-on-session-start.md)
-   §"Stub scripts"; name kept across
-   modes so every doc pointer stays valid) is the only place
-   `FRAMEWORK_ALLOW_MAIN_PUSH=1` is ever set. The release event itself
-   remains the Orchestrator's (or Developer's) act; the script owns only the
-   guarded push.
-   - **dev-main, default mode** — phase-exit promotion. Verifies `main` is
-     checked out and HEAD is a merge commit whose second parent is `dev`'s
-     current head (the annotated promotion merge already made per
-     session-policy §"Promotion commit"), then pushes `main`.
-   - **dev-main, `--bypass`** — the emergency-bypass path (production fire,
-     `[bypass]`-tagged commit directly on main). Skips the merge-shape check,
-     prints the outstanding bypass duties (back-merge, retrospective
-     Reviewer, incident log). Loud on purpose.
-   - **trunk, `v<X.Y.Z>`** — phase-exit release. Verifies `main` is checked
-     out, the named annotated tag exists and points at HEAD, and HEAD is
-     already on `origin/main` (dev-environment CI ran on exactly this
-     commit), then pushes the tag. Production CI deploys the tagged commit.
-   - **trunk, `v<X.Y.Z> --bypass`** — emergency release: pushes `main` and
-     the tag together, skipping the on-origin check. Loud on purpose.
-
 4. **Belt-and-braces recommendation.** The Strategist's first-contact
-   interview recommends host-side protection of the release ref where the
-   host supports it: `main` under dev-main; under trunk, `v*` tags plus
+   interview recommends host-side protection: release tags protected, and
    `main` locked to PR landing (push = no one, merge = maintainers).
-   Host-side protection is absolute but host-specific
-   and unsyncable; the pre-push guard is the portable layer.
-
-**`FRAMEWORK_ALLOW_MAIN_PUSH` must never appear in `.env`** — framework
-scripts source `.env` wholesale (`set -a`), which would leave the guard
-permanently bypassed. The promotion script refuses to run if it finds the
-variable already set in the environment, which catches exactly this mistake.
+   Host-side protection is absolute but host-specific and unsyncable; the
+   pre-push guard is the portable layer. On an agent host the guard does not
+   run at all, and host protection is the only layer.
 
 ## Alternatives considered
 
@@ -95,29 +72,26 @@ variable already set in the environment, which catches exactly this mistake.
   host-specific, manual per project, and nonexistent for `GIT_HOST=other` or
   bare remotes. Kept as a recommendation, not the mechanism.
 - **Blocking commits on main (pre-commit) as well.** Considered and dropped:
-  the promotion merge is itself a commit on main, bypass commits are
-  legitimate commits on main, and the damage from a stray local commit is
-  recoverable until pushed. Push is the boundary that matters.
+  the damage from a stray local commit is recoverable until pushed. Push is
+  the boundary that matters.
+- **A bypass variable set by one named script** (`promote_dev_to_main.sh`).
+  It was the release path until the QA view replaced it; kept as a fallback
+  it would be a way to release without the checklist.
 
 ## Consequences
 
-- The branch-model rule is now enforced at the git layer on every adopter
+- The branch-model rule is enforced at the git layer on every adopter
   machine after their next SessionStart sync. Blast radius of the makinrate
   failure mode drops to zero for pushes; mirror-by-recommit on `main` can no
   longer land remotely.
 - Adopters with a pre-existing custom `pre-push` hook keep it and get a
   per-session warning until they merge the guard's check — named, visible
   drift instead of silent non-enforcement.
-- Under trunk the same guard protects `v*` tags, and `main` in code repos
-  against direct pushes; the human release gate moves from a merge to a tag
-  ([FWADR-035](fwadr-035-git-flow-mode.md)).
-- A user who genuinely wants to push the release ref outside the sanctioned modes
-  must consciously set `FRAMEWORK_ALLOW_MAIN_PUSH=1` — possible, but now an
-  explicit act that can't happen by reflex.
-- `session-policy.md` §"Promotion commit", §"Phase exit gate" step 7, and
-  §"Emergency bypass" step 1 now route through the script; the English rule
-  and its mechanism ship together in this change.
-- **The guard file has since gained a second check** — refusing pushes whose
-  ref tips track a committed `.env` ([FWADR-033](fwadr-033-env-scope-rule.md)).
-  `FRAMEWORK_ALLOW_MAIN_PUSH` bypasses only the main-ref check, never the env
-  check. Installation and the never-overwrite rule are unchanged.
+- A repo that uses tags for something other than releases cannot push them
+  from a laptop; it creates them on the host, or records the deviation in
+  `dev_framework_exceptions.md` and forks the hook.
+- **The guard file carries two more checks** — it refuses pushes whose ref
+  tips track a `.env` or the decryption key
+  ([FWADR-033](fwadr-033-env-scope-rule.md)), and pushes whose `env.yaml`
+  holds a secret in the clear ([FWADR-041](fwadr-041-env-yaml.md)).
+  Installation and the never-overwrite rule are the same for all three.

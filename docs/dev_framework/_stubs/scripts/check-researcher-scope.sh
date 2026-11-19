@@ -4,7 +4,7 @@
 # RESEARCHER_SCOPE_DIR or named in RESEARCHER_DATA_CARVEOUTS.
 #
 # Usage (run from $PROJECT_DIR, per FWADR-021 script placement doctrine):
-#   ./scripts/check-researcher-scope.sh [<base-ref>]     # default: origin/$INTEGRATION_BRANCH (dev | main per GIT_FLOW)
+#   ./scripts/check-researcher-scope.sh [<base-ref>]     # default: origin/main
 #
 # Reads from $PROJECT_DIR/.env:
 #   RESEARCHER_SCOPE_DIR      — the one directory the Researcher may modify
@@ -60,20 +60,15 @@ else
   fi
 fi
 
-# Default base: the integration branch. INTEGRATION_BRANCH comes from a
-# claude-env launch; otherwise derive it from GIT_FLOW in .env (FWADR-035:
-# trunk → main; dev-main or PLACEHOLDER → dev).
+# Default base: origin/main (FWADR-035). An INTEGRATION_BRANCH already in
+# the env (claude-env launch) is honoured.
 if [[ -z "$BASE_REF" ]]; then
-  if [[ -z "${INTEGRATION_BRANCH:-}" ]]; then
-    [[ "$(env_val GIT_FLOW)" == "trunk" ]] && INTEGRATION_BRANCH=main || INTEGRATION_BRANCH=dev
-  fi
-  BASE_REF="origin/$INTEGRATION_BRANCH"
+  BASE_REF="origin/${INTEGRATION_BRANCH:-main}"
 fi
 
 cd "$CODE_ROOT"
 
-# A base ref that does not resolve (e.g. origin/dev after a trunk migration
-# deleted it) must fail loudly — an empty diff would read as "all in scope".
+# A base ref that does not resolve (e.g. a deleted origin/dev) must fail loudly — an empty diff would read as "all in scope".
 if ! git rev-parse --verify -q "$BASE_REF^{commit}" >/dev/null; then
   echo "check-researcher-scope: base ref '$BASE_REF' does not resolve — fetch, or pass the right ref" >&2
   exit 2

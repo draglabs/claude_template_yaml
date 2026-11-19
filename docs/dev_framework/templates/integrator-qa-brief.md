@@ -1,6 +1,6 @@
 # Integrator-QA subagent briefing template
 
-Copy, fill in brackets, paste as the Agent tool's `prompt` argument. Integrator-QA is the end-of-batch gate under **batch mode** (FWADR-016): it absorbs the per-task Reviewer and pre-merge QA roles for a parallel batch of W-items, pulls their branches into dev, handles merge-conflict resolution, runs the full quality review + test suite, and either merges the batch or files claims / surfaces failures.
+Copy, fill in brackets, paste as the Agent tool's `prompt` argument. Integrator-QA is the end-of-batch gate under **batch mode** (FWADR-016): it absorbs the per-task Reviewer and pre-merge QA roles for a parallel batch of W-items, pulls their branches onto one batch branch, handles merge-conflict resolution, runs the full quality review + test suite, and either merges the batch or files claims / surfaces failures.
 
 Integrator-QA is spawned by the **Orchestrator** — a peer of the Executors, not a child. It returns its verdict and any filed claims to the Orchestrator, which owns dispatch, retry, and merge decisions.
 
@@ -8,7 +8,7 @@ Integrator-QA is spawned by the **Orchestrator** — a peer of the Executors, no
 
 **Do not use this brief for:**
 - Sequential-mode W-items (Parallel-safe: false) — use `reviewer-brief.md` + `qa-brief.md` instead.
-- Phase-exit or post-promotion QA — still use `qa-brief.md` (those contexts target live environments, not worktree diffs).
+- Phase-exit or post-release QA — still use `qa-brief.md` (those contexts target live environments, not worktree diffs).
 
 ```
 ## Integrator-QA for batch {{batch-id}}
@@ -25,7 +25,7 @@ same TDD + coding-standards discipline the Executor followed.
 ## Batch context
 
 Batch ID: {{batch-id}}
-Target branch: dev
+Target branch: main
 
 Plan format: {{folder | single-file}} (per FWADR-017 / Orchestrator STEP 0
 PRELUDE)
@@ -109,9 +109,8 @@ IF no red flags → proceed to STEP 2.
 ## STEP 2 — Deep pass: integrate, review, test, fix-within-acceptance
 
 **2a. Pull each feature branch into your working tree.** Fetch from the
-remote, merge each branch onto dev (or use a temporary integration
-branch — choose based on what you can cleanly rebuild if something
-fails). For each merge:
+remote, merge each branch onto a `batch/{{batch-id}}` branch cut from
+`origin/main`. For each merge:
 
 - If fast-forward or clean 3-way: proceed.
 - If conflicts: resolve them. You hold the long-context view; this is the
@@ -172,8 +171,7 @@ fixable without stepping outside acceptance:
 
 - Write the fix. TDD: test first if the surface needs a test that wasn't
   there. Follow `coding-standards.md` (no hardcoded values, no silent
-  fallbacks, fail loudly). Commit the fix to dev (or the integration
-  branch you're using).
+  fallbacks, fail loudly). Commit the fix to the batch branch.
 - Do NOT amend or rebase Executor commits. Add fix commits on top. The
   commit chain preserves the history of who wrote what.
 - Re-run the relevant tests to confirm the fix holds.
@@ -248,12 +246,12 @@ as the Orchestrator's plan-write sites):
          # OR (single-file format):
          git add PLAN_PATH                 # both writes are in one file
          git commit -m "IC-NNN filed (W-<ids> in_progress → held)"
-         git push origin dev
+         git push origin main
     7. Verify all of:
          a. Both Edits returned success (no stale-read error).
          b. `git commit` exited zero AND did NOT print "nothing to
             commit" (silent drop check).
-         c. `git push origin dev` succeeded.
+         c. `git push origin main` succeeded.
          d. `git log -1` shows your commit message.
        If any check fails: the named W-items have NOT been flipped to
        `held`. Re-Read both files (a concurrent edit may have already
@@ -280,17 +278,14 @@ For every W-item in the batch that has:
 - Passed all tests on the integrated state,
 - No open claim blocking it,
 
-merge the feature branch to dev with the standard merge commit shape
+merge the feature branch onto the batch branch with the standard merge commit shape
 (see `session-policy.md` §"Commit authorship"). Include in the merge
 commit a "Reviewed by: Integrator-QA (batch {{batch-id}})" line plus
 any fix-commits you added.
 
-After all eligible merges land, push dev.
-
-**Under `GIT_FLOW=trunk`** (FWADR-035 §"Landing under trunk") the guard
-rejects a direct push to `main` in a code repo. Make the same merges on a
-`batch/{{batch-id}}` branch cut from `origin/main`, with your fix commits
-on it, push that branch, and open **one PR** for the batch — description:
+The guard rejects a direct push to `main` in a code repo (FWADR-035
+§"Landing on main"). After all eligible merges land, push the batch
+branch, with your fix commits on it, and open **one PR** for the batch — description:
 the merge-commit content above for each W-item. Do not merge it: the
 Orchestrator merges under the plan's merge grant or after offering the user
 the review. Report the PR in the return shape.
@@ -303,7 +298,7 @@ Integrator-QA batch {{batch-id}} complete.
 
 Verdict: clean | partial | integration-failure | stumped
 
-W-items merged: <list of W-ids>   (trunk: "in PR <n>: <list>")
+W-items merged: in PR <n>: <list of W-ids>
 W-items held (open claims): <list of W-ids with IC-NNN references>
 W-items reverted: <list if any — rare>
 
@@ -331,7 +326,7 @@ Process exceptions (optional — flag SOP-level issues):
 Lessons learned:
   - <bullet 1>
   - <bullet 2>
-  (pasted by the Orchestrator into each merge commit on dev; write so
+  (pasted by the Orchestrator into each merge commit on main; write so
    a future session reads `git log` and learns something)
 ─────────────────────────────────────────────
 
@@ -367,6 +362,6 @@ Verdict meanings:
 - You do NOT touch W-items outside this batch. If a fix would require
   changing a non-batch item, that's a claim (scope extension beyond
   batch).
-- You do NOT push main. Main only moves at phase-exit via the
-  Orchestrator's STEP 6 promotion flow.
+- You do NOT push main or any tag. The release tag is cut at phase exit
+  when the user approves in the QA view on dev.
 ```

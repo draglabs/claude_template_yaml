@@ -15,7 +15,7 @@ All paths, git commands, and worktrees in this doc are relative to **`$CODE_ROOT
 - **Untracked parent (default):** `$PROJECT_DIR` is not a git repo. Plan edits are file-only writes; concurrent sessions see them via shared-filesystem visibility. No `git commit` / `git push` happens for plan.md changes.
 - **Tracked parent (optional):** `$PROJECT_DIR` is its own git repo. Plan edits commit + push to that repo for full PLAN-WRITE DISCIPLINE concurrent-claim safety + durable plan history.
 
-Code-side `git` steps (`checkout dev && pull`, `push origin dev`) run on `$CODE_ROOT` in both modes. How a plan edit is committed and made visible per mode is stated ONCE, in §"Plan-write discipline (Developer)" step 3 — lifecycle steps below point there rather than re-enumerating it.
+Code-side `git` steps (`checkout main && pull`, opening the PR) run on `$CODE_ROOT` in both modes. How a plan edit is committed and made visible per mode is stated ONCE, in §"Plan-write discipline (Developer)" step 3 — lifecycle steps below point there rather than re-enumerating it.
 
 For multi-repo projects, check the W-item's `target-repo:` YAML frontmatter field before claiming — it may point to a different subdirectory than the default (per [FWADR-020](adrs/fwadr-020-yaml-frontmatter-w-items.md) frontmatter shape).
 
@@ -47,7 +47,7 @@ The Developer has two named invocations sharing one role doc, lifecycle, and dis
 
 **Honest constraint: user attention is single-threaded.** Both sessions can code in parallel, but the user-mediated QA loop serializes through the user — only one feature is in your hands at a time. Parallelism buys coding throughput, not end-to-end throughput.
 
-**The "check dev" handoff.** When Parallel Dev merges its W-item to `dev`, the user tells Default Dev: "Parallel just merged W-X to dev — pull it in." Default Dev runs `git fetch origin dev && git merge origin/${INTEGRATION_BRANCH}` (or rebase) on its current feature branch, surfaces conflicts to the user, resolves in-loop. Standard git, nothing framework-special.
+**The "check main" handoff.** When Parallel Dev merges its W-item to `main`, the user tells Default Dev: "Parallel just merged W-X to main — pull it in." Default Dev runs `git fetch origin && git merge origin/${INTEGRATION_BRANCH}` (or rebase) on its current feature branch, surfaces conflicts to the user, resolves in-loop. Standard git, nothing framework-special.
 
 N+1 Parallel Developers (a third or fourth session) are mechanically supported — each gets its own worktree, each does its own non-competing scan at boot — but get diminishing returns as the user-attention ceiling stays fixed.
 
@@ -61,7 +61,7 @@ N+1 Parallel Developers (a third or fourth session) are mechanically supported �
 - **Codes one W-item at a time, in the user's loop.** Reads the W-item file for acceptance + Touches + References + Contingencies. Writes tests + code + commits on the W-item's branch. Operates the **80/20 confidence ladder** at every decision fork (see §"Confidence-driven escalation"): self ≥80% → act; self <80% → spawn a consultant subagent; consultant round-trip still <80% → ask the user. Spawns subagents freely for narrow analysis (Doc Consultant, Code Consultant, one-shot edge-case investigation), and spawns a **bounded Strategist subagent** ([`templates/strategist-brief.md`](templates/strategist-brief.md)) when a doc or plan needs *writing* mid-session — ticket intake, recording a settled decision. That brief is deliberately narrow: it does not read `strategist.md`, and it may return a question rather than completed work, which the Developer surfaces to the user ([FWADR-025](adrs/fwadr-025-named-deliverables.md)). The Reviewer/QA peer chain that Orchestrator mode runs is replaced by **user-mediated QA + spawned Reviewer** — different substitutions for those two gates, not a ban on subagents.
 - **Drives a user-mediated QA loop within `in_progress`.** The user is the QA gate. Developer writes code; user runs the feature; user reports what works and what doesn't; Developer fixes; user re-tests. State stays at `in_progress` throughout — no `qa` state, no automatic bounce. `in_progress` exits only when the user confirms the feature works.
 - **Hands off to a Reviewer subagent at the `in_progress → code_review` flip.** When the user confirms, Developer optionally runs `/compact`, makes the plan-write Status flip `in_progress → code_review` (visible to other sessions immediately, mechanism per current layout mode; see §"Working directory: $CODE_ROOT"), **syncs the feature branch with `origin/${INTEGRATION_BRANCH}`** via rebase locally (so the Reviewer reads accurate codebase context), then spawns a Reviewer subagent (`docs/dev_framework/templates/reviewer-brief.md`). The feature branch is NOT pushed — Reviewer reads from the local working directory per its brief; force-pushing `origin/<feature>` would conflict with the framework's destructive-ops doctrine and buy nothing.
-- **Acts on the Reviewer verdict.** Four user-mediated outcomes: **Ship** → merge to `dev` (fast-forward, since pre-review sync rebased onto dev's tip), Implementation log, `code_review → done`. **Resolve** → user wants concerns fixed; back to `in_progress` for re-code + re-confirm + re-spawn Reviewer. **Postpone** → user accepts concerns as a known limitation; concerns logged in the Implementation log + plan Notes; merge proceeds as Ship. The Developer remains the persistent owner of the W-item — it spawned the Reviewer, reads the verdict, decides the merge.
+- **Acts on the Reviewer verdict.** Four user-mediated outcomes: **Ship** → land on `main` by PR, Implementation log, `code_review → done`. **Resolve** → user wants concerns fixed; back to `in_progress` for re-code + re-confirm + re-spawn Reviewer. **Postpone** → user accepts concerns as a known limitation; concerns logged in the Implementation log + plan Notes; merge proceeds as Ship. The Developer remains the persistent owner of the W-item — it spawned the Reviewer, reads the verdict, decides the merge.
 - **Appends an Implementation log to the W-item file at `code_review → done`.** A retrospective section capturing how the work actually went — approach, key decisions, pivots, surprising findings, loose ends. Atomic with the merge commit. Persists the journey on the project even though the session may have been compacted.
 - **Files Integration claims when acceptance is ambiguous.** Rare path — most ambiguity gets resolved with the user in real-time. But when mid-work the Developer realizes the proposed change requires an acceptance update beyond fixing-within-acceptance, it files `IC-NNN` in `claims.md` and flips `in_progress → held` atomically. Same protocol as the Integrator-QA's claim-filing. The Strategist + user dispose; Developer waits.
 - **Owns Status writes for Developer-mode transitions.** `pending → in_progress`, `in_progress → code_review`, `in_progress → held`, `in_progress → blocked`, `code_review → in_progress` (with user re-engagement), `code_review → done`, `done → shipped`. PLAN-WRITE DISCIPLINE applies at every write site.
@@ -73,7 +73,7 @@ N+1 Parallel Developers (a third or fourth session) are mechanically supported �
 - **Does not delegate the QA gate to a subagent.** The user is the QA gate (real-time, in the loop) for the entire `in_progress` window. That's Developer mode's defining substitution for the Orchestrator-mode QA peer subagent — the user is faster than dispatching QA, and they catch product-feel issues a scripted QA misses.
 - **Does not skip the Reviewer-subagent handoff.** The spawned Reviewer is the code-review gate. Skipping it means shipping coded-and-user-confirmed work without an independent code-quality pass — the user QA loop catches behavior, not standards-compliance, hidden complexity, or scope creep. If you find yourself reasoning "the user already approved it, ship it," stop — the user approved BEHAVIOR; the Reviewer audits CODE.
 - **Does not dispose claims.** Strategist still owns `held → in_progress / blocked`. Developer files; Strategist disposes.
-- **Does not promote across phases unilaterally.** `done → shipped` (the release event: merge `dev → main`, or a `v*` tag under `GIT_FLOW=trunk` — session-policy §"Branching and isolation") requires user authorization, same as the Orchestrator-mode promotion. The Developer drives it when the phase has been Developer-mode, but the user signs off.
+- **Does not release unilaterally.** `done → shipped` (the release tag — session-policy §"Branching and isolation") requires the user's approval in the QA view, same as in Orchestrator mode. No agent pushes a tag.
 - **Does not edit `docs/dev_framework/*` or `.claude/hooks/*`.** Framework files are canonical and synced from the template repo. If a change is needed, it goes via PR against the template (Template Developer's territory), not through the Developer.
 
 ## Personality
@@ -176,10 +176,10 @@ pending → in_progress → code_review → done → shipped
 2. **Confirm + plan-write + branch/worktree creation.** Before any code, the Developer asks the user "Ready to start coding W-X?" The claim is recorded with a plan-write that's immediately visible to other sessions (mechanism per current mode — see §"Working directory: $CODE_ROOT"):
 
    ```
-   # Code-side: sync the code repo's dev branch to latest.
+   # Code-side: sync the code repo's main to latest.
    # Default Dev: cd $CODE_ROOT first (under split layout $PROJECT_DIR is not the git repo)
    # Parallel Dev: cd $CODE_ROOT (leave the worktree; $CODE_ROOT = main checkout path)
-   git checkout dev && git pull origin dev
+   git checkout main && git pull origin main
 
    # Plan-side: edit plan.md at $PROJECT_DIR/docs/execution-plans/<plan>/plan.md.
    #   Status pending → in_progress, populate Branch field (w-<id>/<slug>),
@@ -191,7 +191,7 @@ pending → in_progress → code_review → done → shipped
    ```
 
    Then create the feature branch (Default) or worktree+branch (Parallel):
-   - **Default:** `git checkout -b w-<id>/<slug>` (off the just-pulled dev).
+   - **Default:** `git checkout -b w-<id>/<slug>` (off the just-pulled `main`).
    - **Parallel:** `git worktree add -b w-<id>/<slug> /tmp/worktrees/<project>/w-<id>-<slug> origin/${INTEGRATION_BRANCH}`, then `cd` into the worktree for the rest of the session.
 
    Making the plan-write visible BEFORE branch/worktree creation makes the claim visible to concurrent sessions. In flat/tracked-parent modes PLAN-WRITE DISCIPLINE catches collisions at the push step (loser pulls + re-scans); in untracked-parent mode the collision guard is filesystem-visibility only (no push-then-fail). Branch/worktree creation is a separate concurrency check in all modes — `git` refuses duplicate branch names, providing belt-and-suspenders.
@@ -199,7 +199,7 @@ pending → in_progress → code_review → done → shipped
 4. **User QA loop (within `in_progress`).** User runs the feature; Developer fixes; loop until user confirms it works. State stays at `in_progress`. No bounce, no separate `qa` state.
 5. **Code-review handoff.** When the user confirms the feature works: optional `/compact`, plan-write Status flip `in_progress → code_review` (per §"Plan-write discipline (Developer)"), local rebase-sync of the feature branch onto `origin/${INTEGRATION_BRANCH}`, then spawn the Reviewer subagent on the local synced state. Full operational steps — including the Parallel-Dev worktree choreography and the no-force-push rule — in §"Code review (sync, then spawned Reviewer subagent)".
 6. **Reviewer outcome — Ship / Resolve / Reconcile / Postpone**, all user-mediated. The four paths, the merge + Implementation-log mechanics, and cleanup are stated once in §"Code review" step 5 and §"Cleanup at done-flip"; the Reconcile path's ADR-rewrite authority is §"ADR conflict: reconcile, don't revert".
-7. **Phase exit.** When all items in the phase are `done`, user authorizes the release. Developer makes the release event (`dev → main` merge, or `v*` tag under trunk) via `./scripts/promote_dev_to_main.sh`, flips `done → shipped` (one commit) for each item.
+7. **Phase exit.** When all items in the phase are `done`, the user works the checklist in the QA view on dev and presses **Approve**; the `release` job cuts the tag ([`dev-environment.md`](dev-environment.md) §"Release by approval"). Developer then flips `done → shipped` (one commit) for each item.
 
 ## ADR conflict: reconcile, don't revert
 
@@ -272,7 +272,7 @@ User has confirmed behavior. The remaining gate is independent code-quality revi
 - On **Resolve**: Status flips back to `in_progress`. Re-engage user QA loop. The phase regresses to QA — re-read the QA subsection above.
 - On **Postpone**: log the Postponed concerns in the Implementation log; merge proceeds as Ship.
 
-**Phase exit:** Ship, Reconcile, or Postpone → `code_review → done`. Resolve → back to QA phase. (`done → shipped` happens later at phase exit, when all items in the phase are done and the user authorizes promotion.)
+**Phase exit:** Ship, Reconcile, or Postpone → `code_review → done`. Resolve → back to QA phase. (`done → shipped` happens later at phase exit, when all items in the phase are done and the user approves the release.)
 
 ## Plan-write discipline (Developer)
 
@@ -281,15 +281,15 @@ Every Status write follows the same discipline as Orchestrator / Integrator-QA /
 1. Read the index (`plan.md`) fresh — syncs the Edit tool's hash.
 2. Edit the row(s) — flip Status, populate Branch where relevant.
 3. **Plan-writes must NOT live on a feature branch** — Status updates must be visible to other sessions immediately. The visibility mechanism depends on layout mode (see §"Working directory: $CODE_ROOT"):
-   - **Flat layout:** plan.md is inside `$CODE_ROOT`; commit + push on the code repo's `dev` branch.
+   - **Flat layout:** plan.md is inside `$CODE_ROOT`; commit + push on the code repo's `main`.
    - **Split, tracked parent:** plan.md is in `$PROJECT_DIR` (a separate git repo); commit + push there.
    - **Split, untracked parent:** plan.md is a plain file; visibility is shared-filesystem only (no commit/push for the plan edit).
 4. **Trigger-event coupling.** Each Status transition pairs the plan edit with its code-side action atomically (in flat/tracked modes, "atomically" means one commit covering plan + side-effect; in untracked-parent mode, "atomically" means file-edit immediately before/after the code-side commit):
-   - `pending → in_progress`: plan edit (Status flip + Branch field populate + Notes claim line) paired with branch (Default) or worktree+branch (Parallel) creation on the freshly-pulled `dev` tip.
+   - `pending → in_progress`: plan edit (Status flip + Branch field populate + Notes claim line) paired with branch (Default) or worktree+branch (Parallel) creation on the freshly-pulled `main` tip.
    - `in_progress → code_review`: plan edit (Status flip + Notes line). Then return to the feature branch / worktree, sync (rebase on origin/${INTEGRATION_BRANCH}), and spawn the Reviewer subagent on the local synced state.
-   - `code_review → done`: plan.md Status flip paired with the feature-branch fast-forward merge onto `dev`. Implementation log was committed on the feature branch first, brought into `dev` by the merge. Plan edit committed on `dev` (flat) or `$PROJECT_DIR` (tracked parent) or file-only (untracked parent). The Implementation log includes a `**Postponed concerns:**` line if the user chose Postpone. **Cleanup (worktree + branch deletion) runs after the push/edit succeeds** — see §"Cleanup at done-flip" in the Code-review section.
+   - `code_review → done`: plan.md Status flip paired with the feature branch's PR merge onto `main`. Implementation log was committed on the feature branch first, brought into `main` by the merge. Plan edit committed on `main` (flat) or `$PROJECT_DIR` (tracked parent) or file-only (untracked parent). The Implementation log includes a `**Postponed concerns:**` line if the user chose Postpone. **Cleanup (worktree + branch deletion) runs after the push/edit succeeds** — see §"Cleanup at done-flip" in the Code-review section.
    - `in_progress → held`: plan edit (Status flip) + new IC-NNN entry under "## Open" in `claims.md`. Both files live next to plan.md in `$PROJECT_DIR/docs/...`, so the same mode-determined commit/push pattern applies.
-5. **Verify visibility.** In flat/tracked modes: verify push succeeded (`git push origin dev` for flat, the parent repo's push for tracked). In untracked-parent mode: filesystem-visibility is immediate; no verification step. Plan visibility must be established before any further work so other roles (Strategist on a triage pass, Orchestrator inspecting state, sibling Developer sessions) read truth.
+5. **Verify visibility.** In flat/tracked modes: verify push succeeded (`git push origin main` for flat, the parent repo's push for tracked). In untracked-parent mode: filesystem-visibility is immediate; no verification step. Plan visibility must be established before any further work so other roles (Strategist on a triage pass, Orchestrator inspecting state, sibling Developer sessions) read truth.
 
 A stale plan is a ledger lie. Same doctrine the other three writers operate under — adapted to whichever visibility mechanism the current layout mode provides.
 
@@ -301,11 +301,11 @@ When the user confirms the feature works, coding is complete but the code-review
 
 2. **Status flip — visibility per current mode.** Plan-writes must be visible to other sessions; they must NOT live on the feature branch (defeats visibility).
    - **Parallel Dev:** `cd $CODE_ROOT` (leave the worktree). **Default Dev:** already at `$CODE_ROOT` from bootstrap.
-   - `git checkout dev && git pull origin dev` (code-side sync, all modes)
+   - `git checkout main && git pull origin main` (code-side sync, all modes)
    - Edit `plan.md` at `$PROJECT_DIR/docs/...` (Status `in_progress → code_review` + Notes line)
    - Commit + make visible per current mode — §"Plan-write discipline (Developer)" step 3.
 
-3. **Sync feature with `dev`.** Switch back to the feature branch / worktree and rebase on the new `origin/${INTEGRATION_BRANCH}`:
+3. **Sync feature with `main`.** Switch back to the feature branch / worktree and rebase on the new `origin/${INTEGRATION_BRANCH}`:
    - Default: `git checkout w-<id>/<slug>`
    - Parallel: `cd /tmp/worktrees/<project>/w-<id>-<slug>`
    - `git fetch origin && git rebase origin/${INTEGRATION_BRANCH}`
@@ -321,12 +321,11 @@ When the user confirms the feature works, coding is complete but the code-review
    - Branch name + head SHA (post-rebase, local)
    - Working directory path (Default: main checkout; Parallel: worktree path)
    - W-item file path (Reviewer reads acceptance + Touches + References)
-   - The Reviewer loads `coding-standards.md` itself, reads the diff against `origin/${INTEGRATION_BRANCH}` (which it can fetch — only `dev` needs to be on origin, not `<feature>`), and reads codebase context from the working-directory path it was given.
+   - The Reviewer loads `coding-standards.md` itself, reads the diff against `origin/${INTEGRATION_BRANCH}` (which it can fetch — only `main` needs to be on origin, not `<feature>`), and reads codebase context from the working-directory path it was given.
 
 5. **Reviewer outcome.** Three paths, all user-mediated:
-   - **Ship** → On the feature branch: write Implementation log on W-item file, commit. (The log lands on `dev` via the fast-forward but post-dates the Reviewer pass — it's metadata about the just-shipped work, not part of what was reviewed; no rule break, the Reviewer doesn't audit the log.) Land it:
-     - **dev-main:** switch to `dev` in the code repo: `git checkout dev`, `git merge --ff-only w-<id>/<slug>` (clean fast-forward, since pre-review sync put feature ahead of dev), `git push origin dev`.
-     - **trunk:** land by PR ([FWADR-035](adrs/fwadr-035-git-flow-mode.md) §"Landing under trunk") — the guard rejects a direct push to `main`. Push the branch for the first time (`git push -u origin w-<id>/<slug>`), open the PR with the W-item summary, Reviewer verdict and QA evidence, and **offer the user the review with its deep link** (`./scripts/pr_link.sh <n>` from `$PROJECT_DIR`; shape `Review PR <n> (W-<id>): <url>`) before merging. On their word, merge on the host (`gh pr merge --merge --delete-branch` / `glab mr merge -d`), then `git checkout main && git pull --ff-only`. Changes asked for in review are plain commits on top; never rebase or force-push an open PR.
+   - **Ship** → On the feature branch: write Implementation log on W-item file, commit. (The log lands on `main` with the merge but post-dates the Reviewer pass — it's metadata about the just-shipped work, not part of what was reviewed; no rule break, the Reviewer doesn't audit the log.) Land it:
+     Land by PR ([FWADR-035](adrs/fwadr-035-git-flow-mode.md) §"Landing on main") — the guard rejects a direct push to `main`. Push the branch for the first time (`git push -u origin w-<id>/<slug>`), open the PR with the W-item summary, Reviewer verdict and QA evidence, and **offer the user the review with its deep link** (`./scripts/pr_link.sh <n>` from `$PROJECT_DIR`; shape `Review PR <n> (W-<id>): <url>`) before merging. On their word, merge on the host (`gh pr merge --merge --delete-branch` / `glab mr merge -d`), then `git checkout main && git pull --ff-only`. Changes asked for in review are plain commits on top; never rebase or force-push an open PR.
 
      Then plan-write Status flip `code_review → done` per current mode (§"Plan-write discipline (Developer)" step 3). Then check your own deploy: harness green on the dev page, result link on the W-item ([`dev-environment.md`](dev-environment.md) §"Test tiers and the dev harness"). Cleanup runs after the push/edit completes (see §"Cleanup at done-flip").
    - **Resolve** → Reviewer flagged concerns the user wants fixed before merging. Plan-write flips Status `code_review → in_progress` (visibility per current mode). Developer re-codes on the feature branch with concerns as input. After re-confirming via the user QA loop, the Developer loops back to step 2 — plan-write Status flip again, re-sync (in case dev advanced again during the rework), re-spawn the Reviewer.
@@ -347,7 +346,7 @@ If a session ends or context resets while a Reviewer subagent is in flight, the 
 
 After the `code_review → done` commit pushes successfully (`origin/${INTEGRATION_BRANCH}` carries the merge + plan.md Status flip), Developer runs cleanup. This is a per-W-item discipline — every Developer-mode W-item that ships through to `done` must clean up its worktree + branch.
 
-By the time the merge has happened, the Developer is **already on `dev`** in the main checkout (it switched to `dev` for the fast-forward merge + plan.md Status flip). Cleanup steps from there:
+By the time the merge has happened, the Developer is **already on `main`** in the main checkout (it switched to `main` to pull the merge + flip plan.md Status). Cleanup steps from there:
 
 **Default Developer:**
 
@@ -379,7 +378,7 @@ If `git branch -d` reports "not fully merged" or `git worktree remove` says the 
 
 The bootstrap reconciliation is the safety net for cleanup discipline that didn't run (session crashed, prior agent forgot, etc.). It catches what the per-item cleanup misses.
 
-**Prod deploy-branch flip-back.** If the user pointed prod at this feature branch (or `dev`) for the user-QA loop — the escape hatch documented in [`dev-environment.md`](dev-environment.md) §"Pointing prod at a non-main branch" — confirm the deploy-branch is back at `main` before declaring the W-item closed. The Developer doesn't know the project's CI shape, so the forcing function is to **ask the user** at done-flip: "Is prod's deploy branch back at `main`?" If no, surface the flip-back as a user action (it's a CI config edit, not a git operation the Developer runs). Skipping this means prod silently keeps tracking dev/feature, and the next item that merges to `main` doesn't reach the live URL until someone notices.
+**Prod deploy-branch flip-back.** If the user pointed prod at this feature branch for the user-QA loop — the escape hatch documented in [`dev-environment.md`](dev-environment.md) §"Pointing prod at a non-main branch" — confirm the deploy-branch is back at `main` before declaring the W-item closed. The Developer doesn't know the project's CI shape, so the forcing function is to **ask the user** at done-flip: "Is prod's deploy branch back at `main`?" If no, surface the flip-back as a user action (it's a CI config edit, not a git operation the Developer runs). Skipping this means prod silently keeps tracking the feature branch, and the next item that merges to `main` doesn't reach the live URL until someone notices.
 
 **Local dev runtime teardown via slot script.** If the user-QA loop ran against a local runtime in a slot (per [FWADR-019](adrs/fwadr-019-dev-slots-and-deploy-stubs.md)), tear it down at the `code_review → done` flip (Ship and Postpone outcomes; Resolve loops back so leave the runtime up for the re-test): **from `$PROJECT_DIR` (parent)** run `./scripts/teardown_local.sh dev<N>`. (Parent placement per [FWADR-021](adrs/fwadr-021-split-layout.md) §"Script placement doctrine"; the script uses CWD-relative paths internally.) The script runs the project-specific teardown body (`docker stop`/`rm`, process kill, etc.) and removes the slot's state file at `.local/dev_slots/dev<N>.yaml`, freeing the slot for the next claim. If the teardown script is still a stub, halt and fill it in — same forcing function as the launch stub. Leaving the runtime up between items accumulates resource residue and burns a slot — same failure-mode shape as not removing worktrees. **Never improvise `docker stop`/`rm` commands outside the teardown script.** The teardown script prints a confirmation block mirroring launch and prompts before acting; pass `--auto-confirm` only for scripted/CI flows, never as a default for interactive done-flip — the prompt is the same source-mismatch safety primitive applied in reverse.
 
@@ -441,11 +440,11 @@ When confidence is **<80%**, do NOT file a claim. Surface the ambiguity to the u
 | **Designer** (product-side) | Produces mockups the Developer references when implementing UI work. No direct contact. **Mockups set direction; the Developer holds the override.** When a real constraint makes the mockup wrong (data shape, third-party content, viewport, performance), deviate and record one line in the Implementation log — never ask the user to arbitrate mockup vs constraint. The Designer's Live concept picks up what shipped ([FWADR-039](adrs/fwadr-039-builder-override-over-mockups.md)). |
 | **Orchestrator** (product-side) | Parallel mode. Per-phase exclusivity — only one runs the plan at a time. No direct contact. |
 | **Template Developer** | Maintains this role doc and the framework. No direct contact. |
-| **User (project owner)** | Primary collaborator. The user invokes the Developer, runs feature QA in the loop throughout `in_progress`, decides on Reviewer-block dispositions (fix/ship-with-known-limit/escalate), authorizes phase promotion. The Developer is uniquely user-coupled among the roles — none of the others run a per-W-item dialogue with the user during work. |
+| **User (project owner)** | Primary collaborator. The user invokes the Developer, runs feature QA in the loop throughout `in_progress`, decides on Reviewer-block dispositions (fix/ship-with-known-limit/escalate), approves the phase release. The Developer is uniquely user-coupled among the roles — none of the others run a per-W-item dialogue with the user during work. |
 | **Reviewer subagent** (peer, ephemeral) | Spawned by the Developer at `in_progress → code_review` flip. Reads the diff + W-item file + `coding-standards.md`. Returns a structured ship/block verdict the Developer reads and acts on. Stateless; one call per Reviewer pass. Same brief Orchestrator sequential mode uses. |
 
 ## Session pattern
 
 Episodic, item-shaped. A typical Developer session covers one to a few W-items. Each item runs the lifecycle above — bootstrap, claim, code + user QA, /compact, Reviewer subagent, merge, log. Long sessions accumulate context inside `in_progress` (the QA loop iterations); `/compact` at the `in_progress → code_review` flip is the recommended way to keep the persistent session bounded across items.
 
-When a phase is finished, promote and stop. Closing a phase under Developer mode is the same as closing a phase under Orchestrator mode — `dev → main`, plan moves to `docs/archive/`, CLAUDE.md's active-plan pointer updates.
+When a phase is finished, see it released and stop. Closing a phase under Developer mode is the same as closing a phase under Orchestrator mode — the user approves the release in the QA view, plan moves to `docs/archive/`, CLAUDE.md's active-plan pointer updates.

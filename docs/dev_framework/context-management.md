@@ -36,7 +36,7 @@ Under split layout, the parent directory is **not required to be a git repo**. T
 - **Untracked parent (default):** plain files for CLAUDE.md / docs / .claude. Plan-write visibility is via shared filesystem only — concurrent sessions see plan.md edits immediately, but the push-then-fail collision guard is unavailable. Sufficient for solo or single-machine multi-session work.
 - **Tracked parent (optional):** `$PROJECT_DIR` is its own git repo with its own remote. Plan edits commit + push there. Full PLAN-WRITE DISCIPLINE concurrent-claim safety + durable plan history; right for team work or multi-machine setups.
 
-Code-side git operations (`git push origin dev`, `git push origin main`) ALWAYS happen in `$CODE_ROOT` and are independent of whether the parent is tracked.
+Code-side git operations (feature-branch pushes, PR merges) ALWAYS happen in `$CODE_ROOT` and are independent of whether the parent is tracked.
 
 ### How roles use $CODE_ROOT
 
@@ -47,7 +47,7 @@ Code-side git operations (`git push origin dev`, `git push origin main`) ALWAYS 
 | Developer (Default) | `$CODE_ROOT` | Coding happens here; plan lives at `$PROJECT_DIR/docs/` |
 | Developer (Parallel) | `/tmp/worktrees/<project>/<branch>` | `<project>` = `basename $CODE_ROOT` |
 | Executor | `/tmp/worktrees/<project>/<branch>` | Same slug convention |
-| Researcher | `$CODE_ROOT` (feature branch off `dev`) | Writes fenced to `RESEARCHER_SCOPE_DIR` + data carve-outs; checked by `scripts/check-researcher-scope.sh` (FWADR-024) |
+| Researcher | `$CODE_ROOT` (feature branch off `main`) | Writes fenced to `RESEARCHER_SCOPE_DIR` + data carve-outs; checked by `scripts/check-researcher-scope.sh` (FWADR-024) |
 | Template Developer | `$PROJECT_DIR` (template only) | Template has no `$CODE_ROOT` |
 
 Git commands run from `$CODE_ROOT` (or a worktree rooted there). Plan and doc writes run from `$PROJECT_DIR`.
@@ -59,7 +59,7 @@ DEFAULT_CODE_SUBDIR=my-repo-slug    # primary code repo (required for split layo
 CLAUDE_TEMPLATE_ROOT=/path/to/...   # framework sync source (optional; sibling fallback exists)
 ```
 
-**Scope rule ([FWADR-033](adrs/fwadr-033-env-scope-rule.md)):** the parent `.env` is the *operator* env — framework vars, host tokens, MCP credentials; it is sourced wholesale into every agent session. App runtime secrets (database URLs, API keys) live in the *app* env at `$CODE_ROOT/.env`, per code repo, never at the parent. The `.env.<subdir>` symlinks the sync hook maintains at the parent are read conveniences, never sourced.
+**Scope rule ([FWADR-033](adrs/fwadr-033-env-scope-rule.md)):** the parent `.env` is the *operator* env — framework vars, host tokens, MCP credentials; it is sourced wholesale into every agent session. App runtime secrets (database URLs, API keys) go to the *app* env — CI variables and `$CODE_ROOT/.env`, per code repo — never into the parent `.env`. The values of both are recorded in the tracked, encrypted `env.yaml`, whose `places` deliver each to its plane ([FWADR-041](adrs/fwadr-041-env-yaml.md)); the generated block of `.env` is never edited by hand. The `.env.<subdir>` symlinks the sync hook maintains at the parent are read conveniences, never sourced.
 
 ---
 
@@ -108,7 +108,7 @@ Each persistent instance reads its role doc at session start. No instance reads 
 Reference material pulled only when actively needed for a specific task.
 
 - `docs/dev_framework/coding-standards.md` — loaded by Executor, Reviewer, and Integrator-QA subagents at spawn (Step 1 / Step 0 of their briefs)
-- `docs/dev_framework/templates/*` — briefing templates, loaded when spawning a subagent. Note `strategist-brief.md` (bounded doc work, FWADR-025) is the only write-capable non-code subagent; the spawned agent must NOT load `strategist.md`, whose standing job description would inflate a bounded task. In particular: `reviewer-brief.md` for sequential-mode per-task review, `integrator-qa-brief.md` for batch-mode end-of-batch integration + review + test + fix (FWADR-016), `qa-brief.md` for phase-exit and post-promotion live-environment passes.
+- `docs/dev_framework/templates/*` — briefing templates, loaded when spawning a subagent. Note `strategist-brief.md` (bounded doc work, FWADR-025) is the only write-capable non-code subagent; the spawned agent must NOT load `strategist.md`, whose standing job description would inflate a bounded task. In particular: `reviewer-brief.md` for sequential-mode per-task review, `integrator-qa-brief.md` for batch-mode end-of-batch integration + review + test + fix (FWADR-016), `qa-brief.md` for phase-exit and post-release live-environment passes.
 - **W-item SOW files** (FWADR-017 folder layout: `docs/execution-plans/<plan>/w-<id>.md`; pre-FWADR-017: per-W-item section inline on the plan) — loaded ON DEMAND by the Orchestrator when filling a dispatch brief, by the Executor at STEP 1, by the Reviewer when reading acceptance, and by the Integrator-QA when scanning the batch. Never preloaded at session start; this is the load-bearing part of the folder structure — per-dispatch context is bounded by the W-item, not the phase.
 - `docs/execution-plans/<plan>/claims.md` (folder layout) — loaded by the Orchestrator only during STEP 0 reconciliation of `held` items, and by the Strategist during claim triage. Filed by the Integrator-QA. Other roles do not read it.
 - **Operational docs** (runbooks, SOPs, operator checklists) — a Strategist artifact class ([FWADR-025](adrs/fwadr-025-named-deliverables.md)); project-chosen location, no framework-imposed path. Written and read ON DEMAND, never at session start. A sibling runbook the user points at is read as reference when authoring a new one.

@@ -21,7 +21,7 @@ $PROJECT_DIR/
     .git/
 ```
 
-`$PROJECT_DIR` git tracking is **optional** — untracked parent (default) or tracked parent (own git repo, full plan-history). Code-side `git push origin dev/main` always runs in `$CODE_ROOT` independent of the parent mode.
+`$PROJECT_DIR` git tracking is **optional** — untracked parent (default) or tracked parent (own git repo, full plan-history). Code-side git (feature-branch pushes, PRs to `main`) always runs in `$CODE_ROOT` independent of the parent mode.
 
 Multi-repo projects (one parent, N code repos) are supported: set `DEFAULT_CODE_SUBDIR` in `.env` for the primary repo and add `target-repo: <subdir>` to the YAML frontmatter of W-items that target non-default repos.
 

@@ -13,7 +13,7 @@
 #   cd /tmp/worktrees/myproj/w-a1-auth
 #   /path/to/scripts/check-touches.sh \
 #     docs/execution-plans/exec-phase-1/w-a1.md \
-#     origin/${INTEGRATION_BRANCH}   (dev | main per GIT_FLOW)
+#     origin/${INTEGRATION_BRANCH}   (always main)
 #
 # Exit codes:
 #   0 — every modified file is within `touches`.
@@ -63,8 +63,7 @@ TOUCHES_LIST="$(ruby -e '
 ' "$WITEM_FILE")" || exit 2
 
 # Get the list of files changed vs the base ref.
-# A base ref that does not resolve (e.g. origin/dev after a trunk migration
-# deleted it) must fail loudly — an empty diff would read as "all in scope".
+# A base ref that does not resolve (e.g. a deleted origin/dev) must fail loudly — an empty diff would read as "all in scope".
 if ! git rev-parse --verify -q "$BASE_REF^{commit}" >/dev/null; then
   echo "check-touches: base ref '$BASE_REF' does not resolve — fetch, or pass the right ref" >&2
   exit 2

@@ -13,8 +13,8 @@ from the user's machine, delivers it through the project's intake API, and
 records the hunt. Two live failure modes earned it:
 
 1. **Branch indiscipline** — the research session committed directly to
-   `main` and mirrored work to `dev` as duplicate commits, producing merge
-   conflicts at promotion. Resolved framework-wide by
+   `main` and mirrored work to a second branch as duplicate commits, producing
+   merge conflicts. Resolved framework-wide by
    [FWADR-023](fwadr-023-main-push-guard.md); no longer role-specific.
 2. **Debugging drift across a contract boundary** — the session's job is
    acquisition via API calls against the project's server, and it has its own
@@ -42,8 +42,8 @@ Load-bearing pieces:
    receives the doc; only configured projects can run the role.
 2. **Mechanical write fence.** Write scope is one named directory plus
    exact-path data carve-outs (`RESEARCHER_DATA_CARVEOUTS`), checked by the
-   generic stub `scripts/check-researcher-scope.sh` (diff vs `origin/dev`
-   filtered against the `.env` scope) before every merge to `dev`.
+   generic stub `scripts/check-researcher-scope.sh` (diff vs `origin/main`
+   filtered against the `.env` scope) before every merge to `main`.
 3. **Contract-boundary rule with two named outlets.** The server API is
    opaque. API *failure* → hunt/dead-end log (evidence, memory, no action
    owed). API *capability gap* → a **server-work request**: a

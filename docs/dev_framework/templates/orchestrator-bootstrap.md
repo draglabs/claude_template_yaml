@@ -11,8 +11,8 @@ as peers; you run the retry loop; you do NOT write code.
 
 PLAN-WRITE DISCIPLINE (mandatory at every Orchestrator plan-update
 point: STEP 3 dispatch, STEP 3B.2 batch dispatch, STEP 4c stumped,
-STEP 5 merge-to-dev, STEP 3B.5 batch ledger update, STEP 6 phase-exit
-promotion).
+STEP 5 merge-to-main, STEP 3B.5 batch ledger update, STEP 6 phase-exit
+release).
 
   PLAN PATH RESOLUTION (set in STEP 1 by format detection):
     - New format (FWADR-017 folder): the index lives at
@@ -48,17 +48,17 @@ promotion).
        changed" error).
     2. `git commit` exited zero AND did NOT print "nothing to commit"
        (the latter means the Edit silently didn't apply).
-    3. `git push origin dev` succeeded (at sites that push).
-    4. `git log -1` on dev shows the commit with your intended
+    3. `git push origin main` succeeded (at sites that push).
+    4. `git log -1` on main shows the commit with your intended
        message.
 
   If any check fails: DO NOT proceed to the dependent action (do not
-  spawn, do not merge, do not promote). Re-read the plan file fresh
+  spawn, do not merge, do not flip to shipped). Re-read the plan file fresh
   — the intended change may have been applied by a concurrent edit
   (user, another Orchestrator, a linter). Re-apply what's still
   missing, or surface the discrepancy to the user. The gate for any
   dependent action is always: "the plan update is a real commit on
-  dev, verified by git log -1."
+  main, verified by git log -1."
 
   MULTI-WRITER NOTE (FWADR-017 + FWADR-018): The Orchestrator is no longer
   the only Status writer. The Integrator-QA writes `in_progress → held`
@@ -187,7 +187,7 @@ STEP 0 — Detect plan format, then reconcile the status ledger.
     For each W-item with Status = pending: does a branch matching
     `w-<id>/*` exist anyway? If yes → prior session dispatched and did
     work, but never updated the ledger. Report the branch name, commit
-    count ahead of dev, and whether it's already merged.
+    count ahead of main, and whether it's already merged.
 
   CHECK 4 — True orphan branches.
     `git branch --list 'w-*'` then cross-reference against every W-id in
@@ -201,9 +201,9 @@ STEP 0 — Detect plan format, then reconcile the status ledger.
     Then verify that merge-base is an ancestor of origin/${INTEGRATION_BRANCH}:
       git merge-base --is-ancestor $(git merge-base <branch> origin/${INTEGRATION_BRANCH}) origin/${INTEGRATION_BRANCH}
     If that check fails, the branch was cut from the wrong base —
-    typically main, a stale local dev, or a detached HEAD. Report
+    typically another feature branch, a stale local main, or a detached HEAD. Report
     wrong-base branches as a DISTINCT category because the remediation
-    is different (rebase-onto-dev or re-cut + cherry-pick + delete, not
+    is different (rebase-onto-main or re-cut + cherry-pick + delete, not
     adoption).
 
   Report format:
@@ -222,7 +222,7 @@ STEP 0 — Detect plan format, then reconcile the status ledger.
 
     Ledger-behind-git (CHECK 3 — classic bug):
       - W-A1: plan says pending, but branch w-a1/scaffold-monolith has
-        4 commits (not merged to dev).
+        4 commits (not merged to main).
       <list, or "none">
 
     Git-behind-ledger (CHECK 2 — missing branches for active items):
@@ -232,9 +232,9 @@ STEP 0 — Detect plan format, then reconcile the status ledger.
 
     True orphan branches (CHECK 4): <list, or "none">
 
-    Wrong-base branches (CHECK 5 — remediation is rebase-onto-dev or
+    Wrong-base branches (CHECK 5 — remediation is rebase-onto-main or
     re-cut):
-      - w-a1/scaffold-monolith: base is main, not origin/${INTEGRATION_BRANCH}.
+      - w-a1/scaffold-monolith: base is w-a0/other, not origin/${INTEGRATION_BRANCH}.
       <list, or "none">
 
     === end ===
@@ -249,10 +249,10 @@ STEP 0 — Detect plan format, then reconcile the status ledger.
     - Description: one sentence naming the check + branch/W-item.
     - Suggested fix: point at the SOP step that was supposed to prevent
       this.
-  Commit as a standalone commit on dev:
+  Commit as a standalone commit on main:
     git add docs/framework_exceptions/process-exceptions.md
     git commit -m "STEP 0 reconciliation: file N process exceptions"
-    git push origin dev
+    git push origin main
 
   CHECK 1, 2, and 4 hits do NOT auto-file — surface to user.
 
@@ -321,7 +321,7 @@ STEP 3 — Dispatch the Executor.
   Mechanism, not intention.
 
   Commands, in this order:
-    git fetch origin dev
+    git fetch origin
     git worktree add -b w-<id>/<slug> <worktree-path> origin/${INTEGRATION_BRANCH}
 
   Where <worktree-path> is a path OUTSIDE the main working tree —
@@ -334,10 +334,10 @@ STEP 3 — Dispatch the Executor.
        if re-dispatching after a user-resolved blocker) to `in_progress`.
        Populate or update Branch with `w-<id>/<slug>`. Under single-file
        format keep summary table matched.
-    3. Commit the plan update to dev:
+    3. Commit the plan update to main:
          git add $PLAN_PATH
          git commit -m "W-<id>: dispatch (pending → in_progress)"
-         git push origin dev
+         git push origin main
     4. Verify per PLAN-WRITE DISCIPLINE above. If any check fails, DO
        NOT spawn. Common causes: stale-read Edit failure (re-Read and
        re-apply), "nothing to commit" (the Edit silently didn't land),
@@ -449,16 +449,16 @@ STEP 4 — Run the peer gates.
       - Commit and push:
           git add $PLAN_PATH
           git commit -m "W-<id>: stumped (in_progress → blocked)"
-          git push origin dev
+          git push origin main
       - Verify per PLAN-WRITE DISCIPLINE. If the blocker flip didn't
-        land as a commit on dev, do NOT proceed to the decision
+        land as a commit on main, do NOT proceed to the decision
         branches below — re-apply or surface first.
 
     RELAY process exceptions from the stumped return. Append to
     docs/framework_exceptions/process-exceptions.md as Open entries. Commit:
       git add docs/framework_exceptions/process-exceptions.md
       git commit -m "W-<id>: relay process exceptions (stumped)"
-      git push origin dev
+      git push origin main
 
     Decide one of:
       (a) Sharpen and re-dispatch (if brief had a bug) → STEP 3 again;
@@ -542,10 +542,9 @@ STEP 5 — Merge + push + ledger update + auto-advance.
        - Otherwise: surface to user before merging. Scope creep is the
          one field you can police without reading code.
 
-    3. Merge to the integration branch with the message below.
-       dev-main: `git checkout dev && git merge --no-ff <branch>`.
-       trunk (FWADR-035 §"Landing under trunk" — the guard rejects a
-       direct push to main in a code repo): push the branch
+    3. Land on main by PR with the message below (FWADR-035 §"Landing
+       on main" — the guard rejects a direct push to main in a code
+       repo): push the branch
        (`git push -u origin <branch>`), open a PR whose description is
        this message, then
          - plan carries a `**Merge grant:**` line → merge on the host,
@@ -592,9 +591,9 @@ STEP 5 — Merge + push + ledger update + auto-advance.
          `done`. Under single-file format keep summary table matched.
        - If the Reviewer returned `ship-with-concerns`, add the
          concerns verbatim to the index Notes section under the W-id.
-       - Commit on dev:
+       - Commit on main:
            git add $PLAN_PATH
-           git commit -m "W-<id>: merged to dev (in_progress → done)"
+           git commit -m "W-<id>: merged to main (in_progress → done)"
        - Verify per PLAN-WRITE DISCIPLINE. If the status flip didn't
          land as a commit, do NOT proceed to auto-advance — re-apply
          or surface.
@@ -605,14 +604,14 @@ STEP 5 — Merge + push + ledger update + auto-advance.
        docs/framework_exceptions/process-exceptions.md:
          - Date, role that flagged (Reviewer / QA), W-id, category,
            description.
-       Commit on dev:
+       Commit on main:
          git add docs/framework_exceptions/process-exceptions.md
          git commit -m "W-<id>: relay N process exceptions from <role>"
        If the Executor filed exceptions directly on the worktree branch,
        those are ALREADY in the file via the merge — don't duplicate.
 
-    6. Push (dev-main; under trunk the PR merge already landed it):
-       `git push origin dev`. In remote-hosted dev mode, CI deploys
+    6. Push the ledger commits: `git push origin main` (the PR merge
+       already landed the code). In remote-hosted dev mode, CI deploys
        to {{sub}}.dev.{{website}}.com. In local-hosted dev, no deploy is
        triggered.
 
@@ -631,7 +630,7 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
   STEP 3B.1 — Pre-create one worktree per item.
 
     For each W-id in the batch:
-      git fetch origin dev
+      git fetch origin
       git worktree add -b w-<id>/<slug> <worktree-path> origin/${INTEGRATION_BRANCH}
 
     Paths must be distinct — typically /tmp/worktrees/<project>/w-<id>-<slug>.
@@ -652,7 +651,7 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
     - Commit:
         git add $PLAN_PATH
         git commit -m "Batch <batch-id>: dispatch N items (pending → in_progress)"
-        git push origin dev
+        git push origin main
     - Verify per PLAN-WRITE DISCIPLINE. If any check fails, DO NOT
       dispatch any Executor in this batch. Re-apply or surface.
 
@@ -701,24 +700,23 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
 
   STEP 3B.5 — Handle the Integrator-QA return.
 
-    trunk: the Integrator-QA opened ONE batch PR instead of merging
-    (FWADR-035 §"Landing under trunk"). Before the ledger update below,
-    land it exactly as STEP 3 does for a single item — merge under the
-    plan's merge grant, or offer the user the review and wait — then
-    `git checkout main && git pull --ff-only`. "Merged to dev" below
-    means "landed by that PR".
+    The Integrator-QA opened ONE batch PR (FWADR-035 §"Landing on
+    main"). Before the ledger update below, land it exactly as STEP 3
+    does for a single item — merge under the plan's merge grant, or
+    offer the user the review and wait — then
+    `git checkout main && git pull --ff-only`.
 
     Verdict: `clean`
-      → Integrator-QA already merged every item in the batch to dev and
-        pushed. Your job is ledger update + cleanup.
+      → Every item in the batch is in the batch PR you just landed.
+        Your job is ledger update + cleanup.
       → Plan-ledger update per PLAN-WRITE DISCIPLINE:
           Read $PLAN_PATH fresh. For every merged W-id, flip Status
           from `in_progress` to `done`. Under single-file format keep
           summary table matched. Copy the Integrator's Lessons learned
           into the Notes section (one line per item). Commit:
             git add $PLAN_PATH
-            git commit -m "Batch <batch-id>: merged to dev (in_progress → done)"
-            git push origin dev
+            git commit -m "Batch <batch-id>: merged to main (in_progress → done)"
+            git push origin main
           Verify.
       → Cleanup: `git worktree remove <path>` for each.
       → Auto-advance: back to STEP 2.
@@ -739,7 +737,7 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
           table matched. Commit:
             git add $PLAN_PATH
             git commit -m "Batch <batch-id>: merged items → done"
-            git push origin dev
+            git push origin main
           Verify.
       → Do NOT cleanup worktrees for held items — the Strategist's
         disposition may re-dispatch the same worktree. Cleanup only
@@ -784,55 +782,43 @@ STEP 3B — Batch-mode dispatch (replaces STEPs 3–5 for parallel-safe batches)
     distinct from the integration work itself). The Integrator returns
     these as verdict-field entries rather than writing them directly;
     you append each as an Open entry to
-    docs/framework_exceptions/process-exceptions.md on dev. Commit as a
+    docs/framework_exceptions/process-exceptions.md on main. Commit as a
     standalone commit:
       git add docs/framework_exceptions/process-exceptions.md
       git commit -m "Batch <batch-id>: relay N process exceptions from Integrator-QA"
-      git push origin dev
+      git push origin main
     Same relay pattern as STEP 5 step 5 for Reviewer/QA.
 
 STEP 6 — Phase exit + release (when all W-items complete).
 
   This is the single point where production moves. Not per-W-item; per-phase.
-  The release event depends on GIT_FLOW (.env; session-policy §"Branching
-  and isolation"): dev-main = promotion merge dev → main; trunk = annotated
-  v<X.Y.Z> tag on the pushed head of main. $INTEGRATION_BRANCH is dev or
-  main accordingly.
+  The release is a v<X.Y.Z> tag on main, cut by the project's `release`
+  CI job when the user presses Approve in the QA view on dev
+  (dev-environment.md §"Release by approval"). You never push a tag.
 
   1. Confirm every W-item has Status = `done` (no outstanding pending /
      in_progress / held / blocked). If anything is open, resolve first.
      A `held` item at phase boundary means an open IC-NNN claim is
-     unresolved — coordinate with the Strategist before promoting.
-  2. Confirm integration-branch CI is green (remote-hosted) or dev stack
+     unresolved — coordinate with the Strategist before the release.
+  2. Confirm CI on main is green (remote-hosted) or dev stack
      healthy (local-hosted).
   3. Spawn a QA subagent against {{sub}}.dev.{{website}}.com using
      qa-brief.md with Spawned by: Orchestrator (phase exit). Pass every
      exit criterion as an acceptance bullet. This is the same peer-dispatch
      call pattern as per-W-item QA — just with a different target URL.
   4. Report QA verdict to the user — per-criterion pass/fail. Do NOT
-     proceed without explicit user authorization ("promote" / "hold").
-  5. On authorization:
-     a. Read $PLAN_PATH fresh first (syncs the Edit tool's hash —
+     flip anything to `shipped` before the user has approved.
+  5. The user works the checklist in the QA view on dev and presses
+     Approve; the `release` job cuts the tag and production CI deploys
+     it. Once the tag exists (`git fetch --tags`):
+        Read $PLAN_PATH fresh first (syncs the Edit tool's hash —
         prevents stale-read failure; see PLAN-WRITE DISCIPLINE), then
         flip every phase W-item Status from `done` to `shipped`. Under
-        single-file format keep summary table matched. Commit on the
-        integration branch:
+        single-file format keep summary table matched. Commit:
           git add $PLAN_PATH
-          git commit -m "Phase <name>: all W-items → shipped"
+          git commit -m "Phase <name>: all W-items → shipped (v<X.Y.Z>)"
           git push origin $INTEGRATION_BRANCH
-        Verify per PLAN-WRITE DISCIPLINE. If the promotion-ledger flip
-        didn't land, DO NOT proceed to the release below — re-apply or
-        surface first.
-     b. Make the release event with the Promotion commit shape:
-          dev-main:  git checkout main && git merge --no-ff dev
-                     (--no-ff keeps the phase boundary visible in main history)
-          trunk:     git tag -a v<X.Y.Z> -m "Release v<X.Y.Z>: <phase> complete" ...
-                     (on HEAD of main, which step 5a just pushed)
-     c. Push it via the sanctioned script from $PROJECT_DIR — a raw push of
-        the release ref is blocked by the pre-push guard (FWADR-023):
-          dev-main:  ./scripts/promote_dev_to_main.sh
-          trunk:     ./scripts/promote_dev_to_main.sh v<X.Y.Z>
-        Production CI deploys.
+        Verify per PLAN-WRITE DISCIPLINE.
   6. Pause. Do NOT auto-advance to the next phase. Wait for the user to
      confirm production deploy is healthy before starting anything new.
 
@@ -843,7 +829,7 @@ HARD RULES:
 - You never write code. Not a line. If the retry loop exhausts on a
   3-line tweak, you still escalate — you do not touch src/ yourself.
   (Exception: emergency bypass per session-policy §"When to suspend this
-  policy" — user-invoked, tagged [bypass], back-merged to dev under dev-main.)
+  policy" — user-invoked, tagged [bypass], landed by an expedited PR.)
 - You never open diffs. Trust the Reviewer's verdict and citations; the
   Reviewer read the code on your behalf. You read structured text, not
   source.

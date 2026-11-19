@@ -116,7 +116,7 @@ The split layout does **not require** `$PROJECT_DIR` to be a git repo. Both mode
 
 Adopters choose based on context: solo work on a single machine → untracked parent is sufficient; team work where plan history matters or where multiple machines need synchronized plans → tracked parent.
 
-**Code-side git operations (branching, merging, pushing the code repo's `dev`/`main`) always happen in `$CODE_ROOT` and are independent of whether the parent is tracked.** The `git push origin dev` and `git push origin main` steps throughout the framework refer to the CODE repo's branches, not the parent's. This holds in both modes.
+**Code-side git operations (branching, pushing feature branches, landing PRs on the code repo's `main`) always happen in `$CODE_ROOT` and are independent of whether the parent is tracked.** The feature-branch pushes and PR merges throughout the framework refer to the CODE repo's branches, not the parent's. This holds in both modes.
 
 ---
 

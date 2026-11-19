@@ -10,7 +10,7 @@ Raw field reports from agents about friction with the SOP, briefs, tools, or mec
 | **Reviewer** | Can't write files (verdict-only). Flags in the return; the Orchestrator appends on its behalf. Under peer dispatch, the Executor does not see the Reviewer's output — the Reviewer reports to the Orchestrator, so only the Orchestrator can relay. |
 | **QA** | Same as Reviewer — verdict-only, Orchestrator appends. |
 | **Doc Consultant / Code Consultant** | Same — flag in return, spawning agent appends. |
-| **Orchestrator** | Appends directly on `dev` as part of normal Orchestrator workflow. Commits as a standalone plan-adjacent commit. Also relays Reviewer / QA exceptions (see above rows). |
+| **Orchestrator** | Appends directly on `main` as part of normal Orchestrator workflow. Commits as a standalone plan-adjacent commit. Also relays Reviewer / QA exceptions (see above rows). |
 | **Strategist** | Does NOT file. The Strategist is the REVIEWER of this file — if the Strategist sees friction, it opens a `planning:` PR directly rather than logging a complaint. |
 | **Designer** | Can write here as a bounded exception to the `mockups/` write-scope rule. Mockup-surface friction is a legitimate category. |
 
