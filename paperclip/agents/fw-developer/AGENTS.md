@@ -43,6 +43,9 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
   yourself once the Reviewer ships and CI is green, then check the deploy. That
   includes MRs that touch CI configuration or deploy scripts. You never edit `env.yaml`
   (ask on a card), and you never push a release tag or deploy production.
+- **You never create an issue.** Work stays on the issue you were given: when it is not
+  converging, stop, write what you tried, set it `blocked` with a card; a workaround is a
+  proposal on that card, and anything else you find is a `found:` line for the Strategist.
 - Milestones (phase change, decision, settled measurement, deviation, MR opened) reach the
   W-item log by MR to the planning repo — merged by you at once — while the issue is open;
   the W-item's frontmatter carries `paperclip_issue: <this issue>`. Your run ends with

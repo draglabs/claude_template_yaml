@@ -13,7 +13,7 @@ a Paperclip agent does the thing in the right column. Decided in
 |---|---|
 | "ask the user" / "Anything else?" | Raise a **question card**: options with evidence, each with Confidence and Difficulty, the recommendation first, last item "Anything else?". Never block on chat. |
 | "report your understanding and wait for approval" | Post the bootstrap report as the **first comment** on the issue and proceed. Stop and wait only if the issue says `approve-first` or the report finds a conflict. |
-| "spawn an Executor" (Orchestrator) | **Create a child issue** (class *work*, naming the W-item, the Executor brief as its description) assigned to `FW_Parallel_Developer` (§"Dispatch"). |
+| "spawn an Executor" (Orchestrator) | **Reassign the same issue** to `FW_Parallel_Developer`, the Executor brief as a comment. It comes back to you by reassignment when the MR is open. Never a child issue (§"One ticket stays one ticket"). |
 | "spawn a Reviewer" (Orchestrator) | Apply `templates/reviewer-brief.md` as a checklist in an MR comment: `approve` / `request changes` / `block` / `doc-conflict`. On `approve`, with QA evidence posted and CI green, **merge the MR to `main` yourself** (§"Who merges"). |
 | "spawn a Reviewer" (Developer) | Unchanged — the local Reviewer subagent still runs before the MR opens. The Orchestrator merges it; on an issue the human assigned you directly, you merge it yourself once the Reviewer ships and CI is green. |
 | "the user is the QA gate" (Developer) | Post the evidence (commands, output, screenshots) as a comment; a card only where a human must choose. |
@@ -45,23 +45,39 @@ to the `paperclip` place ([FWADR-041](adrs/fwadr-041-env-yaml.md)). The key is o
 operator's machine only, so an edit made here breaks the file. A value you need added,
 changed or routed to you is a question card naming the variable and the place.
 
-## Dispatch
+## One ticket stays one ticket
 
-- **Who builds.** The Orchestrator dispatches to `FW_Parallel_Developer` by default: the
+**Only the Strategist creates tickets, and only while triaging a ticket the human
+created.** That triage is where work is split, once, into W-items with a ticket each. No
+other agent creates a ticket, ever: no child issue, no follow-up issue, no workaround
+issue.
+
+- **Work stays on the ticket it arrived on.** It changes hands by reassignment: the
+  Orchestrator hands the issue to the builder and gets it back for the gate. The board
+  shows one ticket per thing the human asked for.
+- **Who builds.** The Orchestrator reassigns to `FW_Parallel_Developer` by default: the
   team player, each run in its own worktree, never in the shared checkout. An item that
   touches a claimed file waits for the claim to clear. `FW_Developer` is reserved for
   issues the human assigns it directly — emergencies, admin, hotfixes, work the founder
   wants to watch live.
-- **Acceptance is frozen at push.** Once the Executor has pushed, the Orchestrator adds no
-  acceptance criteria to that issue; a new criterion is a follow-up issue.
-- **Watchdog.** On creating the first child issue under an issue, the Orchestrator sets
-  itself as that issue's task watchdog: `PUT /api/issues/<issueId>/watchdog
-  {"agentId": "<its agent id>", "instructions": "…"}`. Paperclip then wakes it when every
-  child has come to rest with no live path (done, blocked, in review, waiting on a card,
-  stuck after a failed run). If the call is refused under agent credentials, say so in
-  the comment and the board sets it. On a watchdog wake, a child whose run failed after
-  its work landed (branch pushed, MR open) has returned: verify against the MR and CI,
-  close the child, run the gate. Never re-dispatch work that is already on the git host.
+- **Stuck is `blocked`, not a new ticket.** When the work is not converging, stop. Write
+  on the ticket what was tried and what stands in the way, set it `blocked` with *who*
+  and *for what*, and raise a card if a human must choose. A workaround is a proposal on
+  that card, never a ticket you open and start.
+- **Found something else?** A line on the ticket — `found: <what>, <where>` — for the
+  Strategist. Whether it becomes work is decided at triage, not by the agent that
+  tripped over it.
+- **Acceptance is frozen at push.** Once the builder has pushed, nobody adds acceptance
+  criteria to the issue; a new criterion is a `found:` line.
+- **When the issue comes back,** verify against the MR and CI before anything else. A
+  builder whose run failed after its work landed (branch pushed, MR open) has returned:
+  run the gate. Never re-dispatch work that is already on the git host.
+
+The failure this prevents: a ticket asks for one hard thing; an agent splits it into a
+hard part and an easy part; the easy part runs five steps and blocks on the hard part;
+the hard part circles for hours and opens workaround tickets as it goes; the human
+returns to fourteen stuck tickets, each with its own run history and its own bill, for
+one request.
 
 ## Act, don't ponder
 
@@ -72,14 +88,16 @@ for every role here: at 80% confidence, act.
 - Verify a claim once. A second check needs a new reason, stated.
 - Post the first visible result — a comment or a commit — early in the run.
 - Checked the same thing three times? Stop and write what you know.
-- Orchestrator: split items so no single run needs hours of context.
+- A ticket too big for one run is not yours to split: stop and say so on a card.
 
 ## Ending a run
 
 A run never ends with a background process alive: Paperclip reads that exit as a failed
-run, parks the issue behind a login card, and the parent never wakes. Wait for CI in the
-foreground with a bounded poll, or stop waiting — post the result so far, and close or
-hand back the issue. Set the issue's status and post the final comment **first**, before
+run, parks the issue behind a login card, and the parent never wakes. Prefer not to wait
+inside a run at all: post the result so far, close or hand back the issue, and let the
+next wake read the pipeline. If you do wait for CI, wait in the foreground with a bounded
+poll, on the **newest** pipeline — a pipeline on `main` is cancelled when a newer commit
+lands, and polling the cancelled one never ends. Set the issue's status and post the final comment **first**, before
 any optional waiting: closing the issue is what wakes the parent.
 
 ## Record: git is the record, Paperclip is the queue
@@ -159,7 +177,8 @@ carrying the failing run's link.
 
 One company per framework project. The company is created from the package at
 [`paperclip/`](../../paperclip/) in the template repo — `FW_Strategist`, `FW_Orchestrator`,
-`FW_Developer`, `FW_Parallel_Developer`, `FW_Designer`, `FW_Curator` — each a reading list:
+`FW_Developer`, `FW_Parallel_Developer`, `FW_Designer`, `FW_Curator` — each a reading list
+(and `FW_Paperclip_Lead`, whose list is two documents — §"The Paperclip Lead"):
 
 1. the project's `CLAUDE.md` and `docs/framework_exceptions/dev_framework_exceptions.md`,
    fetched from the planning repo at run start (the exceptions file is where a project
@@ -173,6 +192,21 @@ pin against the template's `main` (`status`); the sync hook NOTICEs on drift, an
 package's recurring task has `FW_Curator` report it daily. Bumping the pin is a deliberate
 act, like every framework sync.
 
+## The Paperclip Lead
+
+`FW_Paperclip_Lead` answers for the health of the company
+([`paperclip-lead.md`](paperclip-lead.md), [FWADR-043](adrs/fwadr-043-paperclip-lead.md)).
+It hires, and every four hours it runs the board meter (`scripts/board_meter.py`, no
+tokens) and looks at what the meter flags: a run that is looping, stalled or orphaned, a
+ticket past its budget. It nudges; with `PAPERCLIP_LEAD_ACTS=on` it may stop a run, block
+the ticket with a reason code, and re-open one stopped in error. A ticket of yours it
+blocks carries `<code>: <evidence>. Unblock: <what>`: do what the way out says. Its log
+and what it needs triaged are in the planning repo under `docs/paperclip_lead/`.
+
+Three things hold with no agent alive: each agent's monthly budget (project variables,
+set by `paperclip_company.py sync`), `paperclip_company.py pause` / `resume`, and the
+host's own breaker and reaper (adoption step 6).
+
 ## What a project does to adopt
 
 1. `PAPERCLIP_API_URL`, `PAPERCLIP_API_KEY`, `PAPERCLIP_COMPANY`, `PAPERCLIP_PLANNING_REPO`
@@ -183,5 +217,12 @@ act, like every framework sync.
 3. On the git host: the agents' bot may merge MRs into the planning repo's `main` and
    each code repo's `main`; `v*` tags are protected — only the `release` job and the
    human create them.
-4. `./scripts/paperclip_company.py sync` — creates or refreshes the six agents.
+4. `PAPERCLIP_AGENT_BUDGET_CENTS` set (a budget per agent is a project variable), then
+   `./scripts/paperclip_company.py sync` — creates or refreshes the seven agents and the
+   two routines (the daily alignment check, the four-hour board review).
 5. One ops issue that proves the loop end to end before any work issue.
+6. On the hosts, by the user: a timer on the agent host that kills the agent user's
+   processes older than any run could be (one stuck process group once held the host at
+   its task limit for ten days; new runs then died at start with `exit 255`), and a
+   breaker on the Paperclip host that runs `paperclip_company.py pause` on three failed
+   runs in an hour or when the board review has not run.

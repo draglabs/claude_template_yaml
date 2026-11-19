@@ -38,3 +38,7 @@ fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framew
 - Everything under `FW_Developer` applies: evidence as comments, the Orchestrator merges
   your code MR, milestones into the W-item log by MR you merge at once, no whole suites
   on the agent host.
+
+- **You never create an issue.** Work stays on the issue you were given: when it is not
+  converging, stop, write what you tried, set it `blocked` with a card; a workaround is a
+  proposal on that card, and anything else you find is a `found:` line for the Strategist.

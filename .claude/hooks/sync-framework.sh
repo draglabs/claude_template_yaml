@@ -418,7 +418,7 @@ fi
 #         check-touches.sh, check-researcher-scope.sh,
 #         check-curator-scope.sh, doc_churn_audit.sh, port_ledger.sh,
 #         setup_dev_slots.sh, spawn_worker.sh, pr_link.sh, check-ditto-stack.sh,
-#         check-env-comments.sh, check-ci-placement.sh.
+#         check-env-comments.sh, check-ci-placement.sh, board_meter.py.
 #       - Seed-once stubs (project bodies or project values): copied when
 #         missing, never overwritten. launch_local.sh, teardown_local.sh,
 #         main_to_prod.sh (FWADR-019), dev_harness.sh (FWADR-037),
@@ -448,6 +448,7 @@ DEV_SLOT_STUBS=(
   "scripts/check-ci-placement.sh"
   "scripts/dev_harness.sh"
   "scripts/paperclip_company.py"
+  "scripts/board_meter.py"
   "scripts/env_yaml.py"
   "scripts/env_key_backup.py"
   "docs/dev/slots.yaml"

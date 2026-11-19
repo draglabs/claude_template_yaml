@@ -34,7 +34,7 @@ behind two MRs that touched a pipeline file.
    docs at a pinned framework commit) plus one mode document.
 2. **One mode document, [`paperclip-mode.md`](../paperclip-mode.md),** holds every
    substitution: ask-the-user → question card; approval → first comment, then proceed;
-   spawn → child issue; Reviewer → a checklist the Orchestrator applies before it merges;
+   spawn → the same issue, reassigned; Reviewer → a checklist the Orchestrator applies before it merges;
    PR handoff → comment with the deep link;
    plus the record rule (git is the record, Paperclip is the queue; two issue classes),
    the carve-outs (working notes live on the issue between milestones and reach the W-item
@@ -67,14 +67,19 @@ behind two MRs that touched a pipeline file.
    thing stays with the human short of the release: an ADR is `proposed` until the human
    accepts it. `env.yaml` is not a merge rule at all — only the operator's machine holds
    its key ([FWADR-041](fwadr-041-env-yaml.md)).
-6. **The Parallel Developer is the default builder.** The Orchestrator dispatches to
+6. **The Parallel Developer is the default builder.** The Orchestrator hands work to
    `FW_Parallel_Developer` — each run in its own worktree, never in the shared checkout,
    which is what collided on 2026-11-08 when every item went to `FW_Developer`.
    `FW_Developer` is reserved for issues the human assigns directly: emergencies, admin,
-   hotfixes, work the founder wants to watch live. The Orchestrator sets itself as the
-   task watchdog of every issue it dispatches under, so Paperclip wakes it when the
-   children come to rest; that wake is the sweep for stuck issues, and no recurring task
-   does it.
+   hotfixes, work the founder wants to watch live.
+7. **One ticket stays one ticket.** Only the Strategist creates tickets, and only while
+   triaging a ticket the human created; that is where work is split. No other agent
+   creates a ticket: an issue changes hands by reassignment, a stuck issue is `blocked`
+   with a card, and anything else an agent finds is a `found:` line for the Strategist.
+   The case that decided it (2026-11-19): one request — a dev and a production build of
+   a plugin — split by the agent working it into a hard part and an easy part, the easy
+   part blocked on the hard part, the hard part circling for hours and opening workaround
+   tickets, fourteen stuck tickets in all, each with its own run history and cost.
 
 ## Consequences
 
@@ -87,6 +92,10 @@ behind two MRs that touched a pipeline file.
   reserves the release tag to the `release` job and the human (adoption step 3 in `paperclip-mode.md`, interview
   Block 4). The pre-push guard does not run on the agent host.
 - **Named gap:** "no agent writes `accepted`" is English-only.
+- **Named gap:** "only the Strategist creates a ticket" is English-only unless the board
+  can deny issue creation per agent; where it can, deny it to every `FW_*` agent but
+  `FW_Strategist`. Reassignment by an agent is assumed to wake the assignee; not yet
+  exercised.
 - What waits on the human — a release, and the feedback that precedes it — is in one
   place: the QA view on dev ([FWADR-042](fwadr-042-qa-view-release.md)). Cards stay on
   the board.

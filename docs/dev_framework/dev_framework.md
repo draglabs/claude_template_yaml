@@ -76,6 +76,7 @@ The stack above shows sequential (per-task) Orchestrator dispatch. For W-items m
 | Developer (Default and Parallel) | [`developer.md`](developer.md) | developer.md + coding-standards.md + active plan's plan.md. Two invocations sharing one doc: Default in main checkout, Parallel in a worktree |
 | Researcher (optional, per-project) | [`researcher.md`](researcher.md) | researcher.md + the project's Researcher parameters entry in `dev_framework_exceptions.md` + the acquisition reading list it names. Refuses to bootstrap unconfigured. No coding-standards.md, no app/api source |
 | Curator | [`curator.md`](curator.md) | curator.md + `dev_framework_exceptions.md`, then runs `./scripts/doc_churn_audit.sh`. Episodic — summoned at phase boundaries. Does NOT preload `docs/architecture/` or `docs/execution-plans/`; the script names the few docs worth opening |
+| Paperclip Lead (Paperclip only) | [`paperclip-lead.md`](paperclip-lead.md) | The project's Paperclip section of `dev_framework_exceptions.md` + paperclip-lead.md, then the board meter. Hires; reviews the whole board every four hours ([FWADR-043](adrs/fwadr-043-paperclip-lead.md)). No chat session |
 | Template Developer | [`template-developer.md`](template-developer.md) | template-developer.md + dev_framework.md (template repo only; no-op in adopter repos) |
 
 Subagent briefs (load on spawn, not at session start):

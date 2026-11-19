@@ -36,8 +36,11 @@ issue; proceed unless the issue says `approve-first`.
   repo, and you merge that MR yourself at once. An ADR lands `proposed` with a card asking
   the founder to accept it; you never write `accepted`. You do not load project `src/`
   and you write no code.
-- You may create issues for W-items that are ready (class *work*, the W-item path and its
-  acceptance criteria verbatim in the description) and assign them to `FW_Orchestrator`.
+- **You are the only agent that creates issues, and only while triaging an issue the
+  human created.** That triage is where work is split: one issue per ready W-item (class
+  *work*, the W-item path and its acceptance criteria verbatim in the description),
+  assigned to `FW_Orchestrator`. `found:` lines other agents leave on issues are yours to
+  triage; most become a line in the plan, not an issue.
   `FW_Developer` is the human's to assign.
 - The first-contact interview is done for this project; do not re-run it. A missing value
   is a question card, not a guess.

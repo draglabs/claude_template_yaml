@@ -75,6 +75,13 @@ check_role "Template Developer"  7100  template-developer.md dev_framework.md
 check_role "Curator"             5500  curator.md
 check_role "Designer"            4100  designer.md   # +100 on 2026-11-07: FWADR-040 adds a Paperclip-mode pointer to every Layer-1 load
 check_role "Researcher"          3650  researcher.md
+# The Paperclip Lead does not load CLAUDE.md (FWADR-043): its budget is its role doc alone.
+PL="$(words "$FW/paperclip-lead.md")"
+if (( PL > 1000 )); then
+  printf '[check-doc-weight] OVER: %-18s %6d words (cap 1000) — paperclip-lead.md, without Layer 0\n' "Paperclip Lead" "$PL"; fail=1
+else
+  printf '[check-doc-weight] ok:   %-18s %6d / 1000 words\n' "Paperclip Lead" "$PL"
+fi
 
 if (( fail )); then
   echo "[check-doc-weight] WARNING FOR THE USER — an agent's bootstrap load is over its budget (FWADR-034)."

@@ -9,6 +9,8 @@ task, stamps the framework commit on each agent, and reports drift.
 
     scripts/paperclip_company.py status            # pinned commit vs the template's main; exit 1 on drift
     scripts/paperclip_company.py sync [--dry-run]  # create or refresh the agents at the template's main
+    scripts/paperclip_company.py pause             # the kill switch: pause every FW_* agent (cancels their live runs)
+    scripts/paperclip_company.py resume            # resume them
 
 Environment (the operator .env, sourced by claude-env; or an agent's own run credentials):
     PAPERCLIP_API_URL, PAPERCLIP_API_KEY      the board (or agent) credentials
@@ -18,6 +20,8 @@ Environment (the operator .env, sourced by claude-env; or an agent's own run cre
     PAPERCLIP_FRAMEWORK_REF                   branch to pin to (default main)
     PAPERCLIP_TEMPLATE_AGENT                  existing agent whose adapter and environment new agents copy (default Lead)
     PAPERCLIP_PLANNING_PROJECT                Paperclip project whose workspace is the planning repo (default Planning)
+    PAPERCLIP_AGENT_BUDGET_CENTS              monthly budget `sync` sets on every FW_* agent, in cents; unset = left alone
+    PAPERCLIP_BUDGET_CENTS_<AGENT>            one agent's own budget, e.g. PAPERCLIP_BUDGET_CENTS_FW_DEVELOPER
     PAPERCLIP_PACKAGE_DIR                     template development only: read the package from this directory
                                               instead of GitHub (the pin still records the template's main)
     PROJECT_NAME, GIT_HOST, GIT_HOST_URL      from the project .env
@@ -37,10 +41,11 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-ROLES = ["fw-strategist", "fw-orchestrator", "fw-developer", "fw-parallel-developer", "fw-designer", "fw-curator"]
-PAPERCLIP_ROLE = {"fw-strategist": "cto", "fw-orchestrator": "pm", "fw-developer": "engineer",
+ROLES = ["fw-paperclip-lead", "fw-strategist", "fw-orchestrator", "fw-developer", "fw-parallel-developer", "fw-designer", "fw-curator"]
+PAPERCLIP_ROLE = {"fw-paperclip-lead": "general", "fw-strategist": "cto", "fw-orchestrator": "pm", "fw-developer": "engineer",
                   "fw-parallel-developer": "engineer", "fw-designer": "designer", "fw-curator": "general"}
-TASKS = ["framework-alignment"]
+HIRES = {"fw-paperclip-lead"}  # in Paperclip a lead hires: it may propose agents for the board to approve
+TASKS = ["framework-alignment", "board-review"]
 MANAGED_BY = "scripts/paperclip_company.py"
 
 E = os.environ.get
@@ -183,11 +188,27 @@ def cmd_status() -> int:
     return 0 if not drift else 1
 
 
-def ensure_routine(co: dict, by_name: dict, commit: str, dry: bool) -> None:
+def budget_for(name: str) -> int | None:
+    """An agent's monthly budget in cents, from project variables; None = not set, leave the agent alone."""
+    v = E("PAPERCLIP_BUDGET_CENTS_" + name.upper()) or E("PAPERCLIP_AGENT_BUDGET_CENTS")
+    return int(v) if v and v.strip().isdigit() else None
+
+
+def cmd_lifecycle(verb: str) -> int:
+    co, by_name = load_company()
+    for name, a in sorted(by_name.items()):
+        if (a.get("metadata") or {}).get("managed_by") != MANAGED_BY:
+            continue
+        api("POST", f"/agents/{a['id']}/{verb}")
+        print(f"{verb}d {name}")
+    return 0
+
+
+def ensure_routine(co: dict, by_name: dict, slug_to_name: dict, commit: str, dry: bool) -> None:
     for slug in TASKS:
         fm, body = split_frontmatter(fetch_package_file(commit, f"tasks/{slug}/TASK.md"))
         title = fm.get("name") or slug
-        assignee = by_name.get({"fw-curator": "FW_Curator"}.get(fm.get("assignee"), fm.get("assignee")))
+        assignee = by_name.get(slug_to_name.get(fm.get("assignee"), fm.get("assignee")))
         routines = api("GET", f"/companies/{co['id']}/routines")
         routines = routines if isinstance(routines, list) else routines.get("items", [])
         existing = next((r for r in routines if r.get("title") == title), None)
@@ -233,6 +254,8 @@ def cmd_sync(dry: bool) -> int:
         slug_to_name[spec["slug"]] = spec["name"]
         reports_to = by_name[slug_to_name[spec["reports_to"]]]["id"] if spec["reports_to"] else None
         meta = dict(stamp, framework_role=spec["slug"])
+        budget = budget_for(spec["name"])
+        print(f"{spec['name']}: budget " + (f"${budget / 100:.2f}/month" if budget is not None else "not set (PAPERCLIP_AGENT_BUDGET_CENTS) — unlimited unless the board set one"))
         if spec["name"] in by_name:
             a = by_name[spec["name"]]
             bundle = api("GET", f"/agents/{a['id']}/instructions-bundle")
@@ -248,7 +271,10 @@ def cmd_sync(dry: bool) -> int:
                 api("PUT", f"/agents/{a['id']}/instructions-bundle/file", body)
             for extra in [p for p in have if p != "AGENTS.md"]:  # older copies of framework docs are not part of this model
                 api("DELETE", f"/agents/{a['id']}/instructions-bundle/file?path={urllib.parse.quote(extra, safe='')}&baseHash={have[extra]['contentHash']}")
-            api("PATCH", f"/agents/{a['id']}", {"reportsTo": reports_to, "title": spec["title"], "metadata": meta})
+            patch = {"reportsTo": reports_to, "title": spec["title"], "metadata": meta}
+            if budget is not None and a.get("budgetMonthlyCents") != budget:
+                patch["budgetMonthlyCents"] = budget
+            api("PATCH", f"/agents/{a['id']}", patch)
         else:
             print(f"{spec['name']}: creating; reports to {spec['reports_to']}; pin {commit[:12]}")
             if dry:
@@ -258,11 +284,12 @@ def cmd_sync(dry: bool) -> int:
                 "name": spec["name"], "role": PAPERCLIP_ROLE[spec["slug"]], "title": spec["title"],
                 "reportsTo": reports_to, "adapterType": template["adapterType"], "adapterConfig": adapter,
                 "defaultEnvironmentId": template.get("defaultEnvironmentId"), "runtimeConfig": runtime,
-                "permissions": {"canCreateAgents": False, "canCreateSkills": False},
+                "permissions": {"canCreateAgents": spec["slug"] in HIRES, "canCreateSkills": False},
+                **({"budgetMonthlyCents": budget} if budget is not None else {}),
                 "instructionsBundle": {"entryFile": "AGENTS.md", "files": {"AGENTS.md": spec["content"]}},
                 "metadata": meta})
             by_name[spec["name"]] = created
-    ensure_routine(co, by_name, commit, dry)
+    ensure_routine(co, by_name, slug_to_name, commit, dry)
     print(f"pinned {FW_REPO}@{commit[:12]}")
     return 0
 
@@ -278,7 +305,9 @@ def main() -> None:
         sys.exit(cmd_status())
     if cmd == "sync":
         sys.exit(cmd_sync("--dry-run" in sys.argv))
-    die(f"unknown command {cmd!r}; use status | sync [--dry-run]")
+    if cmd in ("pause", "resume"):
+        sys.exit(cmd_lifecycle(cmd))
+    die(f"unknown command {cmd!r}; use status | sync [--dry-run] | pause | resume")
 
 
 if __name__ == "__main__":

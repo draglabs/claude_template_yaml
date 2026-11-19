@@ -23,9 +23,9 @@ metadata:
 
 # {{project_name}} — framework roles on Paperclip
 
-One framework project is one Paperclip company. This package creates the six role agents
-(`FW_Strategist`, `FW_Orchestrator`, `FW_Developer`, `FW_Parallel_Developer`, `FW_Designer`,
-`FW_Curator`) and one recurring task. Nothing project-specific lives here: each agent reads
+One framework project is one Paperclip company. This package creates the seven agents
+(`FW_Paperclip_Lead`, `FW_Strategist`, `FW_Orchestrator`, `FW_Developer`,
+`FW_Parallel_Developer`, `FW_Designer`, `FW_Curator`) and two recurring tasks. Nothing project-specific lives here: each agent reads
 the project's `CLAUDE.md` and `docs/framework_exceptions/dev_framework_exceptions.md` from
 the planning repo at run start, and the framework's role docs at the commit this package
 was rendered from. How the roles are played from an issue is one document,
@@ -36,5 +36,5 @@ every adopter's `scripts/`), which fills the `{{…}}` placeholders from the pro
 operator `.env` and stamps the framework commit. `status` reports when the template has
 moved past that commit.
 
-Org chart: `FW_Strategist` reports to the board; `FW_Orchestrator`, `FW_Designer` and
+Org chart: `FW_Paperclip_Lead` and `FW_Strategist` report to the board; `FW_Orchestrator`, `FW_Designer` and
 `FW_Curator` report to the Strategist; both Developers report to the Orchestrator.
