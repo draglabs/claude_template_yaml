@@ -164,8 +164,7 @@ deploy:dev:
   resource_group: production       # same-project deploys serialize; others run alongside
   rules: [{ if: $CI_COMMIT_BRANCH == "main" }]
   script:
-    - deploy/remote-deploy.sh dev                                      # ships the image, runs deploy.sh on dev
-    - ssh deploy@$SERVER_DEV 'cd /srv/app && scripts/dev_harness.sh'   # Tier 2 runs here, on dev
+    - deploy/remote-deploy.sh dev    # ships the image and the harness, runs deploy.sh then dev_harness.sh ON dev
 ```
 
 **Mechanism:** `./scripts/check-ci-placement.sh <repo>` (framework-owned) FAILs on `self-hosted`, on an untagged job, on a datastore under `services:` or in a `docker run` line, and on a non-deploy job that names a database connection (`*DATABASE_URL`, a `postgres://`-style URL, `psql`, an `ssh -L` tunnel); WARNs on `ephemeral-shell` and on a deploy job that never calls the harness. SessionStart runs it for every code repo and emits a NOTICE while CI is unmigrated; the Reviewer runs it on any pipeline diff and each FAIL is a `block`; the first-contact interview runs it so a new project starts compliant. Runner registration and capacity (`concurrent`, per-runner `limit`, `request_concurrency`) are server state owned by the user, recorded in the project's deploy README.
@@ -187,10 +186,11 @@ Building the image where the deploy runs, or a registry, are a project's to choo
 **Every project's dev site carries a QA view: the one place the stakeholder reviews what is deployed, sends feedback, and releases** ([FWADR-042](adrs/fwadr-042-qa-view-release.md)). It is hosted by the project's main app, on dev only, and covers every code repo of the project. A repo with no dev mode at all has no QA and does not use this; that is recorded as an exception in `dev_framework_exceptions.md`, with how it releases.
 
 - **The way in.** On dev, a QA bubble on every page opens the view. In production it does not exist: `QA_VIEW` is a required setting, `on` or `off`, with no default.
-- **What it shows, per repo:** the deployed commit, whether that commit is `main`'s head, its checklist, and what has already been said about it.
-- **The checklist** is `qa/checklist.yaml` in each code repo, read at the deployed commit. Every change adds the items the stakeholder should check; an item names the W-item or issue it came from.
+- **What it shows, per repo, top to bottom:** the deployed commit and whether it is `main`'s head; **what was tested** — the harness result for that commit, every suite and case by its plain-language title, passed, failed or skipped (§"Test tiers and the dev harness"); **what changed** — the checklist; and what has already been said about the commit.
+- **Two questions, two lists.** The harness answers "did anything important break"; nobody marks it. The checklist answers "is this what I asked for": it is the human's review of what changed, and it closes the feedback loop. A checklist item is never settled by a test.
+- **The checklist** is `qa/checklist.yaml` in each code repo, read at the deployed commit. Every change adds the items the stakeholder should look at; an item names the W-item or issue it came from.
 - **Three marks per item:** **approved**, **rejected**, **postponed** (a soft approval). Each can carry a note. There is also free feedback on the commit.
-- **State lives on the commit, in the git host.** Every mark, note and approval is one comment on the commit whose first line is machine-readable: `qa:item <id> approved|rejected|postponed`, `qa:feedback [<id>]`, `qa:approve <version>`. The latest comment for an item wins. The app keeps no QA state, so there is nothing to migrate and agents read the same record.
+- **State lives on the commit, in the git host.** Every mark, note, harness result and approval is one comment on the commit whose first line is machine-readable: `qa:item <id> approved|rejected|postponed`, `qa:feedback [<id>]`, `qa:harness pass|fail|skip <run-url>`, `qa:approve <version>`. The latest comment for an item wins, and the latest `qa:harness` is the commit's result. Comments are how one view covers several repos: the app cannot read another repo's files on dev, but it reads any repo's commit. The app keeps no QA state, so there is nothing to migrate and agents read the same record.
 - **The dev server's key cannot push.** It holds one token per repo with the lowest role that reads commits and writes comments. It cannot push, merge, tag or change settings.
 - **Dev is behind a login.** `SITE_ACCESS` is a required setting, `restricted` or `open`. Dev is `restricted`: per-user passwords, so every mark records who made it. Machine callers (inbound webhooks, the harness, a client's dev build) are an explicit list of exempt paths in the repo, each with its caller named; the harness and each QA agent get a user of their own.
 
@@ -198,9 +198,9 @@ Building the image where the deploy runs, or a registry, are a project's to choo
 
 **The release tag is cut on the git host when the stakeholder presses Approve in the QA view. Nobody pushes a tag: not an agent, not a laptop.**
 
-1. **Approve is one deliberate action.** It is enabled only when no item is open or rejected, it names the version (default: the next patch after the highest release tag), and it is bound to the commit the page showed: if dev was redeployed in between, it is refused.
+1. **Approve is one deliberate action, and nothing blocks it.** It names the version (default: the next patch after the highest release tag). When something is unsettled — an item still open or rejected, a harness suite failed or skipped, no harness result for this commit, or dev not at `main`'s head — the view lists exactly what, and asks the stakeholder to confirm the release anyway. The approval comment records what was overridden. It is bound to the commit the page showed: if dev was redeployed in between, it is refused.
 2. **Approval is a comment** (`qa:approve <version>`) on that commit. A webhook on comment events starts a pipeline on `main`.
-3. **The `release` job re-checks everything itself** before it tags: the comment is an approval; its author is the QA token's own bot user; the commit is on `main`; the commit's pipeline is green; every checklist item at that commit is approved or postponed; nothing was marked after the approval; the version is new and the commit carries no release tag. Then it creates the annotated tag with a token only that job receives (protected, scoped to a `release` environment).
+3. **The `release` job re-checks everything itself** before it tags: the comment is an approval; its author is the QA token's own bot user; the commit is on `main`; nothing was marked and no harness result was posted after the approval; anything unsettled at that commit is named in the approval as overridden; the version is new and the commit carries no release tag. These checks establish that the approval is real and current; what to release is the stakeholder's call. Then it creates the annotated tag with a token only that job receives (protected, scoped to a `release` environment).
 4. **The tag deploys production.** Each repo is released on its own tag; a repo declares its tag pattern when it is not `v*`.
 5. **Postponed items carry over:** the next change that touches them puts them back on the checklist.
 
@@ -208,7 +208,7 @@ Emergencies take the same path, faster: an expedited PR to `main`, dev deploys, 
 
 ## Feedback from the QA view
 
-A rejection or a note is a comment on the commit, where every agent can read it. What turns it into work is the project's to build and is not yet proven anywhere: the intended shape is **one issue per approval round** listing every rejected item (each reopening the W-item or issue its checklist entry names), never one run per comment. Until a project has that, the Strategist reads the commit's comments at session start and files the work.
+A rejection, a note and a failed harness suite are the same kind of event: this commit has something to fix, and why. Each is a comment on the commit, where every agent can read it. What turns them into work is the project's to build and is not yet proven anywhere: the intended shape is **one issue per approval round** listing every rejected item (each reopening the W-item or issue its checklist entry names) and every failed suite with its summary, never one run per comment. Until a project has that, the Strategist reads the commit's comments at session start and files the work.
 
 ## Test tiers and the dev harness
 
@@ -217,10 +217,25 @@ Every test declares its tier with a marker the project's test runner supports �
 | Tier | What it is | Where and when it runs |
 |---|---|---|
 | **1** | Fast, deterministic, no database, no network | CI, in parallel, on every push. The only tier CI runs. Budget: a few minutes. Target: at most about 5% of the project's test cases. |
-| **2** | Needs the database or another service | On the dev site after each deploy: the deploy job's last step runs `scripts/dev_harness.sh` on the dev host; its exit code is the job's. |
+| **2** | Needs the database or another service | On the dev site after each deploy, and on demand from the QA view. |
 | **3** | Slow, end-to-end, browser-driven | On the dev site, on demand or nightly. |
 
-**The harness is a page.** Tier 2 and Tier 3 are code that runs on dev, against dev's own services and seed data. The dev site lists every Tier 2 and Tier 3 case at `https://{{sub}}.dev.{{website}}.com/__dev/`: run one or all from the page, last result per case, history, the deployed branch and commit. The user runs it from the browser; an agent runs it over HTTP and reads the result. Every run has a permanent URL. Building the tests into dev makes them visible by forcing function. The page exists on dev only — never in production. Local-hosted dev has no deploy step: the same harness runs against the local runtime.
+**The harness shows what is tested, in words a stakeholder reads.** Every suite and case carries a plain-language title and one line saying what it checks ("Both sign-up question sets load", never a test id). The result for the deployed commit is the first thing on the QA view (§"The QA view"): what was tested, what passed, failed or was skipped, and a one-line reason written for a reader who has no log. It is on dev only — never in production. Local-hosted dev has no deploy step: the same harness runs against the local runtime.
+
+**Two parts, by where they must run.**
+
+| Part | What | Where it runs | Started by |
+|---|---|---|---|
+| Host checks | The deploy really served: health by loopback and by public name, the deployed commit, static assets present | A script on the dev host, shipped with the deploy payload | The deploy, as its last step on the target; its exit code is the job's |
+| Tier 2 and Tier 3 cases | The project's own tests that need the database or a browser | **Inside the app**, from test code in the image | The deploy; and on demand through a dev-only endpoint — the stakeholder from the page, an agent over HTTP |
+
+A page in a container cannot run a host script, so anything startable from the page lives in the app; that is the cost of test code and its dependencies in the image, accepted for dev.
+
+**Three outcomes: pass, fail, skip.** A skip means "could not run" (a credential it was not given) and is shown as a skip, never counted green.
+
+**Every run is recorded twice.** A report (commit, start, finish, per-suite status and summary) the page reads, written atomically; and a `qa:harness pass|fail|skip <run-url>` comment on the commit, posted with the dev server's comment-only key. Each run has a permanent URL: the link an agent posts as "done". A missing or malformed report is a state the page shows, never an error.
+
+**The harness never deletes or flushes dev data,** every suite is time-bounded, and no secret reaches a report or a log.
 
 **A runner is not an agent.** A CI runner runs Tier 1 and never reaches a database. An agent's own run environment — a chat session, a Paperclip agent host — may reach dev, and only dev, never production: it starts the harness, reads the results, and runs a Tier 2 or Tier 3 case it is writing against dev's services. Whole suites go through the harness, which runs next to the database.
 
@@ -228,7 +243,7 @@ Every test declares its tier with a marker the project's test runner supports �
 
 **Dev data.** The dev Postgres exists once, on dev, seeded with dummy data; migrations carry it forward. A wipe-and-reseed script, run by a human, is the rare reset.
 
-`scripts/dev_harness.sh` ships as a seed-once stub; the project's own ADR fills the body, the page and the seed script.
+`scripts/dev_harness.sh` ships as a seed-once stub for the host checks; the project's own ADR fills its body, the in-app runner, the page and the seed script.
 
 ## Dittofeed stack
 

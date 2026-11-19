@@ -1,40 +1,49 @@
 #!/usr/bin/env bash
-# Dev test harness — runs ON THE DEV SERVER. Tier 2 and Tier 3 live here.
+# Dev test harness, host part — runs ON THE DEV SERVER, never in a CI job.
 #
 # Tier 1 (fast, deterministic, no database, no network) is the only tier CI
 # runs. A CI job never starts a database and never reaches one (FWADR-037).
-#   Tier 2  needs the database or another service — runs here after each deploy
-#   Tier 3  slow, end-to-end, browser-driven      — runs here on demand or nightly
-# Both run against dev's own live services and dev's seed data.
+# What runs on dev has two parts (dev-environment.md §"Test tiers and the dev
+# harness"):
+#   this script   host checks: the deploy really served (health by loopback and
+#                 by public name, the deployed commit, static assets present).
+#                 Shipped with the deploy payload; the remote deploy runs it on
+#                 the target as its last step, and its exit code is the job's.
+#   in the app    Tier 2 and Tier 3 cases, from test code in the image, started
+#                 by the deploy and, on demand, by a dev-only endpoint (the
+#                 stakeholder from the QA view, an agent over HTTP).
 #
-# Contract:
-#   dev_harness.sh               every Tier 2 case. The deploy job's last step
-#                                runs this on the dev host; its exit code is the job's.
-#   dev_harness.sh --tier 3      every Tier 3 case
-#   dev_harness.sh --case <id>   one case
-#   dev_harness.sh --list        every Tier 2 and Tier 3 case, with its tier
-# Each run writes a record (run id, branch, commit, timestamp, pass/fail per
-# case) where the dev site's harness page reads it. That page — /__dev/ on the
-# dev site, never in production — lists every case, runs one or all for the
-# user or an agent, and shows the last result per case and the history. Each
-# run has a permanent URL: the link an agent posts on its item as "done".
+# What a filled-in harness keeps (learned in the first project to build one):
+#   - three outcomes per suite: pass, fail, skip (exit 77 = "could not run");
+#     a skip is shown as a skip, never counted green
+#   - every suite time-bounded, the bounds summing to less than the job timeout
+#   - every suite has a plain-language title and a one-line summary written for
+#     a reader with no log: the QA view shows them to the stakeholder
+#   - one report (commit, start, finish, per-suite status and summary), written
+#     to a temp file and moved into place; the page shows a missing or bad
+#     report as a state, never an error
+#   - one comment on the commit when it finishes, with the dev server's
+#     comment-only key:  qa:harness pass|fail|skip <run-url>
+#   - settings come from the deploy script, never rebuilt here
+#   - dev only: refuses any other environment
+#   - never deletes or flushes dev data; no secret in a report or a log
 #
-# THIS IS A STUB. The project's own ADR decides the body: how the test runner
-# selects a tier, the seed script (dummy data; migrations carry dev forward; a
-# human-run wipe-and-reseed is the rare reset), where run records land, and how
-# the page serves and starts runs.
+# THIS IS A STUB. The project's own ADR decides the body: the suites, where the
+# report lands, the in-app runner and its endpoint, the seed script (dummy
+# data; migrations carry dev forward; a human-run wipe-and-reseed is the rare
+# reset).
 
 set -euo pipefail
 
-echo "scripts/dev_harness.sh is the dev test harness entry point (FWADR-037)."
+echo "scripts/dev_harness.sh is the dev test harness's host part (FWADR-037, FWADR-042)."
 echo "This is a developer-managed stub and is not implemented yet."
 echo ""
 echo "Before first use, the agent scopes with the user and fills in:"
-echo "  - how a test declares its tier, and how this script selects Tier 2 / Tier 3 / one case"
+echo "  - the host suites (health, deployed commit, assets), each with a plain-language title"
+echo "  - how Tier 2 / Tier 3 cases run inside the app, and the dev-only endpoint that starts them"
+echo "  - where each run's report is written, and the qa:harness comment on the commit"
 echo "  - the seed script this depends on, and the human-run wipe-and-reseed"
-echo "  - where each run's record is written"
-echo "  - the /__dev/ page on the dev site: list cases, run one or all, last result per case, history"
 echo ""
-echo "Until then the deploy job does not call this script; check-ci-placement.sh WARNs on that."
-echo "Canonical doctrine: docs/dev_framework/adrs/fwadr-037-ci-runner-topology.md"
+echo "Until then the deploy does not call this script; check-ci-placement.sh WARNs on that."
+echo "Canonical doctrine: docs/dev_framework/dev-environment.md §\"Test tiers and the dev harness\""
 exit 1

@@ -34,7 +34,8 @@
 #   WARN transitional     tags contain `ephemeral-shell` — on the right host,
 #                         but the host toolchain is still implied. Canonical
 #                         is `docker` with a pinned `image:`.
-#   WARN no-harness       a `deploy`-tagged job never mentions dev_harness.sh:
+#   WARN no-harness       a `deploy`-tagged job mentions neither dev_harness.sh
+#                         nor a remote-deploy script (which runs it on the target):
 #                         Tier 2 runs in the dev harness after each deploy.
 #   WARN include          the file pulls in `include:` — jobs defined there are
 #                         not followed; run the check in that repo too.
@@ -143,7 +144,7 @@ check_gitlab() {
     }
     if (line ~ /^[ \t]*trigger:/) TRIGGER[cur] = 1
     if (line ~ /^[ \t]*(script|before_script|after_script):/) HAS_SCRIPT[cur] = 1
-    if (line ~ /dev_harness\.sh/) HARNESS[cur] = 1
+    if (line ~ /dev_harness\.sh|remote-deploy/) HARNESS[cur] = 1
     if (line ~ DBR && tolower(line) !~ /sqlite/ && !(cur in DBRL)) { DBRL[cur] = NR; DBRTXT[cur] = trim(line) }
     if (tolower(line) ~ ("docker[ \t]+(run|compose|container[ \t]+run|create|service[ \t]+create)[^\n]*" DS) ||
         tolower(line) ~ ("image:[ \t]*[\"'\'']?[a-z0-9./-]*" DS)) {

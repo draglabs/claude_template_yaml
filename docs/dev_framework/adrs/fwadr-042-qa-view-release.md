@@ -26,8 +26,16 @@ and how dev takes feedback.
    project. Specified in [`dev-environment.md`](../dev-environment.md) §"The QA view".
 2. **The checklist is in the code.** `qa/checklist.yaml` in each code repo, read at the
    deployed commit. Every change adds the items the stakeholder should check.
-3. **Three marks:** approved, rejected, postponed. Rejected blocks the release;
-   postponed is a soft approval.
+3. **Three marks:** approved, rejected, postponed (a soft approval). **Nothing blocks
+   Approve.** When something is unsettled — an open or rejected item, a failed or skipped
+   harness suite — the view says exactly what and asks the stakeholder to confirm; the
+   approval records what was overridden.
+3a. **The view shows what was tested, in plain language.** The harness result for the
+   deployed commit, suite by suite with human-readable titles, sits above the checklist.
+   The harness answers "did anything important break" and nobody marks it; the checklist
+   is the human's review of what changed and is never settled by a test. The harness
+   posts its result on the commit (`qa:harness pass|fail|skip <run-url>`), and its Tier 2
+   and Tier 3 cases run inside the app so the page and an agent can start them.
 4. **State is comments on the commit, in the git host,** with a machine-readable first
    line. The app keeps no QA state; agents read the same record the stakeholder wrote.
 5. **Approving cuts the release tag, on the git host.** The view posts an approval
@@ -63,6 +71,10 @@ and how dev takes feedback.
 - **A stolen dev-server key can post a false approval.** It cannot change code, so the
   worst case is an unwanted release of a commit already on `main`. The dev login and the
   job's checks are the guard.
+- **Nothing stops a confirmed release of a red commit.** That is the stakeholder's call
+  by design; the override is on the record, on the commit.
+- **The in-app harness runner is unbuilt.** ThankMu's harness is a host script with a
+  read-only page; no project yet starts a run from the page.
 - **Feedback does not yet wake anyone.** A rejection is a comment on a commit; nothing
   turns it into an issue until a project builds that step
   (`dev-environment.md` §"Feedback from the QA view").
@@ -95,6 +107,11 @@ and how dev takes feedback.
 - **One framework-shipped QA service run beside every repo's dev mode:** one copy of the
   release checks, any stack. Not chosen: one view per project in its main app is enough,
   and the service would be one more thing on every dev host.
+- **Checklist items settled by a harness suite** (`check: harness:<suite>`): fewer items
+  for the human, but it blurs the two lists. The checklist is what a person reviews.
+- **A failed or skipped harness, or a rejected item, blocks Approve:** the stakeholder
+  would then need a second path to release when they judge it right. Confirmation
+  keeps one path and records the judgement.
 - **Each repo builds its own view:** most work, and as many implementations of the
   release checks as there are repos.
 - **Keep the script as a fallback:** a second release path that skips the checklist, and
