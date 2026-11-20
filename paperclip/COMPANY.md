@@ -3,7 +3,7 @@ schema: agentcompanies/v1
 kind: company
 slug: dev-framework
 name: "{{project_name}}"
-description: The dev framework's roles as Paperclip agents for one project — a reading list per role, the role docs at a pinned commit, one mode document.
+description: The dev framework's roles as Paperclip agents for one project — a reading list per role, the role docs read at the template's main on every run, one mode document.
 version: 1.0.0
 license: MIT
 authors:
@@ -23,12 +23,11 @@ metadata:
 
 # {{project_name}} — framework roles on Paperclip
 
-One framework project is one Paperclip company. This package creates the seven agents
-(`FW_Paperclip_Lead`, `FW_Strategist`, `FW_Orchestrator`, `FW_Developer`,
+One framework project is one Paperclip company. This package creates the six agents
+(`FW_Paperclip_Lead`, `FW_Strategist`, `FW_Orchestrator`,
 `FW_Parallel_Developer`, `FW_Designer`, `FW_Curator`) and two recurring tasks. Nothing project-specific lives here: each agent reads
 the project's `CLAUDE.md` and `docs/framework_exceptions/dev_framework_exceptions.md` from
-the planning repo at run start, and the framework's role docs at the commit this package
-was rendered from. How the roles are played from an issue is one document,
+the planning repo at run start, and the framework's role docs at the template's `main`. How the roles are played from an issue is one document,
 `docs/dev_framework/paperclip-mode.md`, decided in FWADR-040.
 
 Rendered into a company by `scripts/paperclip_company.py sync` (a framework-owned stub in
@@ -37,4 +36,4 @@ operator `.env` and stamps the framework commit. `status` reports when the templ
 moved past that commit.
 
 Org chart: `FW_Paperclip_Lead` and `FW_Strategist` report to the board; `FW_Orchestrator`, `FW_Designer` and
-`FW_Curator` report to the Strategist; both Developers report to the Orchestrator.
+`FW_Curator` report to the Strategist; the Parallel Developer reports to the Orchestrator.

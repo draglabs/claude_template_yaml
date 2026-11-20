@@ -18,7 +18,7 @@ From the project's `$PROJECT_DIR`, with the operator `.env` sourced
 
 ```sh
 ./scripts/paperclip_company.py status      # pinned commit vs the template's main; exit 1 on drift
-./scripts/paperclip_company.py sync        # create or refresh the seven agents at the template's main
+./scripts/paperclip_company.py sync        # create or refresh the six agents at the template's main
 ./scripts/paperclip_company.py pause       # the kill switch; `resume` undoes it
 ./scripts/paperclip_company.py sync --dry-run
 ```
@@ -35,7 +35,8 @@ where that one runs. The session-start sync runs `status` for any project with
 |---|---|
 | `{{project_name}}` | `PROJECT_NAME` |
 | `{{framework_repo}}` | `PAPERCLIP_FRAMEWORK_REPO` (default `draglabs/claude_template_yaml`) |
-| `{{framework_commit}}` | the template's `main` at render time |
+| `{{framework_commit}}` | the template's `main` at render time (a record of the last sync) |
+| `{{framework_ref}}` | the branch the agents fetch role docs from on every run (`main`) |
 | `{{fetch_project_docs}}` | shell lines that fetch the planning repo's `CLAUDE.md` and exceptions file, built from `GIT_HOST`, `GIT_HOST_URL`, `PAPERCLIP_PLANNING_REPO` |
 
 ## Importing natively

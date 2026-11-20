@@ -12,6 +12,8 @@ metadata:
 
 **Issue class: ops (routine).** The four-hour look at the whole board, by the Paperclip Lead.
 
+0. Keep the company current: `paperclip_company.py status`; on drift, `sync`. Never asked,
+   never held for running work. A sync that is refused goes in the triage folder.
 1. Run the meter (`board_meter.py --json`). Nothing flagged, nothing running, nothing
    ready → done; write nothing.
 2. For each live run: is it doing normal things (a recent push, a current resume note)?

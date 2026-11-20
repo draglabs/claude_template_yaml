@@ -31,7 +31,7 @@ behind two MRs that touched a pipeline file.
 1. **Paperclip is an execution layer, not a second framework.** The role docs are the
    roles. Nothing is rewritten for Paperclip; a Paperclip agent for a role is a
    **reading list** (the project's `CLAUDE.md`, its exceptions file, the role's Layer-1
-   docs at a pinned framework commit) plus one mode document.
+   docs at the template's `main`) plus one mode document.
 2. **One mode document, [`paperclip-mode.md`](../paperclip-mode.md),** holds every
    substitution: ask-the-user → question card; approval → first comment, then proceed;
    spawn → the same issue, reassigned; Reviewer → a checklist the Orchestrator applies before it merges;
@@ -49,13 +49,17 @@ behind two MRs that touched a pipeline file.
    One framework project = one Paperclip company; a project's overrides (its `CLAUDE.md`,
    `dev_framework_exceptions.md`) are read from its planning repo at run start, never
    copied into the package.
-4. **Pinned, bumped deliberately.** A company's agents point at one framework commit.
-   `scripts/paperclip_company.py status` compares that pin with the template's `main`;
-   `sync` bumps it. The session-start sync NOTICEs on drift for any project with
-   `PAPERCLIP_API_URL` in its operator `.env`; the package's recurring task has
-   `FW_Curator` run the same check daily and report, so a project nobody opens still
-   learns it is behind. Live-mounting the template on the Paperclip server was rejected:
-   a bad framework commit would be live in every company at once.
+4. **Framework updates are always pumped in.** The user: "I don't care if an agent is in
+   progress, I think framework updates need to always be pumped in. That is how it has
+   always worked, that on compact or clear the framework got updated; why would that be
+   different for paperclip?" Agents fetch their role docs from the template's `main` once
+   at the start of every run, so a change reaches them at their next run and a run under
+   way keeps what it started with. The package itself (an agent's file, a routine) is
+   re-rendered by `scripts/paperclip_company.py sync`, which the Paperclip Lead's
+   four-hour routine runs unasked whenever `status` reports drift; the Curator's daily
+   task is the backstop and the session-start sync NOTICEs on drift. A pin that gated
+   updates left one project's agents five commits behind for a day. The cost, accepted: a
+   bad framework commit is live in every company at its agents' next run.
 5. **Agents merge; the release is the human's.** The planning repo's `main` is everyone's
    shared page: any agent writing to it opens an MR and merges it itself at once, the MR
    staying as the record — no stacked or long-lived planning branches. In a code repo the
@@ -67,15 +71,19 @@ behind two MRs that touched a pipeline file.
    thing stays with the human short of the release: an ADR is `proposed` until the human
    accepts it. `env.yaml` is not a merge rule at all — only the operator's machine holds
    its key ([FWADR-041](fwadr-041-env-yaml.md)).
-6. **The Parallel Developer is the default builder.** The Orchestrator hands work to
-   `FW_Parallel_Developer` — each run in its own worktree, never in the shared checkout,
-   which is what collided on 2026-11-08 when every item went to `FW_Developer`.
-   `FW_Developer` is reserved for issues the human assigns directly: emergencies, admin,
-   hotfixes, work the founder wants to watch live.
+6. **The Parallel Developer is the one builder; there is no `FW_Developer`.** Every run
+   on a board gets its own worktree, which suits the Parallel Developer and removes what
+   sets the Default Developer apart: working in the main checkout, with no worktree, fast,
+   on urgent, precise or admin work. That stays a chat session. On 2026-11-08, when every
+   item went to an `FW_Developer` in a shared checkout, the runs collided.
 7. **One ticket stays one ticket.** Only the Strategist creates tickets, and only while
    triaging a ticket the human created; that is where work is split. No other agent
    creates a ticket: an issue changes hands by reassignment, a stuck issue is `blocked`
    with a card, and anything else an agent finds is a `found:` line for the Strategist.
+   Triage is a back-and-forth with the human, and nothing is created until they agree the
+   breakdown. A ticket is a concrete programming objective that is planned and thought
+   out — one repo, one checkable outcome, acceptance needing no further questions,
+   dependencies ahead — small ideally, medium or large sometimes.
    Sequence inside a ticket is wanted: "finish this, then do that" is one ticket carrying
    more than one MR, not a reason for tickets to divide.
    The case that decided it (2026-11-19): one request — a dev and a production build of
@@ -94,9 +102,10 @@ behind two MRs that touched a pipeline file.
 ## Consequences
 
 - **Mechanism:** `paperclip_company.py` (framework-owned stub) renders the package into
-  a company and checks the pin; `sync-framework.sh` 5f runs the check; the
-  `framework-alignment` task runs it from inside Paperclip. The reading-list shape means
-  a framework change needs no agent change — only a pin bump.
+  a company and says when the package is behind; `sync-framework.sh` 5f runs the check;
+  the Paperclip Lead's routine and the `framework-alignment` task run the sync from inside
+  Paperclip. The reading-list shape means a framework change needs no agent change at
+  all: the next run reads it.
 - **Mechanism for 5:** the git host. The bot's permissions allow merging MRs into the
   planning repo's `main` and a code repo's `main`; tag protection
   reserves the release tag to the `release` job and the human (adoption step 3 in `paperclip-mode.md`, interview

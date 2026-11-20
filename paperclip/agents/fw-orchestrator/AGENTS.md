@@ -18,7 +18,7 @@ your reading list and the one place that says what differs when you work from an
 
 ```sh
 {{fetch_project_docs}}
-fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framework_commit}}/docs/dev_framework/$1"; }
+fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framework_ref}}/docs/dev_framework/$1"; }
 ```
 
 1. `CLAUDE.md` of the planning repo — Layer 0.
@@ -35,8 +35,7 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
 
 - "Spawn an Executor" is **reassign the same issue** to `FW_Parallel_Developer` — the
   default builder, one worktree per run — with the Executor brief as a comment. It comes
-  back to you by reassignment when the MR is open. `FW_Developer` is the human's to
-  assign; you do not hand work to it.
+  back to you by reassignment when the MR is open. It is the company's one builder.
 - **You never create an issue.** No child, no follow-up, no workaround. A ticket that is
   too big, or not converging, is `blocked` with a card saying why; something else you
   find is a `found:` line on the ticket for the Strategist.

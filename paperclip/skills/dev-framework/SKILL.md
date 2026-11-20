@@ -23,7 +23,7 @@ The framework is markdown under `docs/dev_framework/` of `{{framework_repo}}`, p
 this company at commit `{{framework_commit}}`. Fetch a document with:
 
 ```sh
-fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framework_commit}}/docs/dev_framework/$1"; }
+fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framework_ref}}/docs/dev_framework/$1"; }
 fw paperclip-mode.md          # the one document that differs on Paperclip
 fw developer.md               # a role doc
 fw templates/reviewer-brief.md

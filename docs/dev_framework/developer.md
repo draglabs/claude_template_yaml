@@ -15,8 +15,8 @@ All paths, git commands, and worktrees in this doc are relative to **`$CODE_ROOT
 
 ## Under Paperclip mode
 
-As `FW_Developer` or `FW_Parallel_Developer` on a Paperclip board the role is unchanged;
-[`paperclip-mode.md`](paperclip-mode.md) holds every difference
+On a Paperclip board the builder is `FW_Parallel_Developer`; the Default Developer is a
+chat session only. [`paperclip-mode.md`](paperclip-mode.md) holds every difference
 ([FWADR-040](adrs/fwadr-040-paperclip-mode.md)).
 
 ## Invocation patterns

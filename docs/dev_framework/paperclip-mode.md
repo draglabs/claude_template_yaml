@@ -27,7 +27,7 @@ a Paperclip agent does the thing in the right column. Decided in
 | Where | Who merges | When |
 |---|---|---|
 | Planning repo `main` — everyone's shared page | The agent that wrote the change | At once: open the MR, merge it yourself, the MR stays as the record. No stacked or long-lived planning branches. |
-| Code repo `main` | `FW_Orchestrator`; `FW_Developer` on an issue the human assigned it directly | When the gates pass: reviewer checklist `approve`, QA evidence including screenshots, CI green. Every MR, CI configuration and deploy scripts included. |
+| Code repo `main` | `FW_Orchestrator`; `FW_Parallel_Developer` on an issue the human assigned it directly | When the gates pass: reviewer checklist `approve`, QA evidence including screenshots, CI green. Every MR, CI configuration and deploy scripts included. |
 | Release tag | The human, never an agent — by approving in the QA view on dev | After the human works the checklist at the end of an epic or phase. |
 
 **ADRs.** An ADR lands with status `proposed`, and a card asks the founder to accept it.
@@ -48,19 +48,32 @@ changed or routed to you is a question card naming the variable and the place.
 ## One ticket stays one ticket
 
 **Only the Strategist creates tickets, and only while triaging a ticket the human
-created.** That triage is where work is split, once, into W-items with a ticket each. No
-other agent creates a ticket, ever: no child issue, no follow-up issue, no workaround
+created.** No other agent creates a ticket, ever: no child issue, no follow-up issue, no workaround
 issue. A follow-up ticket is a normal outcome — of a `found:` line, created at triage.
 What is ruled out is an agent creating it, and a ticket dividing.
 
+- **Triage is a back-and-forth with the human.** The human's ticket is vague on purpose
+  ("plugins for three browsers, in a dev and a prod build"). It goes to `FW_Strategist`
+  first, who asks — question cards or comments on that ticket, as many rounds as it
+  takes. A vague request is not yet a ticket; this conversation is what turns it into
+  tickets. **No ticket is created until the human has agreed
+  the breakdown,** which is written on their ticket. Their ticket stays as the parent, the
+  W-item tickets hang under it, and it closes when they do.
+- **A ticket is a concrete programming objective that has been planned and thought out.**
+  Small ideally, medium or large sometimes; the size is not the test. The test is that
+  nobody downstream needs to split it or ask what it means: one repo; one outcome a person
+  can check; acceptance the builder can meet without asking the human anything; everything
+  it depends on done, or its own ticket ahead of it.
+- **A ticket that is not yet that goes back.** A builder handed one says why in one line,
+  reassigns it to the Strategist, and does not start.
 - **Work stays on the ticket it arrived on.** It changes hands by reassignment: the
   Orchestrator hands the issue to the builder and gets it back for the gate. The board
   shows one ticket per thing the human asked for.
-- **Who builds.** The Orchestrator reassigns to `FW_Parallel_Developer` by default: the
-  team player, each run in its own worktree, never in the shared checkout. An item that
-  touches a claimed file waits for the claim to clear. `FW_Developer` is reserved for
-  issues the human assigns it directly — emergencies, admin, hotfixes, work the founder
-  wants to watch live.
+- **Who builds.** `FW_Parallel_Developer` is the one builder: each run in its own worktree,
+  never in the shared checkout. An item that touches a claimed file waits for the claim
+  to clear. There is no `FW_Developer` on Paperclip: the Developer's strength is working
+  in the main checkout with no worktree, fast, on urgent, precise or admin work — that is
+  a chat session ("you are the Developer"), and a board gives every run a worktree.
 - **Stuck is `blocked`, not a new ticket.** When the work is not converging, stop. Write
   on the ticket what was tried and what stands in the way, set it `blocked` with *who*
   and *for what*, and raise a card if a human must choose. A workaround is a proposal on
@@ -225,20 +238,24 @@ carrying the failing run's link.
 
 One company per framework project. The company is created from the package at
 [`paperclip/`](../../paperclip/) in the template repo — `FW_Strategist`, `FW_Orchestrator`,
-`FW_Developer`, `FW_Parallel_Developer`, `FW_Designer`, `FW_Curator` — each a reading list
+`FW_Parallel_Developer`, `FW_Designer`, `FW_Curator` — each a reading list
 (and `FW_Paperclip_Lead`, whose list is two documents — §"The Paperclip Lead"):
 
 1. the project's `CLAUDE.md` and `docs/framework_exceptions/dev_framework_exceptions.md`,
    fetched from the planning repo at run start (the exceptions file is where a project
    says where its agents run, how they authenticate to the git host there, and its server
    map — never the package);
-2. the role's Layer-1 docs from the framework at the **pinned commit**;
+2. the role's Layer-1 docs from the framework, **at the template's `main`, fetched once at
+   the start of every run**;
 3. this document.
 
-`scripts/paperclip_company.py` renders the package into a company (`sync`) and checks the
-pin against the template's `main` (`status`); the sync hook NOTICEs on drift, and the
-package's recurring task has `FW_Curator` report it daily. Bumping the pin is a deliberate
-act, like every framework sync.
+**Framework updates are always pumped in,** as they are into a chat session at every
+reset. A change to a role doc or to this document reaches an agent at its next run; a run
+under way keeps what it started with. Nobody chooses to take an update and nothing waits
+for running work. `scripts/paperclip_company.py` renders the package into a company
+(`sync`) and says when the package itself — an agent's file, a routine — is behind
+(`status`); the Paperclip Lead's four-hour routine runs that sync unasked, the Curator's
+daily task is the backstop, and the session-start hook NOTICEs on drift.
 
 ## The Paperclip Lead
 
@@ -271,7 +288,7 @@ it pushed — so the built-in budget is at most a far-off fuse, and
    each code repo's `main`; `v*` tags are protected — only the `release` job and the
    human create them.
 4. `PAPERCLIP_AGENT_BUDGET_CENTS` set (a soft budget per agent is a project variable), then
-   `./scripts/paperclip_company.py sync` — creates or refreshes the seven agents and the
+   `./scripts/paperclip_company.py sync` — creates or refreshes the six agents and the
    two routines (the daily alignment check, the four-hour board review).
 5. One ops issue that proves the loop end to end before any work issue.
 6. On the hosts, by the user: a timer on the agent host that kills the agent user's

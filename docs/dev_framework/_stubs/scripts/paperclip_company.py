@@ -3,7 +3,9 @@
 """Render the framework's company package into this project's Paperclip company (FWADR-040).
 
 The package lives at paperclip/ in the framework template: one AGENTS.md per role, each a
-reading list pinned to a framework commit. This script fills the package's placeholders
+reading list. The role docs it names are fetched from the template's branch head on every run,
+so a framework change reaches the agents at their next run; `sync` is needed only when the
+package itself (an agent file, a routine) changes, and the Paperclip Lead's routine runs it. This script fills the package's placeholders
 from the operator .env, creates or refreshes the FW_* agents and the recurring alignment
 task, stamps the framework commit on each agent, and reports drift.
 
@@ -45,9 +47,10 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-ROLES = ["fw-paperclip-lead", "fw-strategist", "fw-orchestrator", "fw-developer", "fw-parallel-developer", "fw-designer", "fw-curator"]
-PAPERCLIP_ROLE = {"fw-paperclip-lead": "general", "fw-strategist": "cto", "fw-orchestrator": "pm", "fw-developer": "engineer",
+ROLES = ["fw-paperclip-lead", "fw-strategist", "fw-orchestrator", "fw-parallel-developer", "fw-designer", "fw-curator"]
+PAPERCLIP_ROLE = {"fw-paperclip-lead": "general", "fw-strategist": "cto", "fw-orchestrator": "pm",
                   "fw-parallel-developer": "engineer", "fw-designer": "designer", "fw-curator": "general"}
+RETIRED = ["FW_Developer"]  # no longer in the package; never paused or removed from here (a pause cancels live runs)
 HIRES = {"fw-paperclip-lead"}  # in Paperclip a lead hires: it may propose agents for the board to approve
 TASKS = ["framework-alignment", "board-review"]
 MANAGED_BY = "scripts/paperclip_company.py"
@@ -141,6 +144,7 @@ def render(text: str, commit: str) -> str:
     return (text.replace("{{project_name}}", COMPANY)
                 .replace("{{framework_repo}}", FW_REPO)
                 .replace("{{framework_commit}}", commit)
+                .replace("{{framework_ref}}", FW_REF)
                 .replace("{{fetch_project_docs}}", fetch_project_docs_snippet()))
 
 
@@ -181,13 +185,14 @@ def cmd_status() -> int:
         pinned = (a.get("metadata") or {}).get("framework_commit") or "?"
         bundle = api("GET", f"/agents/{a['id']}/instructions-bundle")
         have = {f["path"]: f["contentHash"] for f in bundle.get("files", [])}
+        # Role docs are read at the template's branch head on every run, so only the package
+        # (the agent's own file) can be behind; the stamp records the last sync.
         why = []
-        if pinned != commit: why.append(f"pinned {pinned[:12]}")
         if have.get("AGENTS.md") != sha256(spec["content"]): why.append("AGENTS.md differs from the rendered package")
         if why:
             drift += 1; print(f"DRIFT {spec['name']}: " + "; ".join(why))
         else:
-            print(f"ok    {spec['name']}: pinned {pinned[:12]}")
+            print(f"ok    {spec['name']}: last synced at {pinned[:12]}")
     print("aligned" if not drift else f"{drift} agent(s) drifted — run: scripts/paperclip_company.py sync")
     return 0 if not drift else 1
 
@@ -294,6 +299,10 @@ def cmd_sync(dry: bool) -> int:
                 "instructionsBundle": {"entryFile": "AGENTS.md", "files": {"AGENTS.md": spec["content"]}},
                 "metadata": meta})
             by_name[spec["name"]] = created
+    for name in RETIRED:
+        if (by_name.get(name, {}).get("metadata") or {}).get("managed_by") == MANAGED_BY:
+            print(f"NOTE {name} is no longer part of the framework package: reassign its open issues to "
+                  "FW_Parallel_Developer, then terminate it on the board when it is idle")
     ensure_routine(co, by_name, slug_to_name, commit, dry)
     print(f"pinned {FW_REPO}@{commit[:12]}")
     return 0

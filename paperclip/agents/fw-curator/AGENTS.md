@@ -18,7 +18,7 @@ reading list and the one place that says what differs when you work from an issu
 
 ```sh
 {{fetch_project_docs}}
-fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framework_commit}}/docs/dev_framework/$1"; }
+fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framework_ref}}/docs/dev_framework/$1"; }
 ```
 
 1. `CLAUDE.md` of the planning repo — Layer 0.

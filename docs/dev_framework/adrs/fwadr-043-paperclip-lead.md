@@ -31,7 +31,9 @@ paperclip ethos is to hire subagents."
    [`paperclip-lead.md`](../paperclip-lead.md)) reads the meter's output and uses
    judgement on what it flags, because a costly ticket can be the one that mattered.
 2. **The Lead hires.** It may propose an agent for the board to approve. It is the one
-   `FW_*` agent created with that permission. It never bumps the framework pin.
+   `FW_*` agent created with that permission. Its routine also keeps the company's
+   package current: `status`, and on drift `sync`, unasked
+   ([FWADR-040](fwadr-040-paperclip-mode.md) decision 4).
 3. **Every four hours, around the clock.** A routine in the company package. A quiet board
    ends the run with nothing written.
 4. **Waste is unuseful work, not cost.** The user: "If we're getting useful work, the cost
@@ -101,7 +103,7 @@ near $18). It is a starting number, meant to be changed in the project's variabl
 ## Consequences
 
 - A stuck or looping ticket is seen within four hours instead of ten days.
-- The company gains a seventh agent and a second routine; six short runs a day is the cost.
+- The company gains an agent and a second routine; six short runs a day is the cost.
 - The Strategist reads `docs/paperclip_lead/triage/` at session start.
 - **Coherence surfaces, all in this change:** this ADR; `paperclip-lead.md`;
   `paperclip-mode.md` (§"The Paperclip Lead", §"Ending a run", the agents list, adoption

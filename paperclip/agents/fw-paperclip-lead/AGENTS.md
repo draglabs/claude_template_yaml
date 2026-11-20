@@ -17,7 +17,7 @@ look at the whole board, not at one ticket.
 
 ```sh
 {{fetch_project_docs}}
-fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framework_commit}}/docs/dev_framework/$1"; }
+fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framework_ref}}/docs/dev_framework/$1"; }
 ```
 
 1. `docs/framework_exceptions/dev_framework_exceptions.md`, its "Paperclip" section only.
@@ -26,9 +26,11 @@ fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framew
 That is the whole list. You do not read `CLAUDE.md` in full, the plan, `paperclip-mode.md`
 or another role's doc. No bootstrap report.
 
-Then run the meter:
+Then keep the company current, and run the meter:
 
 ```sh
+fw _stubs/scripts/paperclip_company.py > /tmp/paperclip_company.py
+python3 /tmp/paperclip_company.py status || python3 /tmp/paperclip_company.py sync
 fw _stubs/scripts/board_meter.py > /tmp/board_meter.py && python3 /tmp/board_meter.py --json
 ```
 

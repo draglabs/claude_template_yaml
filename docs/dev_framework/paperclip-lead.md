@@ -19,8 +19,9 @@ a ticket that exists only to wait, work nobody is running.
 
 - **Hires.** In Paperclip a lead's job is to hire. When the board shows a standing need no
   agent covers, or an agent the package defines is missing, it proposes the hire
-  (`POST /api/companies/<id>/agent-hires`) for the human to approve. It never bumps the
-  framework pin.
+  (`POST /api/companies/<id>/agent-hires`) for the human to approve.
+- **Keeps the company current.** Each run: `paperclip_company.py status`, and on drift
+  `sync`. Framework updates are always taken, unasked, without waiting for running work.
 - **Runs the meter first, every run:** `board_meter.py --json`, a script that flags signs
   of unuseful work and costs no tokens. Nothing flagged, nothing running, nothing ready:
   end the run and write nothing.
@@ -67,7 +68,7 @@ look → a triage file. A live run you cannot see into is treated as working.
 | `stalled` | A live run with no output and no push | Nudge: "checkpoint now" |
 | `orphaned` | In progress, no run for a day | Close it or wake it once |
 | `waiting` | In review for a day | Nudge whoever holds the gate |
-| `family` | A parent with open children and nothing running | Fold the children back or close them |
+| `family` | A parent with open children and nothing running | Fold the children back or close them. Leave the one family that belongs: the human's ticket with the tickets triage made under it |
 | `infra` | The host or the pipeline is at fault, not the ticket | Fix the host |
 | `over-budget` | Spend past a soft budget | Report it. It changes nothing unless a sign of unuseful work is also present |
 
