@@ -9,7 +9,8 @@ task, stamps the framework commit on each agent, and reports drift.
 
     scripts/paperclip_company.py status            # pinned commit vs the template's main; exit 1 on drift
     scripts/paperclip_company.py sync [--dry-run]  # create or refresh the agents at the template's main
-    scripts/paperclip_company.py pause             # the kill switch: pause every FW_* agent (cancels their live runs)
+    scripts/paperclip_company.py pause             # the emergency switch: pause every FW_* agent. CANCELS their live runs;
+                                                   # a cancelled run keeps only what it pushed
     scripts/paperclip_company.py resume            # resume them
 
 Environment (the operator .env, sourced by claude-env; or an agent's own run credentials):
@@ -20,8 +21,11 @@ Environment (the operator .env, sourced by claude-env; or an agent's own run cre
     PAPERCLIP_FRAMEWORK_REF                   branch to pin to (default main)
     PAPERCLIP_TEMPLATE_AGENT                  existing agent whose adapter and environment new agents copy (default Lead)
     PAPERCLIP_PLANNING_PROJECT                Paperclip project whose workspace is the planning repo (default Planning)
-    PAPERCLIP_AGENT_BUDGET_CENTS              monthly budget `sync` sets on every FW_* agent, in cents; unset = left alone
-    PAPERCLIP_BUDGET_CENTS_<AGENT>            one agent's own budget, e.g. PAPERCLIP_BUDGET_CENTS_FW_DEVELOPER
+    PAPERCLIP_FUSE_BUDGET_CENTS               last-resort fuse: Paperclip's own monthly budget per FW_* agent, in cents.
+                                              Paperclip CANCELS LIVE RUNS when it trips, so set it far above a normal
+                                              month or leave it unset. The working cap is soft: PAPERCLIP_AGENT_BUDGET_CENTS,
+                                              read by scripts/board_meter.py, which only reports.
+    PAPERCLIP_FUSE_BUDGET_CENTS_<AGENT>       one agent's own fuse, e.g. PAPERCLIP_FUSE_BUDGET_CENTS_FW_DEVELOPER
     PAPERCLIP_PACKAGE_DIR                     template development only: read the package from this directory
                                               instead of GitHub (the pin still records the template's main)
     PROJECT_NAME, GIT_HOST, GIT_HOST_URL      from the project .env
@@ -189,8 +193,8 @@ def cmd_status() -> int:
 
 
 def budget_for(name: str) -> int | None:
-    """An agent's monthly budget in cents, from project variables; None = not set, leave the agent alone."""
-    v = E("PAPERCLIP_BUDGET_CENTS_" + name.upper()) or E("PAPERCLIP_AGENT_BUDGET_CENTS")
+    """An agent's fuse in cents (Paperclip's hard monthly budget); None = not set, leave the agent alone."""
+    v = E("PAPERCLIP_FUSE_BUDGET_CENTS_" + name.upper()) or E("PAPERCLIP_FUSE_BUDGET_CENTS")
     return int(v) if v and v.strip().isdigit() else None
 
 
@@ -255,7 +259,8 @@ def cmd_sync(dry: bool) -> int:
         reports_to = by_name[slug_to_name[spec["reports_to"]]]["id"] if spec["reports_to"] else None
         meta = dict(stamp, framework_role=spec["slug"])
         budget = budget_for(spec["name"])
-        print(f"{spec['name']}: budget " + (f"${budget / 100:.2f}/month" if budget is not None else "not set (PAPERCLIP_AGENT_BUDGET_CENTS) — unlimited unless the board set one"))
+        if budget is not None:
+            print(f"{spec['name']}: fuse ${budget / 100:.2f}/month — Paperclip cancels this agent's live runs if it trips")
         if spec["name"] in by_name:
             a = by_name[spec["name"]]
             bundle = api("GET", f"/agents/{a['id']}/instructions-bundle")

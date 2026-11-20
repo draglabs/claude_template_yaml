@@ -116,6 +116,10 @@ If the diff adds or changes a test, the test declares its tier (1, 2 or 3 —
 `coding-standards.md` §"Test tiers and the CI gate"). A test with no tier,
 or a Tier 1 test that touches a database or the network, is a `block`.
 
+Under Paperclip mode, the ticket's resume note names the MR's final commit
+([`paperclip-mode.md`](../paperclip-mode.md) §"Checkpoints"); a missing or
+stale note is `request changes`.
+
 If the diff touches `env.yaml` or `.sops.yaml`, say so on the first line of
 the verdict: only the operator changes those, on the machine that holds the
 key ([FWADR-041](../adrs/fwadr-041-env-yaml.md)).

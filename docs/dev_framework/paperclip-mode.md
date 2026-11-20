@@ -50,7 +50,8 @@ changed or routed to you is a question card naming the variable and the place.
 **Only the Strategist creates tickets, and only while triaging a ticket the human
 created.** That triage is where work is split, once, into W-items with a ticket each. No
 other agent creates a ticket, ever: no child issue, no follow-up issue, no workaround
-issue.
+issue. A follow-up ticket is a normal outcome — of a `found:` line, created at triage.
+What is ruled out is an agent creating it, and a ticket dividing.
 
 - **Work stays on the ticket it arrived on.** It changes hands by reassignment: the
   Orchestrator hands the issue to the builder and gets it back for the gate. The board
@@ -67,8 +68,10 @@ issue.
 - **Found something else?** A line on the ticket — `found: <what>, <where>` — for the
   Strategist. Whether it becomes work is decided at triage, not by the agent that
   tripped over it.
-- **Acceptance is frozen at push.** Once the builder has pushed, nobody adds acceptance
-  criteria to the issue; a new criterion is a `found:` line.
+- **Finish this, then do that — on the same ticket.** A ticket may carry more than one MR
+  in sequence. What the human adds mid-run is done after the current work, on the same
+  ticket, by the same agent: merge what is ready, say what is not in it, deliver the rest
+  as the next MR. `found:` is for what is outside the ticket's purpose.
 - **When the issue comes back,** verify against the MR and CI before anything else. A
   builder whose run failed after its work landed (branch pushed, MR open) has returned:
   run the gate. Never re-dispatch work that is already on the git host.
@@ -89,6 +92,49 @@ for every role here: at 80% confidence, act.
 - Post the first visible result — a comment or a commit — early in the run.
 - Checked the same thing three times? Stop and write what you know.
 - A ticket too big for one run is not yours to split: stop and say so on a card.
+
+## Checkpoints: git is the agent's memory, not the chat
+
+On a remote agent host no run resumes an earlier conversation: every wake is a cold
+start, and a run that is cancelled — by a pause, a budget, a crash — keeps only what it
+pushed. So an agent writes its state to the two repos as it goes, and any run can be
+picked up by a fresh one.
+
+**Checkpoint at every meaningful step, and at least every 15 minutes.** Two pushes:
+
+- **The code repo:** commit the work in progress to the ticket's branch and push, with CI
+  skipped (`git push -o ci.skip`, or the host's equivalent). It need not pass tests; it
+  has to be what is on disk. The MR opens when the work is ready, not before.
+- **The planning repo:** rewrite the ticket's **resume note** and push it to the ticket's
+  log branch (`log/<issue>`), whose one MR stays open until the ticket closes.
+
+**The resume note** is one block at the top of `w-<id>.log.md` (for an ops issue, a file
+named for the issue), under 20 lines, **rewritten in place, never appended to**:
+
+```markdown
+## Resume here
+- **As of:** <time UTC>, branch `<branch>` at `<commit>`
+- **Done:** …
+- **Doing now:** …
+- **Next:** …
+- **Decided, and why:** …
+- **Do not redo:** …
+- **To check it works:** <command>
+- **Waiting on:** …
+```
+
+It names the commit it describes; a note that does not match the branch head is stale,
+and the reader trusts the branch. "Decided, and why" and "Do not redo" are what a cold
+start otherwise rediscovers at full price.
+
+**A resume reads git, and little else.** A run that picks up a ticket with a resume note
+reads the ticket, the note, and the branch (`git log main..<branch>` and the diff). Its
+first comment is `Resuming from <commit>; next: <step>`. It does not re-read the reading
+list, the plan, the ADRs or earlier comments unless the note points at one. The reading
+list is for a first run on a ticket.
+
+**"Checkpoint and stop."** When that comment arrives — from the Paperclip Lead or the
+human — checkpoint both repos and end your own run. Nothing is cancelled from outside.
 
 ## Ending a run
 
@@ -112,7 +158,9 @@ plan, the W-items, the ADRs and the MRs must still tell the whole story.
   (README, runbook, ADR, plan log). Done with no doc touched is not done.
 - **Status flows one direction.** Paperclip status is live; W-items, `plan.md` and ADRs
   move only by MR to the planning repo, merged by its author at once (§"Who merges").
-  Nothing on the git side is edited without an MR.
+  Nothing on the git side is edited without an MR; a ticket's log is one MR, opened at its
+  first checkpoint and merged when the ticket closes, and checkpoints are pushes to it
+  (§"Checkpoints").
 - **"Waiting on the world."** A ticket only a human can close (an account, counsel, a
   payment) is `blocked` with *who* and *for what* in the blocker text, so the board
   distinguishes "needs a review" from "needs the founder to make a phone call".
@@ -125,13 +173,13 @@ plan, the W-items, the ADRs and the MRs must still tell the whole story.
 These are the places where Paperclip's own surfaces replace a framework artifact **between
 milestones**. Every one of them is reconciled to git at each milestone, not only at close.
 
-- **Working notes.** Between milestones the issue's comments are the working log; the
-  W-item log (`w-<id>.log.md`) is not appended comment by comment. At every **milestone** —
-  a phase change (Build → QA → Code Review), a decision taken, a measurement that settles a
-  question, a deviation from the W-item or a mockup, an MR opened — the agent carries the
-  substance into the W-item log by MR: what was decided, what was measured, what deviated
-  and why. Chatter stays on the issue; signal reaches git while the work is still live, so
-  a reader of the planning repo is never more than one milestone behind the board.
+- **Working notes.** The issue's comments are for people. The agent's own state is in git,
+  never more than one checkpoint behind the run (§"Checkpoints"): the resume note at the
+  top of the W-item log (`w-<id>.log.md`), rewritten at every checkpoint. At every
+  **milestone** — a phase change (Build → QA → Code Review), a decision taken, a
+  measurement that settles a question, a deviation from the W-item or a mockup, an MR
+  opened — the substance goes into the log below the note: what was decided, what was
+  measured, what deviated and why.
 - **Claims.** A file-overlap claim is a comment on both issues the moment it is found;
   `claims.md` gets the claim at the next milestone and the resolution when it resolves.
 - **Evidence.** Screenshots, run output and attachments live on the issue; the MR
@@ -197,15 +245,20 @@ act, like every framework sync.
 `FW_Paperclip_Lead` answers for the health of the company
 ([`paperclip-lead.md`](paperclip-lead.md), [FWADR-043](adrs/fwadr-043-paperclip-lead.md)).
 It hires, and every four hours it runs the board meter (`scripts/board_meter.py`, no
-tokens) and looks at what the meter flags: a run that is looping, stalled or orphaned, a
-ticket past its budget. It nudges; with `PAPERCLIP_LEAD_ACTS=on` it may stop a run, block
-the ticket with a reason code, and re-open one stopped in error. A ticket of yours it
-blocks carries `<code>: <evidence>. Unblock: <what>`: do what the way out says. Its log
+tokens) and checks that work is doing normal things: runs that loop, wait on something
+that has ended, or sit orphaned. **It never interrupts work that is under way,** whatever
+it has cost. It nudges; it may ask you to "checkpoint and stop"; with
+`PAPERCLIP_LEAD_ACTS=on` it may end a run that is *not* working and block its ticket, and
+re-open one stopped in error. A ticket of yours it blocks carries
+`<code>: <evidence>. Unblock: <what>`: do what the way out says. Its log
 and what it needs triaged are in the planning repo under `docs/paperclip_lead/`.
 
-Three things hold with no agent alive: each agent's monthly budget (project variables,
-set by `paperclip_company.py sync`), `paperclip_company.py pause` / `resume`, and the
-host's own breaker and reaper (adoption step 6).
+**No budget ends a working run.** Budgets are soft project variables
+(`PAPERCLIP_AGENT_BUDGET_CENTS`, `PAPERCLIP_TICKET_BUDGET_CENTS`): past one, the Lead
+reports it, and a ticket that is delivering keeps going — waste is unuseful work, not cost. Paperclip's
+own agent budget and its pause both cancel live runs, and a cancelled run keeps only what
+it pushed — so the built-in budget is at most a far-off fuse, and
+`paperclip_company.py pause` / `resume` is the emergency switch, not a routine one.
 
 ## What a project does to adopt
 
@@ -217,7 +270,7 @@ host's own breaker and reaper (adoption step 6).
 3. On the git host: the agents' bot may merge MRs into the planning repo's `main` and
    each code repo's `main`; `v*` tags are protected — only the `release` job and the
    human create them.
-4. `PAPERCLIP_AGENT_BUDGET_CENTS` set (a budget per agent is a project variable), then
+4. `PAPERCLIP_AGENT_BUDGET_CENTS` set (a soft budget per agent is a project variable), then
    `./scripts/paperclip_company.py sync` — creates or refreshes the seven agents and the
    two routines (the daily alignment check, the four-hour board review).
 5. One ops issue that proves the loop end to end before any work issue.

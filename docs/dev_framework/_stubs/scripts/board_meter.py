@@ -10,16 +10,20 @@ REPORT ONLY. It reads the board and changes nothing: no run is stopped, no ticke
 It costs no tokens, so it can run as often as wanted; the board-review agent reads its output
 and decides what to do: the Paperclip Lead (docs/dev_framework/paperclip-lead.md).
 
+Waste is unuseful work, not cost: the flags are signs of unuseful work, and cost is shown as
+information (runs, tokens read, spend) that flags nothing by itself.
+
 Signals, and the reason code each one gives a ticket:
   retry-loop     2 or more failed runs in a row
-  long-run       a live run older than LONG_RUN_MIN with no output for QUIET_MIN
+  stalled        a live run older than LONG_RUN_MIN with no output for QUIET_MIN
   orphaned       `in_progress` with no live run for ORPHAN_HOURS
   waiting        `in_review` for WAIT_HOURS
-  heavy          more than HEAVY_M million cached tokens read on the ticket
-  many-runs      MANY_RUNS or more runs
   family         a ticket and everything split from it: more than FAMILY_SIZE tickets, or
                  children still open under a parent that is not running
   over-budget    recorded spend on the ticket past PAPERCLIP_TICKET_BUDGET_CENTS (when set)
+The summary also lists agents whose recorded spend this month is past
+PAPERCLIP_AGENT_BUDGET_CENTS. Both budgets are SOFT: this script reports, and no run is ended
+or held back for a budget alone.
   host           (when run on the agent host) the agent user's task count near its limit, or
                  processes older than a day
 
@@ -48,11 +52,10 @@ LONG_RUN_MIN = setting("LONG_RUN_MIN", 45)
 QUIET_MIN = setting("QUIET_MIN", 15)
 ORPHAN_HOURS = setting("ORPHAN_HOURS", 24)
 WAIT_HOURS = setting("WAIT_HOURS", 24)
-HEAVY_M = setting("HEAVY_M", 60)
-MANY_RUNS = setting("MANY_RUNS", 8)
 FAMILY_SIZE = setting("FAMILY_SIZE", 3)
 HOST_TASK_SHARE = setting("HOST_TASK_SHARE", 0.5)
 TICKET_BUDGET_CENTS = float(os.environ.get("PAPERCLIP_TICKET_BUDGET_CENTS") or 0)  # 0 = no per-ticket cap
+AGENT_BUDGET_CENTS = float(os.environ.get("PAPERCLIP_AGENT_BUDGET_CENTS") or 0)    # 0 = no per-agent monthly cap
 OPEN = ("todo", "in_progress", "in_review", "blocked")
 BAD_RUN = ("failed", "timed_out")
 
@@ -158,17 +161,11 @@ def main(argv: list[str]) -> None:
             age = (now - when(s["live"].get("startedAt") or s["live"]["createdAt"])).total_seconds() / 60
             quiet = (now - (when(s["live"].get("lastOutputAt")) or now)).total_seconds() / 60
             if age > LONG_RUN_MIN and quiet > QUIET_MIN:
-                flags.append(("long-run", f"run is {age:.0f} min old, no output for {quiet:.0f} min"))
-            elif age > 2 * LONG_RUN_MIN:
-                flags.append(("long-run", f"run is {age:.0f} min old (still producing output)"))
+                flags.append(("stalled", f"run is {age:.0f} min old, no output for {quiet:.0f} min"))
         if i["status"] == "in_progress" and not s["live"] and idle_h > ORPHAN_HOURS:
             flags.append(("orphaned", f"in progress, no run for {idle_h / 24:.0f} days"))
         if i["status"] == "in_review" and idle_h > WAIT_HOURS:
             flags.append(("waiting", f"in review for {idle_h / 24:.0f} days"))
-        if is_open and s["cached"] > HEAVY_M * 1e6:
-            flags.append(("heavy", f"{s['cached'] / 1e6:.0f}M tokens read"))
-        if is_open and s["runs"] >= MANY_RUNS:
-            flags.append(("many-runs", f"{s['runs']} runs"))
         if is_open and TICKET_BUDGET_CENTS and s["cost"] * 100 > TICKET_BUDGET_CENTS:
             flags.append(("over-budget", f"${s['cost']:.2f} recorded against a ${TICKET_BUDGET_CENTS / 100:.2f} cap"))
         if i["id"] in fam and len(fam[i["id"]]) > 1:
@@ -195,6 +192,12 @@ def main(argv: list[str]) -> None:
                       if r.get("status") in ("running", "queued") and r.get("issueId") in by],
         "host": host,
     }
+    month = collections.Counter()
+    for r in runs:
+        if (r.get("createdAt") or "")[:7] == now.strftime("%Y-%m"):
+            month[agents.get(r.get("agentId"), "?")] += num(r.get("costUsd")) * 100
+    summary["agents_over_budget"] = [f"{a} (${c / 100:.2f} of ${AGENT_BUDGET_CENTS / 100:.2f} this month)"
+                                     for a, c in sorted(month.items()) if AGENT_BUDGET_CENTS and c > AGENT_BUDGET_CENTS]
     if "--json" in argv:
         print(json.dumps({"summary": summary, "flagged": flagged, "all": rows if "--all" in argv else None}, indent=1, default=dict))
         return
@@ -204,6 +207,8 @@ def main(argv: list[str]) -> None:
     print(f"- Running now: {', '.join(summary['live_runs']) or 'nothing'}")
     for h in host:
         print(f"- **Host:** {h}")
+    for a in summary["agents_over_budget"]:
+        print(f"- **Over its monthly budget (soft):** {a}")
     print(f"\n## Flagged ({len(flagged)})\n")
     print("| Ticket | Status | Agent | Runs | Read | Flags |\n|---|---|---|---|---|---|")
     for r in flagged:

@@ -43,6 +43,14 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
   yourself once the Reviewer ships and CI is green, then check the deploy. That
   includes MRs that touch CI configuration or deploy scripts. You never edit `env.yaml`
   (ask on a card), and you never push a release tag or deploy production.
+- **Resuming a ticket?** If its log has a "Resume here" note, skip the reading list above:
+  read the issue, the note, and the branch (`git log main..<branch>` and the diff), comment
+  `Resuming from <commit>; next: <step>`, and continue.
+- **Checkpoint at every meaningful step and at least every 15 minutes:** push work in
+  progress to the ticket's branch (CI skipped) and rewrite the resume note on the ticket's
+  log branch. On "checkpoint and stop", do both and end your run.
+- A ticket may carry more than one MR in sequence: what the human adds mid-run is done
+  after the current work, on this ticket.
 - **You never create an issue.** Work stays on the issue you were given: when it is not
   converging, stop, write what you tried, set it `blocked` with a card; a workaround is a
   proposal on that card, and anything else you find is a `found:` line for the Strategist.

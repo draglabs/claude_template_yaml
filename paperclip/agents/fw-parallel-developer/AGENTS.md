@@ -39,6 +39,14 @@ fw() { curl -fsSL "https://raw.githubusercontent.com/{{framework_repo}}/{{framew
   your code MR, milestones into the W-item log by MR you merge at once, no whole suites
   on the agent host.
 
+- **Resuming a ticket?** If its log has a "Resume here" note, skip the reading list above:
+  read the issue, the note, and the branch (`git log main..<branch>` and the diff), comment
+  `Resuming from <commit>; next: <step>`, and continue.
+- **Checkpoint at every meaningful step and at least every 15 minutes:** push work in
+  progress to the ticket's branch (CI skipped) and rewrite the resume note on the ticket's
+  log branch. On "checkpoint and stop", do both and end your run.
+- A ticket may carry more than one MR in sequence: what the human adds mid-run is done
+  after the current work, on this ticket.
 - **You never create an issue.** Work stays on the issue you were given: when it is not
   converging, stop, write what you tried, set it `blocked` with a card; a workaround is a
   proposal on that card, and anything else you find is a `found:` line for the Strategist.

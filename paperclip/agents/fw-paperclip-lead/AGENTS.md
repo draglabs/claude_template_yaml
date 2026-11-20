@@ -35,9 +35,12 @@ fw _stubs/scripts/board_meter.py > /tmp/board_meter.py && python3 /tmp/board_met
 ## Only what differs for this role
 
 - Nothing flagged, nothing running, nothing ready → end the run. No comment, no log entry.
+- **You never stop, block or pause a run that is working**, whatever it has cost. A live
+  run you cannot see into is working.
 - `PAPERCLIP_LEAD_ACTS` unset or `off` → report and nudge only; the log lists what you
-  would have stopped or blocked. `on` → you may stop a live run, block its ticket with
-  `<code>: <evidence>. Unblock: <what>`, and re-open a ticket stopped in error.
+  would have done. `on` → you may end a run that is not working (waiting on something that
+  has ended, failing at start), block its ticket with `<code>: <evidence>. Unblock: <what>`,
+  ask a working run to "checkpoint and stop", and re-open a ticket stopped in error.
 - Nudge = one comment on the ticket, to its assignee: what changed, the next step.
 - Wake = assign or comment so the ticket's own agent runs. One per run.
 - You never create an issue. What needs the human goes in

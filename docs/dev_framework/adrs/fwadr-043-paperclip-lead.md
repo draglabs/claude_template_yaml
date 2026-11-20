@@ -34,23 +34,35 @@ paperclip ethos is to hire subagents."
    `FW_*` agent created with that permission. It never bumps the framework pin.
 3. **Every four hours, around the clock.** A routine in the company package. A quiet board
    ends the run with nothing written.
-4. **Per flagged ticket, the smallest action:** leave, nudge, stop and block with a reason
-   code, or report for triage. One wake per run when nothing is live.
-5. **Acting starts off.** `PAPERCLIP_LEAD_ACTS` is a project variable. `off` (the default):
-   report and nudge, and the log lists what it would have done. `on`: it may stop another
-   agent's live run, block the ticket, and re-open a ticket it judges was stopped in error.
+4. **Waste is unuseful work, not cost.** The user: "If we're getting useful work, the cost
+   of the run isn't as relevant. The thing that we're worried about is when we get
+   unuseful work and we spend a lot of money and time doing it." The meter flags signs of
+   unuseful work — repeated failures, waiting on something that has ended, orphaned and
+   waiting tickets, split families — and shows cost as information.
+5. **Work under way is never interrupted.** The user: "We have to make sure that actual
+   coding is never interrupted." Per flagged ticket the Lead leaves, nudges or reports;
+   one wake per run when nothing is live. `PAPERCLIP_LEAD_ACTS` is a project variable:
+   `off` (the default) is report and nudge, and the log lists what it would have done;
+   `on` lets it end a run that is **not working** (waiting on something that has ended,
+   failing at start), block that ticket, and re-open a ticket it judges was stopped in
+   error. It may ask a working run to "checkpoint and stop"; the agent ends its own run.
 6. **It answers to the health of the company, in the planning repo.** `docs/paperclip_lead/`
    holds `log.md` (one entry per run that did anything) and `triage/` (one file per issue
    for the human and the Strategist). It does not raise cards for board health.
 7. **A reading list of two, no bootstrap report.** Six runs a day cannot afford the usual
    list; the meter's output is the context.
-8. **Insurance that is not an agent.** Budgets are project variables:
-   `PAPERCLIP_AGENT_BUDGET_CENTS` for every agent, `PAPERCLIP_BUDGET_CENTS_<AGENT>` for
-   one, set by `paperclip_company.py sync`. `paperclip_company.py pause` / `resume` is the
-   kill switch. A breaker and a process reaper on the hosts are the user's to install
+8. **No budget ends a working run.** Budgets are soft project variables:
+   `PAPERCLIP_AGENT_BUDGET_CENTS` per agent per month and `PAPERCLIP_TICKET_BUDGET_CENTS`
+   per ticket, read by the meter. Past one, the Lead reports it; a ticket that is
+   delivering keeps going. Paperclip's own agent budget cancels live
+   runs when it trips, and its pause does the same; on a remote agent host no later run
+   resumes the cancelled conversation, so a cancelled run keeps only what it pushed. The
+   built-in budget is therefore at most a far-off fuse (`PAPERCLIP_FUSE_BUDGET_CENTS`,
+   unset by default), and `paperclip_company.py pause` / `resume` is the emergency
+   switch. A breaker and a process reaper on the hosts are the user's to install
    ([`paperclip-mode.md`](../paperclip-mode.md) adoption step 6).
 
-The starting budget is 4,000 cents per agent per month: twice what the session that
+The starting soft budget is 4,000 cents per agent per month: twice what the session that
 wrote this cost, priced at the rate the evidence board recorded (about 33M tokens read,
 near $18). It is a starting number, meant to be changed in the project's variables.
 
@@ -60,8 +72,8 @@ near $18). It is a starting number, meant to be changed in the project's variabl
 |---|---|
 | The board is looked at every four hours | The `board-review` routine, created by `paperclip_company.py sync` |
 | Counting costs nothing | The meter is a script; its thresholds are `BOARD_METER_<NAME>` variables |
-| No agent spends without a cap | `sync` sets `budgetMonthlyCents` from the project variables and prints which agents have none |
-| Everything can be stopped at once | `paperclip_company.py pause`, a board operation that also cancels live runs |
+| Spend past a budget is seen, and kills nothing | The meter lists tickets and agents past their soft budgets; nothing sets Paperclip's hard budget unless the fuse variable is set |
+| Everything can be stopped at once | `paperclip_company.py pause`, a board operation that cancels live runs — the emergency switch |
 | The Lead acts only when switched on | `PAPERCLIP_LEAD_ACTS`, read by the agent — English-only, see below |
 
 ## Honest ceiling
@@ -104,7 +116,10 @@ near $18). It is a starting number, meant to be changed in the project's variabl
   be able to judge the Orchestrator's work too.
 - **An agent that counts for itself:** tokens every cycle to count what a script counts.
 - **Blocking from day one:** the thresholds have been seen against one board.
+- **Stopping a long run, or holding back a ticket past its budget:** both act on cost, and
+  a stopped run on a remote agent host loses its conversation and anything unpushed.
 - **Budgets hard-coded in the script:** a budget is a project's decision.
+- **Paperclip's built-in budget as the cap:** it cancels whatever is coding when it trips.
 - **Children allowed for oversized work, charged to the parent** (the pitch's splitting
   rules): superseded by one ticket stays one ticket
   ([FWADR-040](fwadr-040-paperclip-mode.md)).

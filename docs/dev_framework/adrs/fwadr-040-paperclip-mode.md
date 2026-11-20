@@ -76,10 +76,20 @@ behind two MRs that touched a pipeline file.
    triaging a ticket the human created; that is where work is split. No other agent
    creates a ticket: an issue changes hands by reassignment, a stuck issue is `blocked`
    with a card, and anything else an agent finds is a `found:` line for the Strategist.
+   Sequence inside a ticket is wanted: "finish this, then do that" is one ticket carrying
+   more than one MR, not a reason for tickets to divide.
    The case that decided it (2026-11-19): one request — a dev and a production build of
    a plugin — split by the agent working it into a hard part and an easy part, the easy
    part blocked on the hard part, the hard part circling for hours and opening workaround
    tickets, fourteen stuck tickets in all, each with its own run history and cost.
+
+8. **Git is the agent's memory, not the chat.** On a remote agent host no run resumes an
+   earlier conversation (each run gets its own working directory), and a pause or a
+   tripped budget cancels the live run. So an agent checkpoints at every meaningful step
+   and at least every 15 minutes: work in progress pushed to the ticket's branch, and a
+   short resume note rewritten in the planning repo. A resuming run reads the ticket, the
+   note and the branch, not the reading list. Stopping is cooperative: "checkpoint and
+   stop", and the agent ends its own run.
 
 ## Consequences
 
@@ -92,6 +102,10 @@ behind two MRs that touched a pipeline file.
   reserves the release tag to the `release` job and the human (adoption step 3 in `paperclip-mode.md`, interview
   Block 4). The pre-push guard does not run on the agent host.
 - **Named gap:** "no agent writes `accepted`" is English-only.
+- **Named gap:** the checkpoint interval is English-only; the Paperclip Lead's look at each
+  live run (a recent push, a current note) and the Reviewer's check that the note names
+  the final commit are what notice a run that is not checkpointing. Unproven: no run has
+  yet resumed from a note.
 - **Named gap:** "only the Strategist creates a ticket" is English-only unless the board
   can deny issue creation per agent; where it can, deny it to every `FW_*` agent but
   `FW_Strategist`. Reassignment by an agent is assumed to wake the assignee; not yet
