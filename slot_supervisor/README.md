@@ -219,7 +219,7 @@ command with an error that names it.
 | Variable | Required | Meaning |
 |---|---|---|
 | `SLOTS_HOST` | yes | Public host name. Slots are at `https://<SLOTS_HOST>/<slot>/` |
-| `SLOTS_UPSTREAM_HOST` | yes | Where the proxy and the health check reach a slot's ports, for example `localhost` |
+| `SLOTS_UPSTREAM_HOST` | yes | Where the proxy and the health check reach a slot's ports, an IP address, for example `127.0.0.1` |
 | `SLOTS_TEMPLATES_DIR` | yes | Root of the project templates |
 | `SLOTS_WORK_DIR` | yes | Root of the per-slot directories. Must exist. Holds only running slots and a lock file |
 | `SLOTS_ROUTES_DIR` | yes | Where the per-slot Caddy snippets go. Must exist |
