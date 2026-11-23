@@ -1,4 +1,4 @@
-# Example slot template. Not yet run on a real server.
+# Example slot template. The database port is published on loopback only.
 services:
   db:
     image: postgres:16
@@ -7,12 +7,12 @@ services:
       POSTGRES_PASSWORD: app
       POSTGRES_DB: app
     ports:
-      - "${SLOT_PORT_DB}:5432"
+      - "127.0.0.1:${SLOT_PORT_DB}:5432"
     volumes:
       - dbdata:/var/lib/postgresql/data
       - ${SLOT_TEMPLATE_DIR}/seed:/seed:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U app -d app"]  # over TCP: the first-start init server has no TCP
       interval: 2s
       retries: 30
 

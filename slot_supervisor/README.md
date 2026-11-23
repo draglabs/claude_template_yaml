@@ -7,7 +7,8 @@ services are up and seeded. An agent working a ticket asks for a slot, deploys
 its own branch onto it with the project's own deploy script, tries its work
 there, and can reset it.
 
-This is a first version. It has never run on a real server. See
+This is a first version. It has run on one server with the example template
+(start, reuse, reset, release, reap); no project's app has run on it yet. See
 [Not yet proven](#not-yet-proven).
 
 ## The rules it keeps
@@ -293,7 +294,7 @@ Only `slot.json` is read; there is no `slot.toml` in this version.
 port. Paths in it are relative to the template directory, and
 `SLOT_TEMPLATE_DIR` names it, so a dump is mounted and never copied. Every
 start seeds, so seed from a prepared dump, not from a script that builds the
-data from zero. An example, not yet run, is in [`examples/demo/`](examples/demo/).
+data from zero. An example is in [`examples/demo/`](examples/demo/).
 
 A started slot's services must come up healthy: the supervisor starts them
 with `docker compose up -d --wait` and seeds after that.
@@ -387,9 +388,12 @@ python3 -m unittest discover -s slot_supervisor/tests
 
 ## Not yet proven
 
-- **It has never run on a real server.** The docker and Caddy commands are
-  exercised only with a stand-in for the command runner. Expect the first real
-  start to find something.
+- **Only the example template has run on a real server** (Ubuntu 24.04, Docker
+  29, Caddy 2.6). That first start found two things, both now in the example:
+  `SLOTS_UPSTREAM_HOST` must be an IP address, because compose rejects
+  `localhost` in a port mapping; and a Postgres health check must go over TCP,
+  or the seed runs while the database is still restarting after its first
+  start.
 - **Serving an app under a path.** Neither way in "Serving an app under a
   path" has been tried with a real app. Each stack needs its own recipe.
 - **Apps that pick a site by host name** (ThankMu's partner portal). Under one
