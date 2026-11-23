@@ -27,7 +27,8 @@ slot, no big deal."
 
 One piece of software, the **slot supervisor**, owned by the framework and kept in the
 template repo under `slot_supervisor/`. The same five verbs are a command on the server
-(`slot …`) and a web interface; the exact shapes are in that directory's README.
+(`slot …`) and a web interface under `/api/slots`; the exact shapes are in
+[`slot_supervisor/README.md`](../../slot_supervisor/README.md).
 
 | Verb | What it does | Answers with |
 |---|---|---|

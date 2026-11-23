@@ -1,0 +1,10 @@
+[Unit]
+Description=Slot reaper (stops dev slots past their expiry)
+After=docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+User=deploy
+EnvironmentFile=/etc/slot-supervisor/env
+ExecStart=/opt/slot_supervisor/bin/slot reap

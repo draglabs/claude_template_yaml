@@ -1,0 +1,26 @@
+# Example slot template. Not yet run on a real server.
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: app
+    ports:
+      - "${SLOT_PORT_DB}:5432"
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ${SLOT_TEMPLATE_DIR}/seed:/seed:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d app"]
+      interval: 2s
+      retries: 30
+
+  # A placeholder page. The developer's deploy replaces this service.
+  app:
+    image: nginx:alpine
+    ports:
+      - "${SLOT_UPSTREAM_HOST}:${SLOT_PORT_APP}:${SLOT_INTERNAL_PORT}"
+
+volumes:
+  dbdata: {}

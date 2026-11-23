@@ -1,0 +1,16 @@
+[Unit]
+Description=Slot supervisor (HTTP API for dev slots)
+After=network-online.target docker.service
+Wants=network-online.target
+Requires=docker.service
+
+[Service]
+# The user that developers deploy as. It needs docker and the work and routes dirs.
+User=deploy
+EnvironmentFile=/etc/slot-supervisor/env
+ExecStart=/opt/slot_supervisor/bin/slot serve
+Restart=always
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target

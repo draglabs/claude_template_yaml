@@ -1,6 +1,6 @@
 # FWADR-044: Dev slots are handed out by a slot supervisor the framework owns
 
-**Status:** accepted; the first version is being built and has not run on a server
+**Status:** accepted; first version built, not yet run on a server
 **Date:** 2026-11-23
 **Deciders:** user (framework author) + Template Developer
 **Piloted in:** none yet. ThankMu is the first project to add a slot template.
@@ -42,7 +42,10 @@ running and seeded… If there was a problem, it could restart the dev slot, no 
 
 ## Honest ceiling
 
-- **Nothing here has run on a server.**
+- **Nothing here has run on a server.** The first version is tested against a fake
+  runtime only; real Docker and Caddy have never been driven by it.
+- **Container labels are the record, and a deploy can lose them.** A deploy that
+  recreates every container without the supervisor's override file hides the slot.
 - **Serving an app under a path is unsolved in general.** Most apps assume they sit at
   `/`; a project that picks a site by hostname needs more than one path; cookies are
   shared across paths on one host. Each project's template has to answer this before

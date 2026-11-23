@@ -1,0 +1,10 @@
+{
+  "cap": 6,
+  "ports": ["app", "db"],
+  "internal_port": 80,
+  "strip_prefix": true,
+  "health_path": "/",
+  "seed_command": ["docker", "compose", "exec", "-T", "db", "sh", "-c", "psql -U app -d app -f /seed/seed.sql"],
+  "deploy_user": "deploy",
+  "database": "postgres://app:app@{host}:{port_db}/app"
+}
