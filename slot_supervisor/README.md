@@ -189,8 +189,11 @@ On 409 the ticket waits and asks again later; nothing was started.
 ## How a developer uses a slot
 
 1. `request`. Keep `slot`, `url`, `expires_at` and `deploy`.
-2. Log in to `deploy.host` as `deploy.user`. Put what the deploy needs in
-   `deploy.directory`.
+2. Get onto `deploy.host` as a user that can run docker. A builder that
+   already runs on the slot server (an agent in the docker group) needs no
+   login and is not `deploy.user`: it only reads the slot's files, which are
+   readable by every user on the host, and keeps its own compose file in its
+   own checkout. Nothing has to be written into `deploy.directory`.
 3. Deploy the branch into the slot's compose project, keeping the supervisor's
    files in the command so the containers keep their labels:
 
