@@ -35,6 +35,11 @@ running and seeded… If there was a problem, it could restart the dev slot, no 
    the reaper — not as a container. A container that starts containers needs the Docker
    socket, which is the same power as the host, and compose resolves bind paths on the
    host.
+6a. **A host name per slot.** A running slot is `<slot>.<slot server>`, under a wildcard
+   DNS record, served at the root path. A path per slot (`/<slot>/`) was built first and
+   dropped the same day: most apps assume they sit at `/`, a single-page app fixes its
+   base path at build time so one image could not serve every slot, and slots on one
+   host shared cookies. Certificates are per slot name, issued at a name's first start.
 7. **Built for scale:** one template and one cap per project, a limit on running slots
    per server, a token per project, and a slot that is off reserves nothing. The user:
    "we will end up having dozens of slots. Maybe 6 for this one project but 10 projects
@@ -46,10 +51,11 @@ running and seeded… If there was a problem, it could restart the dev slot, no 
   reused, reset and released a slot from the example template; that is all.
 - **Container labels are the record, and a deploy can lose them.** A deploy that
   recreates every container without the supervisor's override file hides the slot.
-- **Serving an app under a path is unsolved in general.** Most apps assume they sit at
-  `/`; a project that picks a site by hostname needs more than one path; cookies are
-  shared across paths on one host. Each project's template has to answer this before
-  its slots are usable.
+- **An app that picks a site by host name** needs more than one name per slot; not
+  handled.
+- **A certificate per slot name** counts against the certificate authority's weekly
+  limit for the domain. A fixed set of slot names is a fixed set of certificates; a
+  project that churned through many new names would hit it.
 - **No check makes a project use slots.** A builder with no slot server tries its work
   on dev, as before.
 - **Laptop slots (FWADR-019) are not yet under this contract.**

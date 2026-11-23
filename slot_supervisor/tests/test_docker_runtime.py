@@ -104,11 +104,12 @@ class DockerRuntimeTests(SupervisorCase):
         self.assertIn("boom", str(caught.exception))
         self.assertFalse(os.path.exists(self.route))
 
-    def test_route_snippets(self):
-        stripped = render_route("alpha-1", "upstream.test:20000", True)
-        self.assertIn("handle_path /alpha-1/* {", stripped)
-        self.assertIn("header_up X-Forwarded-Prefix /alpha-1", stripped)
-        kept = render_route("alpha-1", "upstream.test:20000", False)
-        self.assertIn("handle /alpha-1/* {", kept)
-        self.assertNotIn("handle_path", kept)
-        self.assertIn("redir /alpha-1 /alpha-1/ 308", kept)
+    def test_route_file_is_a_site_block_for_the_slots_own_host(self):
+        expected = ("# Slot alpha-1. Written by the slot supervisor; removed when the slot stops.\n"
+                    "alpha-1.slots.test {\n"
+                    "\treverse_proxy upstream.test:20000\n"
+                    "}\n")
+        self.assertEqual(render_route("alpha-1", "alpha-1.slots.test", "upstream.test:20000"), expected)
+        self.start()
+        with open(self.route) as handle:
+            self.assertEqual(handle.read(), expected)

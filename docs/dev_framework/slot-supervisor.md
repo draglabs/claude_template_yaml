@@ -19,8 +19,9 @@ slot, no big deal."
 - **The supervisor knows nothing about how a project builds.** It hands over a blank
   seeded slot and a way in; the builder deploys its branch with the project's own deploy
   script.
-- **A running slot is reached at `https://<slot server>/<slot name>/`.** The slot
-  server's name is the project variable `SLOTS_URL`.
+- **A running slot has its own host name:** `https://<slot name>.<slot server>/`, served
+  at the root, with its own cookies. The slot server's address is the project variable
+  `SLOTS_URL`.
 - **A slot that is off reserves nothing:** no port, no route, no container.
 
 ## The contract
@@ -47,8 +48,8 @@ A **reaper** on a timer stops every slot past its expiry.
   many of its slots may run at once.
 - **A token** that reaches only that project's slots, an `env.yaml` entry routed to the
   `paperclip` place ([FWADR-041](adrs/fwadr-041-env-yaml.md)).
-- **A deploy script that can target a slot,** and an app that can be served under a path
-  prefix, or a template that says the prefix is stripped.
+- **A deploy script that can target a slot,** and an app whose allowed hosts, CORS and
+  sign-in redirects accept the slot's host name.
 - A line in the project's Paperclip section naming the slot server.
 
 ## Scale

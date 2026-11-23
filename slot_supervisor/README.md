@@ -26,7 +26,8 @@ This is a first version. It has run on one server with the example template
   supervisor, or delete it and install it again, and it sees the same slots.
 - The supervisor knows nothing about how a project builds. It gives a blank
   seeded slot and a way in.
-- A running slot is reached at `https://<SLOTS_HOST>/<slot>/`.
+- A running slot has its own host name: `https://<slot>.<SLOTS_HOST>/`, for
+  example `https://thankmu-1.slots.example.com/`. The app is at the root path.
 - A token per project reaches only that project's slots. One admin token
   reaches everything.
 
@@ -96,7 +97,7 @@ What `request`, `check` (running) and `reset` answer with:
   "started_at": "2026-11-23T09:00:00Z",
   "expires_at": "2026-11-23T17:00:00Z",
   "expired": false,
-  "url": "https://slots.example.com/thankmu-1/",
+  "url": "https://thankmu-1.slots.example.com/",
   "ports": {"app": 20000, "db": 20001},
   "health": {"ok": true, "detail": "2 of 2 containers running; http://localhost:20000/healthz: HTTP 200"},
   "deploy": {
@@ -115,9 +116,8 @@ What `request`, `check` (running) and `reset` answer with:
       "SLOT_NAME": "thankmu-1",
       "SLOT_PROJECT": "thankmu",
       "SLOT_NUMBER": "1",
-      "SLOT_URL": "https://slots.example.com/thankmu-1/",
-      "SLOT_BASE_PATH": "/thankmu-1",
-      "SLOT_STRIP_PREFIX": "true",
+      "SLOT_HOST": "thankmu-1.slots.example.com",
+      "SLOT_URL": "https://thankmu-1.slots.example.com/",
       "SLOT_INTERNAL_PORT": "3000",
       "SLOT_UPSTREAM_HOST": "localhost",
       "SLOT_TEMPLATE_DIR": "/srv/slots/templates/thankmu",
@@ -162,7 +162,7 @@ full shape without `health`, `deploy`, `database` and `logs`.
     {"slot": "thankmu-1", "project": "thankmu", "number": 1, "state": "running",
      "ticket": "THA-49", "agent": "fw-parallel-developer",
      "started_at": "2026-11-23T09:00:00Z", "expires_at": "2026-11-23T17:00:00Z",
-     "expired": false, "url": "https://slots.example.com/thankmu-1/",
+     "expired": false, "url": "https://thankmu-1.slots.example.com/",
      "ports": {"app": 20000, "db": 20001}}
   ]
 }
@@ -221,11 +221,11 @@ command with an error that names it.
 
 | Variable | Required | Meaning |
 |---|---|---|
-| `SLOTS_HOST` | yes | Public host name. Slots are at `https://<SLOTS_HOST>/<slot>/` |
+| `SLOTS_HOST` | yes | Public host name of the slot server. The API is at `https://<SLOTS_HOST>/api/`; a slot is at `https://<slot>.<SLOTS_HOST>/` |
 | `SLOTS_UPSTREAM_HOST` | yes | Where the proxy and the health check reach a slot's ports, an IP address, for example `127.0.0.1` |
 | `SLOTS_TEMPLATES_DIR` | yes | Root of the project templates |
 | `SLOTS_WORK_DIR` | yes | Root of the per-slot directories. Must exist. Holds only running slots and a lock file |
-| `SLOTS_ROUTES_DIR` | yes | Where the per-slot Caddy snippets go. Must exist |
+| `SLOTS_ROUTES_DIR` | yes | Where the per-slot Caddy site blocks go. Must exist |
 | `SLOTS_PORT_RANGE` | yes | Ports to hand out, as `low-high`, for example `20000-20999` |
 | `SLOTS_MAX_RUNNING` | yes | Limit on running slots for this server |
 | `SLOTS_PROXY_RELOAD_COMMAND` | yes | Command that makes the proxy read its routes again |
@@ -270,7 +270,6 @@ The file is read once, when `slot serve` starts; restart it after a change.
   "cap": 6,
   "ports": ["app", "db"],
   "internal_port": 3000,
-  "strip_prefix": true,
   "health_path": "/healthz",
   "seed_command": ["docker", "compose", "exec", "-T", "db", "sh", "-c", "pg_restore -U app -d app /seed/app.dump"],
   "deploy_user": "deploy",
@@ -283,7 +282,6 @@ The file is read once, when `slot serve` starts; restart it after a change.
 | `cap` | Most slots of this project that may run at once. Slots are numbered 1 to `cap` |
 | `ports` | Names of the host ports a slot needs. Must include `app`, the one the proxy routes to. Each becomes `SLOT_PORT_<NAME>` |
 | `internal_port` | The port the app listens on inside its container. Passed on as `SLOT_INTERNAL_PORT` |
-| `strip_prefix` | `true`: the proxy removes `/<slot>` before the app sees the request. `false`: the app gets the full path |
 | `health_path` | Path the health check asks for on the `app` port. Must start with `/` |
 | `seed_command` | Command and arguments, run in the template directory after the services are up, with the slot's env |
 | `deploy_user` | The user a developer logs in as. Reported back; the supervisor does not create it |
@@ -302,17 +300,23 @@ data from zero. An example is in [`examples/demo/`](examples/demo/).
 A started slot's services must come up healthy: the supervisor starts them
 with `docker compose up -d --wait` and seeds after that.
 
-### Serving an app under a path
+### A host name per slot
 
-A slot is served at `/<slot>/`, and most apps expect to be at `/`. Each
-template picks one of two ways:
+A running slot is served at `https://<slot>.<SLOTS_HOST>/`, at the root path,
+so an app needs no base path. `SLOT_HOST` and `SLOT_URL` in the slot's env
+carry the name.
 
-- `strip_prefix: false`. The app is told its base path (`SLOT_BASE_PATH`,
-  for example `/thankmu-1`) and serves everything under it.
-- `strip_prefix: true`. The proxy removes the prefix and sends it in the
-  `X-Forwarded-Prefix` header. The app sees `/`, but every link, redirect and
-  asset URL it sends back must be relative or use the prefix, or the browser
-  leaves the slot.
+- **DNS.** One wildcard record, `*.<SLOTS_HOST>`, pointing at the server.
+- **Certificates.** Caddy gets one certificate per slot name by itself, on the
+  first start of that name, and keeps it. Slot names are a fixed set
+  (`<project>-1` to `<project>-<cap>`), so the certificates are a fixed set too.
+- **First start of a new name.** The first request may wait a few seconds
+  while the certificate is issued.
+- **Cookies and origin.** Each slot is its own origin with its own cookies.
+  Two slots open in one browser do not see each other's session.
+- **Slot names are DNS labels.** Lower-case letters, digits and hyphens, no
+  hyphen first or last, at most 63 characters for the whole `<project>-<n>`.
+  A longer name is refused with `invalid_request`.
 
 ## Installing on a server
 
@@ -335,12 +339,26 @@ to `pip install`.
    	handle /api/* {
    		reverse_proxy localhost:8700
    	}
-   	import /etc/caddy/slots/*.caddy
+   	handle {
+   		respond "slot server" 200
+   	}
+   }
+   import /etc/caddy/slots/*.caddy
+   ```
+
+   The `import` is at the top level, outside the site block. The supervisor
+   writes one `<slot>.caddy` file per running slot into the routes directory
+   and runs `SLOTS_PROXY_RELOAD_COMMAND` after each change. Each file is a
+   whole site block:
+
+   ```
+   # Slot thankmu-1. Written by the slot supervisor; removed when the slot stops.
+   thankmu-1.slots.example.com {
+   	reverse_proxy 127.0.0.1:20000
    }
    ```
 
-   The supervisor writes one `<slot>.caddy` file per running slot into the
-   routes directory and runs `SLOTS_PROXY_RELOAD_COMMAND` after each change.
+   Add the wildcard DNS record `*.slots.example.com` for the server.
 6. Install the units from [`systemd/`](systemd/) into `/etc/systemd/system/`:
    - `slot-supervisor.service` runs `slot serve` and restarts it if it dies.
    - `slot-reaper.timer` runs `slot-reaper.service` (`slot reap`) every five
@@ -362,7 +380,7 @@ To use the CLI by hand, load the same settings first:
 ```
 slots/supervisor.py      the six verbs; no side effects of its own
 slots/runtime.py         the one interface every side effect goes through
-slots/docker_runtime.py  the real one: docker compose, files, Caddy snippets
+slots/docker_runtime.py  the real one: docker compose, files, Caddy site blocks
 slots/fake_runtime.py    the in-memory one the tests use
 slots/templates.py       reads slot.json
 slots/config.py          settings and tokens
@@ -373,10 +391,10 @@ slots/httpapi.py         the HTTP API
 What the real runtime does for a start: makes `<work>/<slot>/`, writes the
 slot's `.env` and a `compose.slot.json` that puts the `slots.*` labels on every
 service, runs `docker compose up -d --wait`, runs the seed command, writes the
-Caddy snippet and reloads Caddy. If any step fails, the slot is taken down
+slot's Caddy site block and reloads Caddy. If any step fails, the slot is taken down
 again and the call fails. A stop runs `docker compose down --volumes` by
 project name, removes any volume still labelled with the project, deletes the
-directory and the snippet, and reloads Caddy.
+directory and the site block, and reloads Caddy.
 
 Starts and stops run one at a time on a server (a lock file in the work
 directory), so two requests never get the same slot or port. A request waits
@@ -397,14 +415,16 @@ python3 -m unittest discover -s slot_supervisor/tests
   `localhost` in a port mapping; and a Postgres health check must go over TCP,
   or the seed runs while the database is still restarting after its first
   start.
-- **Serving an app under a path.** Neither way in "Serving an app under a
-  path" has been tried with a real app. Each stack needs its own recipe.
-- **Apps that pick a site by host name** (ThankMu's partner portal). Under one
-  host and a path there is no second host name. Not handled: it needs a second
-  path per slot or a host header set by the proxy.
-- **Cookies are shared across paths on one host.** Two slots open in one
-  browser can see each other's session cookie unless the app sets cookie names
-  or paths per slot. Not handled.
+- **Host-name routing has run once,** with the example template: under a
+  wildcard DNS record, Caddy 2.6 issued the slot's certificate on reload and
+  the slot answered within about five seconds. Many slots starting at once,
+  and the certificate authority's weekly limit per domain, are untried.
+- **An app's allowed-hosts, CORS and OAuth redirect settings must accept the
+  slot's host name.** Each stack needs its own recipe; `SLOT_HOST` and
+  `SLOT_URL` are there to feed it.
+- **Apps that pick a site by host name** (ThankMu's partner portal). A slot
+  has one host name, so several sites behind one slot still need their own
+  answer. Not handled.
 - **Labels after a deploy.** See "How a developer uses a slot". Whether real
   deploy scripts keep at least one labelled container is untested.
 - **Who owns the slot directory.** The supervisor and the developers are
@@ -422,5 +442,5 @@ python3 -m unittest discover -s slot_supervisor/tests
 
 - No way to extend a slot (`touch`). Fixed 8 hours, by decision.
 - No client for the HTTP API; `curl` is enough for a launch script.
-- No `slot.toml`, no hostname-per-slot routing, no metrics, no web page.
+- No `slot.toml`, no metrics, no web page.
 - The supervisor does not create users, SSH keys or DNS records.

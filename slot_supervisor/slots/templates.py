@@ -11,10 +11,10 @@ from .errors import ConfigError, NotFound
 
 COMPOSE_FILE_NAME = "compose.yaml"
 SETTINGS_FILE_NAME = "slot.json"
-ROUTED_PORT = "app"  # the port name the proxy sends /<slot>/ to
+ROUTED_PORT = "app"  # the port name the proxy sends the slot's host name to
 
 PORT_NAME_RE = re.compile(r"^[a-z][a-z0-9_]*$")
-REQUIRED = {"cap", "ports", "internal_port", "strip_prefix", "health_path", "seed_command", "deploy_user"}
+REQUIRED = {"cap", "ports", "internal_port", "health_path", "seed_command", "deploy_user"}
 OPTIONAL = {"database"}
 
 
@@ -25,7 +25,6 @@ class Template:
     cap: int
     ports: List[str]
     internal_port: int
-    strip_prefix: bool
     health_path: str
     seed_command: List[str]
     deploy_user: str
@@ -61,8 +60,6 @@ def load_template(templates_dir: str, project: str) -> Template:
         raise bad("cap must be a whole number above zero")
     if not is_int(data["internal_port"]):
         raise bad("internal_port must be a whole number above zero")
-    if not isinstance(data["strip_prefix"], bool):
-        raise bad("strip_prefix must be true or false")
     ports = data["ports"]
     if (not isinstance(ports, list) or len(set(ports)) != len(ports) or ROUTED_PORT not in ports
             or not all(isinstance(p, str) and PORT_NAME_RE.match(p) for p in ports)):
@@ -83,7 +80,7 @@ def load_template(templates_dir: str, project: str) -> Template:
             format_database(database, "host", project + "-1", {name: 1 for name in ports})
         except (KeyError, IndexError, ValueError) as exc:
             raise bad("database uses a placeholder that does not exist: %s" % exc)
-    return Template(project, directory, data["cap"], ports, data["internal_port"], data["strip_prefix"],
+    return Template(project, directory, data["cap"], ports, data["internal_port"],
                     health_path, seed, data["deploy_user"], database)
 
 

@@ -44,7 +44,7 @@ class HttpTests(SupervisorCase):
         status, slot = self.request_slot(ALPHA)
         self.assertEqual(status, 201)
         self.assertEqual(slot["slot"], "alpha-1")
-        self.assertEqual(slot["url"], "https://slots.test/alpha-1/")
+        self.assertEqual(slot["url"], "https://alpha-1.slots.test/")
         self.assertEqual(slot["deploy"]["directory"], os.path.join(self.settings.work_dir, "alpha-1"))
         self.assertEqual(self.runtime.events, [("start", "alpha-1"), ("seed", "alpha-1"), ("route", "alpha-1")])
         status, again = self.request_slot(ALPHA)

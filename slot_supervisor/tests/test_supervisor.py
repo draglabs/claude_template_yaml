@@ -12,7 +12,7 @@ class RequestTests(SupervisorCase):
         self.assertEqual(slot["slot"], "alpha-1")
         self.assertTrue(slot["created"])
         self.assertEqual(slot["state"], "running")
-        self.assertEqual(slot["url"], "https://slots.test/alpha-1/")
+        self.assertEqual(slot["url"], "https://alpha-1.slots.test/")
         self.assertEqual((slot["ticket"], slot["agent"]), ("T-1", "dev-agent"))
         self.assertEqual(slot["started_at"], "2026-11-23T09:00:00Z")
         self.assertEqual(slot["expires_at"], "2026-11-23T17:00:00Z")
@@ -25,9 +25,12 @@ class RequestTests(SupervisorCase):
         self.assertEqual(deploy["directory"], os.path.join(self.settings.work_dir, "alpha-1"))
         self.assertEqual(deploy["compose_project"], "alpha-1")
         self.assertEqual(deploy["env"]["SLOT_PORT_APP"], "20000")
-        self.assertEqual(deploy["env"]["SLOT_BASE_PATH"], "/alpha-1")
+        self.assertEqual(deploy["env"]["SLOT_HOST"], "alpha-1.slots.test")
+        self.assertEqual(deploy["env"]["SLOT_URL"], "https://alpha-1.slots.test/")
+        self.assertNotIn("SLOT_BASE_PATH", deploy["env"])
+        self.assertNotIn("SLOT_STRIP_PREFIX", deploy["env"])
         self.assertEqual(deploy["env"]["SLOT_INTERNAL_PORT"], "3000")
-        self.assertEqual(self.runtime.routes["alpha-1"], {"port": 20000, "strip_prefix": True})
+        self.assertEqual(self.runtime.routes["alpha-1"], {"host": "alpha-1.slots.test", "port": 20000})
 
     def test_labels_carry_the_record(self):
         self.supervisor.request("alpha", "T-1", "dev-agent")
@@ -83,6 +86,23 @@ class RequestTests(SupervisorCase):
             self.supervisor.request("Alpha!", "T-1", "a")
         with self.assertRaises(Invalid):
             self.supervisor.request("alpha", "", "a")
+
+    def test_a_slot_name_must_be_a_dns_label(self):
+        for name in ("Alpha-1", "alpha_x-1", "-alpha-1", "alpha--1", "alpha-", "alpha-01", "alpha.b-1", "alpha"):
+            with self.assertRaises(Invalid, msg=name):
+                self.supervisor.check(name)
+        longest = "a" * 61  # "<61>-1" is 63 characters: the longest label DNS allows
+        write_template(self.templates, longest, cap=1)
+        self.assertEqual(self.supervisor.request(longest, "T-1", "a")["slot"], longest + "-1")
+        self.assertEqual(self.supervisor.check(longest + "-1")["state"], "running")
+        with self.assertRaises(Invalid):
+            self.supervisor.check("a" * 62 + "-1")
+        # A cap that would make a later name too long is refused before anything starts.
+        write_template(self.templates, "b" * 61, cap=10)
+        with self.assertRaises(Invalid) as caught:
+            self.supervisor.request("b" * 61, "T-1", "a")
+        self.assertIn("at most 63", str(caught.exception))
+        self.assertEqual(len(self.runtime.projects), 1)
 
     def test_a_failed_seed_leaves_nothing_behind(self):
         self.runtime.fail_seed = True

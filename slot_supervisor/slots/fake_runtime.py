@@ -11,7 +11,7 @@ from .runtime import Runtime
 class FakeRuntime(Runtime):
     def __init__(self):
         self.projects: Dict[str, dict] = {}   # name -> {"labels", "env", "template_dir", "slot_dir"}
-        self.routes: Dict[str, dict] = {}     # name -> {"port", "strip_prefix"}
+        self.routes: Dict[str, dict] = {}     # name -> {"host", "port"}
         self.events: List[tuple] = []         # ("start"|"seed"|"stop"|"route"|"unroute", name)
         self.unhealthy = set()                # names whose health check fails
         self.fail_seed = False
@@ -45,8 +45,8 @@ class FakeRuntime(Runtime):
         ok = name in self.projects and name not in self.unhealthy
         return {"ok": ok, "detail": "fake: %s" % url}
 
-    def write_route(self, name, port, strip_prefix):
-        self.routes[name] = {"port": port, "strip_prefix": strip_prefix}
+    def write_route(self, name, host, port):
+        self.routes[name] = {"host": host, "port": port}
         self.events.append(("route", name))
 
     def remove_route(self, name):

@@ -17,7 +17,6 @@ TEMPLATE = {
     "cap": 2,
     "ports": ["app", "db"],
     "internal_port": 3000,
-    "strip_prefix": True,
     "health_path": "/healthz",
     "seed_command": ["sh", "seed.sh"],
     "deploy_user": "deploy",

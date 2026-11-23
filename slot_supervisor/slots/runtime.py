@@ -33,8 +33,8 @@ class Runtime:
         """{"ok": bool, "detail": str}: all containers running and `url` answers."""
         raise NotImplementedError
 
-    def write_route(self, name: str, port: int, strip_prefix: bool) -> None:
-        """Send /<name>/ on the public host to `port`, and reload the proxy."""
+    def write_route(self, name: str, host: str, port: int) -> None:
+        """Send the slot's own host name to `port`, and reload the proxy."""
         raise NotImplementedError
 
     def remove_route(self, name: str) -> None:

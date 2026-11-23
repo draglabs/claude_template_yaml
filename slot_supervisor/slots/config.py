@@ -44,12 +44,12 @@ def _optional_int(env: Mapping[str, str], key: str, default: int) -> int:
 
 @dataclass(frozen=True)
 class Settings:
-    host: str                 # public name: slots are at https://<host>/<slot>/
+    host: str                 # public name: a slot is at https://<slot>.<host>/
     ssh_host: str             # where a developer logs in to deploy
     upstream_host: str        # where the proxy and health check reach a slot's ports
     templates_dir: str        # <templates_dir>/<project>/{compose.yaml,slot.json}
     work_dir: str             # <work_dir>/<slot>/ exists only while the slot runs
-    routes_dir: str           # one Caddy snippet per running slot
+    routes_dir: str           # one Caddy site block per running slot
     port_low: int
     port_high: int
     max_running: int          # limit on running slots for this server

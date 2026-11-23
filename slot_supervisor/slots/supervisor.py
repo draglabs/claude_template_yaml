@@ -19,6 +19,7 @@ from .templates import COMPOSE_FILE_NAME, ROUTED_PORT, Template, format_database
 
 PROJECT_RE = re.compile(r"^[a-z][a-z0-9]*(-[a-z0-9]+)*$")
 NUMBER_RE = re.compile(r"^[1-9][0-9]*$")
+MAX_DNS_LABEL = 63  # a slot name is the first label of the slot's host name
 TEXT_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9 ._:#/@-]{0,99}$")
 TIME_FORMAT = "%Y-%m-%dT%H:%M:%SZ"
 LABEL_PREFIX = "slots."
@@ -40,6 +41,10 @@ def parse_slot_name(name: str) -> Tuple[str, int]:
     project, _, number = name.rpartition("-") if isinstance(name, str) else ("", "", "")
     if not PROJECT_RE.match(project) or not NUMBER_RE.match(number):
         raise Invalid("a slot name is <project>-<number>, got %r" % (name,))
+    # PROJECT_RE and NUMBER_RE leave only lower-case letters, digits and inner hyphens.
+    if len(name) > MAX_DNS_LABEL:
+        raise Invalid("a slot name is part of a host name, so at most %d characters; %r has %d"
+                      % (MAX_DNS_LABEL, name, len(name)))
     return project, int(number)
 
 
@@ -108,6 +113,7 @@ class Supervisor:
                 if slot.project == project and slot.ticket == ticket:
                     return dict(self._describe(slot, detail=True), created=False)
             template = load_template(self.settings.templates_dir, project)
+            parse_slot_name("%s-%d" % (project, template.cap))  # every name this project can get
             taken = {slot.number for slot in slots if slot.project == project}
             if len(taken) >= template.cap:
                 raise ProjectCapReached("project %s already runs its cap of %d slots" % (project, template.cap))
@@ -215,9 +221,8 @@ class Supervisor:
             "SLOT_NAME": name,
             "SLOT_PROJECT": template.project,
             "SLOT_NUMBER": str(number),
+            "SLOT_HOST": self._host(name),
             "SLOT_URL": self._url(name),
-            "SLOT_BASE_PATH": "/" + name,
-            "SLOT_STRIP_PREFIX": "true" if template.strip_prefix else "false",
             "SLOT_INTERNAL_PORT": str(template.internal_port),
             "SLOT_UPSTREAM_HOST": self.settings.upstream_host,
             "SLOT_TEMPLATE_DIR": template.directory,
@@ -237,7 +242,7 @@ class Supervisor:
         try:
             self.runtime.start(slot.name, template.directory, self._slot_dir(slot.name), slot.env, slot.to_labels())
             self.runtime.seed(slot.name, template.directory, template.seed_command, slot.env)
-            self.runtime.write_route(slot.name, slot.ports[ROUTED_PORT], template.strip_prefix)
+            self.runtime.write_route(slot.name, self._host(slot.name), slot.ports[ROUTED_PORT])
         except Exception as failure:
             try:
                 if any(labels.get(LABEL_PREFIX + "slot") == slot.name for labels in self.runtime.list_running()):
@@ -248,8 +253,11 @@ class Supervisor:
                                     % (slot.name, failure, second)) from failure
             raise
 
+    def _host(self, name: str) -> str:
+        return "%s.%s" % (name, self.settings.host)
+
     def _url(self, name: str) -> str:
-        return "https://%s/%s/" % (self.settings.host, name)
+        return "https://%s/" % self._host(name)
 
     def _describe(self, slot: Slot, detail: bool) -> dict:
         out = {

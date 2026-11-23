@@ -98,9 +98,15 @@ class ConfigTests(SupervisorCase):
 
     def test_a_broken_template_fails_loudly(self):
         self.assertEqual(load_template(self.templates, "alpha").cap, 2)
-        for changes in ({"cap": 0}, {"ports": ["db"]}, {"strip_prefix": "yes"}, {"seed_command": "sh seed.sh"},
+        for changes in ({"cap": 0}, {"ports": ["db"]}, {"seed_command": "sh seed.sh"},
                         {"health_path": "healthz"}, {"database": "postgres://{host}:{port_cache}/x"},
                         {"surprise": 1}):
             write_template(self.templates, "broken", **changes)
             with self.assertRaises(ConfigError, msg=changes):
                 load_template(self.templates, "broken")
+
+    def test_strip_prefix_is_now_an_unknown_key(self):
+        write_template(self.templates, "old", strip_prefix=True)
+        with self.assertRaises(ConfigError) as caught:
+            load_template(self.templates, "old")
+        self.assertIn("unknown keys ['strip_prefix']", str(caught.exception))

@@ -1,4 +1,4 @@
-"""The real runtime: `docker compose`, files under the work dir, Caddy route snippets."""
+"""The real runtime: `docker compose`, files under the work dir, one Caddy site block per slot."""
 from __future__ import annotations
 
 import contextlib
@@ -21,21 +21,12 @@ COMPOSE_PROJECT_LABEL = "com.docker.compose.project"
 HEALTH_TIMEOUT_SECONDS = 5
 
 
-def render_route(name: str, upstream: str, strip_prefix: bool) -> str:
-    """The Caddy snippet for one slot. Imported inside the site block of the slots host."""
-    lines = ["# Slot %s. Written by the slot supervisor; removed when the slot stops." % name,
-             "redir /%s /%s/ 308" % (name, name)]
-    if strip_prefix:
-        lines += ["handle_path /%s/* {" % name,
-                  "\treverse_proxy %s {" % upstream,
-                  "\t\theader_up X-Forwarded-Prefix /%s" % name,
-                  "\t}",
-                  "}"]
-    else:
-        lines += ["handle /%s/* {" % name,
-                  "\treverse_proxy %s" % upstream,
-                  "}"]
-    return "\n".join(lines) + "\n"
+def render_route(name: str, host: str, upstream: str) -> str:
+    """The Caddy site block for one slot. Imported at the top level of the Caddyfile."""
+    return ("# Slot %s. Written by the slot supervisor; removed when the slot stops.\n"
+            "%s {\n"
+            "\treverse_proxy %s\n"
+            "}\n" % (name, host, upstream))
 
 
 def _subprocess_run(argv, env, cwd, timeout):
@@ -145,11 +136,11 @@ class DockerRuntime(Runtime):
         ok = bool(states) and running == len(states) and status is not None and status < 400
         return {"ok": ok, "detail": "%d of %d containers running; %s: %s" % (running, len(states), url, answer)}
 
-    def write_route(self, name, port, strip_prefix):
+    def write_route(self, name, host, port):
         path = self._route_path(name)
         upstream = "%s:%d" % (self.settings.upstream_host, port)
         with open(path + ".tmp", "w", encoding="utf-8") as handle:
-            handle.write(render_route(name, upstream, strip_prefix))
+            handle.write(render_route(name, host, upstream))
         os.replace(path + ".tmp", path)
         self._reload_proxy()
 
