@@ -26,8 +26,13 @@ paperclip ethos is to hire subagents."
 ## Decision
 
 1. **A meter and a reader, kept apart.** `scripts/board_meter.py` (framework-owned) reads
-   Paperclip's records and flags tickets with reason codes. It costs no tokens, judges
-   nothing and changes nothing. The **Paperclip Lead** (`FW_Paperclip_Lead`,
+   Paperclip's records and flags tickets with reason codes. It costs no tokens and judges
+   nothing. Its report changes nothing; its one acting mode, `--housekeep`, run hourly
+   with no agent, only unsticks the queue: it cancels a run that sat queued and never
+   started, and wakes the assignee of that ticket or of one that never got a run. On
+   2026-11-20 one such queued run held the builder's only slot and two tickets sat for
+   68 minutes with every agent idle; four hours is too long to wait for that, and
+   nothing that has started is touched. The **Paperclip Lead** (`FW_Paperclip_Lead`,
    [`paperclip-lead.md`](../paperclip-lead.md)) reads the meter's output and uses
    judgement on what it flags, because a costly ticket can be the one that mattered.
 2. **The Lead hires.** It may propose an agent for the board to approve. It is the one
@@ -48,9 +53,18 @@ paperclip ethos is to hire subagents."
    `on` lets it end a run that is **not working** (waiting on something that has ended,
    failing at start), block that ticket, and re-open a ticket it judges was stopped in
    error. It may ask a working run to "checkpoint and stop"; the agent ends its own run.
+5a. **It does the post review.** A ticket whose work is merged carries `lead_review`
+   ([FWADR-040](fwadr-040-paperclip-mode.md)); in its four-hour look the Lead checks what
+   happened — the MR, the pipeline, the commit on dev, the harness, the run history, each
+   acceptance criterion — and posts a final report with screenshots, then closes the
+   ticket or sends it back. It never reads the diff for quality. The Lead, and not a
+   reviewer per ticket, because one cold start then covers every waiting ticket; the cost
+   is a report up to four hours after the merge, which nothing waits on. The steps are in
+   their own short document ([`paperclip-post-review.md`](../paperclip-post-review.md)),
+   fetched only in a run that has a ticket to review, so the board look keeps its budget.
 6. **It answers to the health of the company, in the planning repo.** `docs/paperclip_lead/`
    holds `log.md` (one entry per run that did anything) and `triage/` (one file per issue
-   for the human and the Strategist). It does not raise cards for board health.
+   for the human and the Strategist). It sets no labels for board health.
 7. **A reading list of two, no bootstrap report.** Six runs a day cannot afford the usual
    list; the meter's output is the context.
 8. **No budget ends a working run.** Budgets are soft project variables:
@@ -74,6 +88,7 @@ near $18). It is a starting number, meant to be changed in the project's variabl
 |---|---|
 | The board is looked at every four hours | The `board-review` routine, created by `paperclip_company.py sync` |
 | Counting costs nothing | The meter is a script; its thresholds are `BOARD_METER_<NAME>` variables |
+| A stuck queue is cleared within the hour | `board_meter.py --housekeep` on an hourly schedule the project sets up (adoption step 7); the Lead reports a `queued-stale` it still sees |
 | Spend past a budget is seen, and kills nothing | The meter lists tickets and agents past their soft budgets; nothing sets Paperclip's hard budget unless the fuse variable is set |
 | Everything can be stopped at once | `paperclip_company.py pause`, a board operation that cancels live runs — the emergency switch |
 | The Lead acts only when switched on | `PAPERCLIP_LEAD_ACTS`, read by the agent — English-only, see below |
@@ -89,7 +104,12 @@ near $18). It is a starting number, meant to be changed in the project's variabl
   file for the human.
 - **`PAPERCLIP_LEAD_ACTS` is read by the agent, not enforced.** With acting off, nothing
   but its instructions keeps the Lead from blocking a ticket.
+- **The post review is unexercised,** and the Lead cannot yet take a screenshot from
+  where it runs; until it can, the report uses the builder's.
 - **The thresholds are guesses** from two weeks of one board.
+- **Housekeeping is unexercised as a script.** The cancel and the wake were done once by
+  hand; the wake request's shape was read from Paperclip's source. Nothing checks that a
+  project scheduled it, beyond the Lead seeing a stale queued run four hours later.
 - **The meter does not see the git host** (a mergeable MR on a waiting ticket, a cancelled
   pipeline a run is polling), and Paperclip records no cost on some runs, so `over-budget`
   under-counts.

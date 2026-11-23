@@ -86,7 +86,7 @@ production-only secret reaches Paperclip is decided entry by entry.
     settings, and fails on a missing name. So a production value takes effect at the next
     release deploy, and delivery never redeploys anything.
 
-11. **Agents do not edit the file.** A value an agent needs added or changed is a card
+11. **Agents do not edit the file.** A value an agent needs added or changed is an `fdr_blocked`
     ([`paperclip-mode.md`](../paperclip-mode.md) §"Who merges").
 
 The scope rule of FWADR-033 still decides *where a value goes*: a key the deployed

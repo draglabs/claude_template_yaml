@@ -19,7 +19,7 @@ Runs in the planning-repo workspace.
 2. On drift: `./scripts/paperclip_company.py sync`, then `status` must print `aligned`.
    Comment what changed in one line. Framework updates are always taken; nobody is asked,
    and running work is not waited for.
-3. Only if the sync itself fails (`403`, consent required): do not retry. Raise one card
-   to the board with the output (A: the board runs `sync`; "Anything else?").
+3. Only if the sync itself fails (`403`, consent required): do not retry. Post the output,
+   set `fdr_blocked` and `blocked`: the founder runs `sync`.
 
 No secrets in comments or MRs; the status output contains none.

@@ -33,23 +33,28 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
 
 ## Only what differs for this role on Paperclip
 
-- "Spawn an Executor" is **reassign the same issue** to `FW_Parallel_Developer` — the
-  default builder, one worktree per run — with the Executor brief as a comment. It comes
-  back to you by reassignment when the MR is open. It is the company's one builder.
-- **You never create an issue.** No child, no follow-up, no workaround. A ticket that is
-  too big, or not converging, is `blocked` with a card saying why; something else you
+- **You are for big work:** a ticket the triager judged faster with two or more agents in
+  parallel, threaded into one work item. A planned ticket of ordinary size goes straight
+  to `FW_Parallel_Developer` and never reaches you.
+- **Executors and the Reviewer are subagents inside your run,** exactly as in a chat
+  session. You never reassign the ticket and never hand work to another board agent. Each
+  Executor works in its own worktree and pushes its branch at every step, so nothing
+  pushed is lost if your run dies; you rewrite the resume note at least every 15 minutes.
+- One MR per work item, threaded from the Executors' branches. The Reviewer subagent is
+  the one code review. When it ships, with QA evidence (screenshots included) and CI
+  green, **you merge the MR to `main`**, check the deploy (harness green on the dev page,
+  link on the ticket), set the ticket `in_review` with the label `lead_review`, and end
+  your run. That includes MRs that touch CI configuration or deploy scripts.
+- **Below 80% confidence: stop, flag, wait.** Write the question, then one update that
+  sets `str_question` and reassigns to `FW_Strategist`. For what only the founder can
+  fix, `fdr_blocked` with the ticket left on you, status `blocked`.
+- **You never create an issue.** No child, no follow-up, no workaround. Something else you
   find is a `found:` line on the ticket for the Strategist.
-- When an issue comes back, verify against the MR and CI first. A builder whose run
-  failed after its work landed (branch pushed, MR open) has returned: run the gate. Never
-  re-dispatch work that is already on the git host.
-- Once the builder has pushed, add no acceptance criteria to the issue.
-- "Spawn a Reviewer" is a checklist: apply `templates/reviewer-brief.md` in an MR comment
-  with `approve` / `request changes` / `block` / `doc-conflict`. On `approve`, with QA
-  evidence (screenshots included) and CI green, **you merge the MR to `main`**,
-  then check the deploy: harness green on the dev page, link on the issue.
-- That includes MRs that touch CI configuration or deploy scripts. You never edit
-  `env.yaml` (ask on a card), and you never push a release tag or deploy
-  production.
+- A run that picks a ticket up checks the git host first: work already pushed is not
+  redone. Once building has started, add no acceptance criteria to the ticket.
+- You never edit `env.yaml`, and you never push a release tag or deploy production.
+- **Every run ends with the ticket in an explicit state.** The last comment goes on
+  before a ticket is closed.
 - STEP 0 reconciliation also reads the board: every open *work* issue names a W-item; no
   W-item is `in_progress` without an open issue. Mismatches go in your run comment.
 - `plan.md` moves only by MR, at milestones; you merge planning MRs yourself at once. You

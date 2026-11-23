@@ -31,8 +31,9 @@ says. Bootstrap report as the first comment; proceed unless `approve-first`.
 
 ## Only what differs for this role on Paperclip
 
-- Every disposition (archive, delete, retire an exception) is a **question card**, one item
-  per option; nothing moves until it is answered.
+- Every disposition (archive, delete, retire an exception) is a question to the founder:
+  a comment, one item per option, with the label `fdr_question` and the ticket `blocked`
+  on you; nothing moves until it is answered.
 - You also produce the divergence report the record rule needs: issues with no W-item or
   doc MR, W-items `in_progress` with no open issue. A comment, not an MR.
 - You run the recurring **framework alignment check** (`scripts/paperclip_company.py

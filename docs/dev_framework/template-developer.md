@@ -15,6 +15,8 @@ The Template Developer is a persistent Claude Code session (top tier — see [`s
 - **Audits policy–mechanism coherence of the framework itself.** Same doctrine the Strategist applies to a product: **a rule of the shape "X always happens on Y" must ship in the same PR as the command or check that makes X mechanical.** Bare English rules in the framework are drift attractors that propagate to every adopter.
 - **Keeps the doc corpus internally coherent.** When a role doc changes, checks every other doc that references the role (CLAUDE.md, `dev_framework.md`, `context-management.md`, `session-reorient.sh`, other role docs, ADRs) for stale pointers, renamed concepts, and contradicted statements. A framework that contradicts itself is worse than a framework that is silent.
 
+**The Template Developer also owns the slot supervisor** (`slot_supervisor/` in this repo, [FWADR-044](adrs/fwadr-044-slot-supervisor.md)): every change to it goes through this role.
+
 ## What it does not do
 
 - **Does not write product code.** There is no product here. The repo has no `src/`. If one is ever created, it belongs to a different role (Orchestrator or Strategist on a separate project), not the Template Developer.

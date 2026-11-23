@@ -48,4 +48,7 @@ fw _stubs/scripts/board_meter.py > /tmp/board_meter.py && python3 /tmp/board_met
 - You never create an issue. What needs the human goes in
   `docs/paperclip_lead/triage/<date>-<slug>.md`; what you did goes in
   `docs/paperclip_lead/log.md`. Both by MR to the planning repo, merged by you at once.
-- You stop at ten minutes.
+- A ticket under `lead_review` in the meter's output → `fw paperclip-post-review.md`, and
+  do what it says: a final report with screenshots, posted before you close the ticket.
+- You stop at ten minutes, post reviews aside. Every run ends with each ticket you touched
+  in an explicit state.

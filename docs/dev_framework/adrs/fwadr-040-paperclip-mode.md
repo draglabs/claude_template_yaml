@@ -26,6 +26,13 @@ configuration and deploy scripts for the human stalled ThankMu the same way: one
 MR waited eleven days, and by 2026-11-19 ten issues were in review and five blocked
 behind two MRs that touched a pipeline file.
 
+On 2026-11-20 a ticket to add one bubble to the dev page took 4 h 52 min: the
+Orchestrator cold-started to write a brief and reassign, the builder cold-started to
+build, and a third cold start waited to review the same diff again. The user: "we are
+spinning up an orchestrator to run a single defined task, that is getting assigned to a
+parallel dev, who kicks it back to the orchestrator when done… round and round just to
+add a bubble to the dev page."
+
 ## Decision
 
 1. **Paperclip is an execution layer, not a second framework.** The role docs are the
@@ -33,14 +40,14 @@ behind two MRs that touched a pipeline file.
    **reading list** (the project's `CLAUDE.md`, its exceptions file, the role's Layer-1
    docs at the template's `main`) plus one mode document.
 2. **One mode document, [`paperclip-mode.md`](../paperclip-mode.md),** holds every
-   substitution: ask-the-user → question card; approval → first comment, then proceed;
-   spawn → the same issue, reassigned; Reviewer → a checklist the Orchestrator applies before it merges;
-   PR handoff → comment with the deep link;
+   substitution: ask-the-user → a question comment and a label naming who must answer;
+   approval → first comment, then proceed; Executors and the Reviewer stay subagents;
+   PR handoff → the holder merges;
    plus the record rule (git is the record, Paperclip is the queue; two issue classes),
    the carve-outs (working notes live on the issue between milestones and reach the W-item
-   log at every milestone, not only at close), the delegation policy for cards, session
+   log at every milestone, not only at close), who may answer for the founder, session
    hygiene, and the rules against waiting and pondering: act at 80% confidence, verify a
-   claim once, close the issue before any optional waiting, never end a run with a
+   claim once, end every run with the ticket in an explicit state, never end a run with a
    background process alive, screenshots as part of done for anything visible. Each role
    doc carries a four-line "Under Paperclip mode" pointer, nothing more.
 3. **The framework publishes itself as a company package** at [`paperclip/`](../../../paperclip/)
@@ -63,23 +70,43 @@ behind two MRs that touched a pipeline file.
 5. **Agents merge; the release is the human's.** The planning repo's `main` is everyone's
    shared page: any agent writing to it opens an MR and merges it itself at once, the MR
    staying as the record — no stacked or long-lived planning branches. In a code repo the
-   Orchestrator merges to `main` once its gates pass (reviewer checklist,
-   QA evidence including screenshots, CI green); the human works the checklist in the QA view on dev at the end of
+   agent that holds the ticket merges to `main` once its gates pass (its Reviewer
+   subagent ships, QA evidence including screenshots, CI green); the human works the checklist in the QA view on dev at the end of
    an epic or phase and approves the release there. **The release tag is never an agent's.** That covers every MR, CI configuration and deploy and
    release scripts included: a merged pipeline change reaches dev at once, which is
    accepted, and production is protected because only the release tag deploys it. One
    thing stays with the human short of the release: an ADR is `proposed` until the human
    accepts it. `env.yaml` is not a merge rule at all — only the operator's machine holds
    its key ([FWADR-041](fwadr-041-env-yaml.md)).
-6. **The Parallel Developer is the one builder; there is no `FW_Developer`.** Every run
-   on a board gets its own worktree, which suits the Parallel Developer and removes what
-   sets the Default Developer apart: working in the main checkout, with no worktree, fast,
-   on urgent, precise or admin work. That stays a chat session. On 2026-11-08, when every
-   item went to an `FW_Developer` in a shared checkout, the runs collided.
+6. **One agent holds a ticket from start to merge.** A planned ticket is assigned
+   straight to `FW_Parallel_Developer`, by whoever triaged it: it builds, runs its own
+   Reviewer subagent, merges, and checks the deploy. The Orchestrator is for big work —
+   about 5 points and up, and a judgement that two or more agents in parallel, threaded
+   into one work item, would finish faster — and on a board it runs Executors and the
+   Reviewer as subagents inside its run, as in a chat session. The user: "it should not
+   be reassigning, it should be running subagents." There is no `FW_Developer`: every run
+   on a board gets a worktree, which removes what sets the Default Developer apart; on
+   2026-11-08, when every item went to one in a shared checkout, the runs collided.
+6a. **One code review, then a post review.** The builder's own Reviewer subagent is the
+   code review; nothing reads the diff twice. After merging, the builder sets
+   `lead_review`, and the Paperclip Lead reviews what happened — did the ticket run
+   smoothly, did the work land on dev, is each acceptance criterion met — and posts a
+   final report with screenshots ([FWADR-043](fwadr-043-paperclip-lead.md)).
+6b. **Four labels, each naming who must act:** `str_question`, `fdr_question`,
+   `fdr_blocked`, `lead_review`. The user: "'str_question', 'fdr_question' is better
+   because it informs me and the framework about who needs to act on it." Labels replace
+   question cards; the question is a comment in the card's shape. Paperclip wakes on
+   assignment and comment, never on a label, so a label always travels with one: a
+   `str_question` is set in the same update that reassigns to the Strategist; the founder
+   labels leave the ticket on the agent that will act, and the founder's comment wakes
+   it. Both were confirmed on a live board (2026-11-23).
+6c. **Below 80% confidence an agent stops, flags and waits.** It does not guess and does
+   not take the recommended option. The Strategist that answers is held to the same rule
+   and passes the question to the founder.
 7. **One ticket stays one ticket.** Only the Strategist creates tickets, and only while
    triaging a ticket the human created; that is where work is split. No other agent
-   creates a ticket: an issue changes hands by reassignment, a stuck issue is `blocked`
-   with a card, and anything else an agent finds is a `found:` line for the Strategist.
+   creates a ticket: a stuck issue gets the label that names who can move it, and
+   anything else an agent finds is a `found:` line for the Strategist.
    Triage is a back-and-forth with the human, and nothing is created until they agree the
    breakdown. A ticket is a concrete programming objective that is planned and thought
    out — one repo, one checkable outcome, acceptance needing no further questions,
@@ -117,11 +144,19 @@ behind two MRs that touched a pipeline file.
   yet resumed from a note.
 - **Named gap:** "only the Strategist creates a ticket" is English-only unless the board
   can deny issue creation per agent; where it can, deny it to every `FW_*` agent but
-  `FW_Strategist`. Reassignment by an agent is assumed to wake the assignee; not yet
-  exercised.
-- What waits on the human — a release, and the feedback that precedes it — is in one
-  place: the QA view on dev ([FWADR-042](fwadr-042-qa-view-release.md)). Cards stay on
-  the board.
+  `FW_Strategist`.
+- **Mechanism for the labels:** `paperclip_company.py sync` creates the four; the board
+  meter flags a `str_question` that is not on the Strategist and a `blocked` ticket with
+  no label, and its hourly housekeeping moves the first. That an agent sets a label at
+  all, and stops below 80%, is English-only.
+- **Named gap:** an Orchestrator's Executors die with its run. What they pushed survives;
+  what they had not pushed does not. Unproven: no Orchestrator has yet run subagents on a
+  board, and subagents multiply processes on an agent host that once hit its task limit.
+- **Unproven:** the whole flow of decision 6 to 6c. Its first measured run is the
+  experiment of 2026-11-23, against the 4 h 52 min above.
+- What waits on the human is in two places: a release, and the feedback that precedes
+  it, in the QA view on dev ([FWADR-042](fwadr-042-qa-view-release.md)); questions and
+  obstacles, on the board under the two `fdr_` labels.
 - **Named gap:** the act-at-80% rules and the end-of-run order are English-only; the
   evidence is the issue itself (first comment early, final comment before the exit).
 - **Named gap:** "a work issue names a W-item and ends with an MR that moves it" is

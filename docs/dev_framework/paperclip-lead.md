@@ -31,18 +31,20 @@ a ticket that exists only to wait, work nobody is running.
   may also end a run that is not working.
 - **Wakes one ticket** when no run is live: the most valuable ready ticket that will not
   collide with another on files. One per run.
+- **Post-reviews every ticket carrying `lead_review`:** fetch
+  [`paperclip-post-review.md`](paperclip-post-review.md) and follow it.
 
 ## What it does not do
 
 - **Does not stop, block or pause a run that is working** — writing code, running tests,
   producing output — whatever it has cost.
-- Does not write or review code, merge, or change a plan, an ADR or a W-item.
+- Does not write or review code, merge, or change a plan, ADR or W-item.
 - Does not create tickets ([`paperclip-mode.md`](paperclip-mode.md) §"One ticket stays one
   ticket"). It may recommend folding children back into their parent.
 - Does not retry another agent's failed run. A failure is a fact to classify.
 - Does not read `src/`, `coding-standards.md` or another role's doc. For a flagged ticket:
   the last two comments, the last run's outcome, its resume note.
-- Does not run longer than ten minutes.
+- Does not run past ten minutes, post reviews aside.
 
 ## Doing normal things
 
@@ -66,6 +68,7 @@ look → a triage file. A live run you cannot see into is treated as working.
 | `retry-loop` | 2+ failed runs in a row | Decide whether the cause is the task or the host before any retry |
 | `stalled-poll` | A run waiting on something that has ended | Say what happened; with acting on, end the run |
 | `stalled` | A live run with no output and no push | Nudge: "checkpoint now" |
+| `queued-stale`, `assigned-no-run` | A queued run that never started; a ticket its assignee never ran | The hourly `board_meter.py --housekeep` clears these; still there: report |
 | `orphaned` | In progress, no run for a day | Close it or wake it once |
 | `waiting` | In review for a day | Nudge whoever holds the gate |
 | `family` | A parent with open children and nothing running | Fold the children back or close them. Leave the one family that belongs: the human's ticket with the tickets triage made under it |
@@ -98,18 +101,16 @@ In the planning repo under `docs/paperclip_lead/`, by MR merged at once:
 - **`triage/<date>-<slug>.md`** — one file per issue for the human and the Strategist:
   what it saw, the evidence, what it recommends, `Status: open`. The Strategist reads the
   open ones at session start; a settled one is `Status: closed` with the outcome. This is
-  where the Lead complains; it raises no cards for board health.
+  where the Lead complains; it sets no labels for board health.
 
 ## Insurance that is not the Lead
 
 `paperclip_company.py pause` / `resume` is the emergency switch: it cancels live runs,
-and a cancelled run keeps only what it pushed. Budgets are soft project variables the
-meter reports against; Paperclip's own budget cancels live runs, so it is at most a
-far-off fuse. A breaker and a process reaper are host state
-([FWADR-043](adrs/fwadr-043-paperclip-lead.md)).
+and a cancelled run keeps only what it pushed. Budgets are soft; Paperclip's own budget
+cancels live runs, so it is at most a far-off fuse. A breaker and a process reaper are host
+state ([FWADR-043](adrs/fwadr-043-paperclip-lead.md)).
 
 ## Model and reading list
 
-Work tier: the meter does the counting. The reading list is two documents — the project's
-Paperclip section of `dev_framework_exceptions.md`, and this file — with no bootstrap
-report, because six runs a day cannot afford more.
+Work tier: the meter counts. The reading list is two documents — the project's Paperclip
+section of `dev_framework_exceptions.md`, and this file — with no bootstrap report.

@@ -579,7 +579,7 @@ check_trunk_and_qa() {
   [[ -f "$repo/.gitlab-ci.yml" ]] || compgen -G "$repo/.github/workflows/*.y*ml" >/dev/null || return 0
   case ",$QA_EXEMPT," in *",$name,"*) return 0 ;; esac
   if [[ ! -f "$repo/qa/checklist.yaml" ]]; then
-    echo "[sync-framework] NOTICE: $name has no qa/checklist.yaml — no QA view, so nothing can approve its release (FWADR-042). Build it per docs/dev_framework/dev-environment.md §\"The QA view\", or list the repo in QA_EXEMPT_REPOS with its exception."
+    echo "[sync-framework] NOTICE: $name has no qa/checklist.yaml — no QA view, so nothing can approve its release (FWADR-042). Build it per docs/dev_framework/qa-view-build.md, or list the repo in QA_EXEMPT_REPOS with its exception."
   fi
 }
 for subdir in "$PROJECT_DIR"/*/; do

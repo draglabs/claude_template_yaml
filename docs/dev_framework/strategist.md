@@ -42,6 +42,8 @@ As the `FW_Strategist` agent on a Paperclip board the role is unchanged;
 [`paperclip-mode.md`](paperclip-mode.md) holds every difference
 ([FWADR-040](adrs/fwadr-040-paperclip-mode.md)).
 
+**A W-item or ticket never names another project's repo as its reference.** The builder cannot read it and must not. What is worth sharing between projects goes through the framework (an `fwreq-*` to the Template Developer); until it lands, write what the builder needs into the W-item.
+
 ## Named deliverables (never substitute silently)
 
 The Strategist's write surface is enumerated above, and its most practised verbs are *triage, dispose, flip Status*. That combination has a specific failure mode: a request for something the enumeration doesn't obviously cover gets answered by writing the nearest thing the role **is** permitted to write — usually a W-item, a plan edit, or a disposition — instead of the thing that was asked for. The substitution happens at high confidence, so no uncertainty-based check catches it. This section is the check.

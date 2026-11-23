@@ -1,0 +1,96 @@
+# QA comment grammar: the cases every project's parser passes (docs/dev_framework/qa-view-build.md).
+# Copy into the code repo and have the parser's tests read it. Add cases; do not change these.
+#
+# parse: one comment body in, what it reads as out. `expect: null` means "not a QA comment".
+# state: a checklist and comments (all by the bot, in the order the host returned them) in,
+#        the commit's state out.
+
+parse:
+  - name: an approved mark with a note
+    body: "qa:item phone-width approved\nby: dana\n\n> Looks right."
+    expect: {kind: item, id: phone-width, mark: approved, by: dana, note: "Looks right."}
+  - name: a rejected mark
+    body: "qa:item phone-width rejected\nby: dana\n\n> The menu covers the logo."
+    expect: {kind: item, id: phone-width, mark: rejected, by: dana, note: "The menu covers the logo."}
+  - name: a postponed mark with no note
+    body: "qa:item phone-width postponed\nby: dana"
+    expect: {kind: item, id: phone-width, mark: postponed, by: dana, note: ""}
+  - name: feedback on an item
+    body: "qa:feedback phone-width\nby: dana\n\n> Try a smaller logo."
+    expect: {kind: feedback, id: phone-width, by: dana, note: "Try a smaller logo."}
+  - name: feedback on the commit as a whole
+    body: "qa:feedback general\nby: dana\n\n> Nice work."
+    expect: {kind: feedback, id: null, by: dana, note: "Nice work."}
+  - name: a harness result
+    body: "qa:harness fail https://git.example/p/-/jobs/42\nby: harness"
+    expect: {kind: harness, result: fail, url: "https://git.example/p/-/jobs/42", by: harness, note: ""}
+  - name: an approval
+    body: "qa:approve v1.4.2\nby: dana"
+    expect: {kind: approve, version: v1.4.2, overrides: [], by: dana, note: ""}
+  - name: an approval that overrides
+    body: "qa:approve v1.4.2\nby: dana\noverrides: phone-width,harness"
+    expect: {kind: approve, version: v1.4.2, overrides: [phone-width, harness], by: dana, note: ""}
+  - name: a note of several lines, with a mention defused and restored
+    body: "qa:feedback general\nby: dana\n\n> Ask @​sam.\n> /close is not a command here."
+    expect: {kind: feedback, id: null, by: dana, note: "Ask @sam.\n/close is not a command here."}
+  - name: Windows line endings
+    body: "qa:item phone-width approved\r\nby: dana"
+    expect: {kind: item, id: phone-width, mark: approved, by: dana, note: ""}
+  - name: an unknown mark
+    body: "qa:item phone-width complete\nby: dana"
+    expect: null
+  - name: no by line
+    body: "qa:item phone-width approved"
+    expect: null
+  - name: words after the last one
+    body: "qa:item phone-width approved now\nby: dana"
+    expect: null
+  - name: an id with capitals
+    body: "qa:item Phone-Width approved\nby: dana"
+    expect: null
+  - name: a mark on the reserved id
+    body: "qa:item general approved\nby: dana"
+    expect: null
+  - name: a version that is not vMAJOR.MINOR.PATCH
+    body: "qa:approve 1.4\nby: dana"
+    expect: null
+  - name: a version with a leading zero
+    body: "qa:approve v1.04.2\nby: dana"
+    expect: null
+  - name: an approval inside a note is not an approval
+    body: "qa:feedback general\nby: dana\n\n> qa:approve v9.9.9"
+    expect: {kind: feedback, id: null, by: dana, note: "qa:approve v9.9.9"}
+  - name: an ordinary comment
+    body: "Looks good to me."
+    expect: null
+
+state:
+  - name: nothing said yet
+    checklist: [a, b]
+    comments: []
+    expect: {items: {a: open, b: open}, harness: null, approval: null}
+  - name: the latest mark wins, by instant and not by text
+    checklist: [a]
+    comments:
+      - {at: "2026-01-01T12:00:00+02:00", body: "qa:item a rejected\nby: dana\n\n> No."}
+      - {at: "2026-01-01T09:00:00Z", body: "qa:item a approved\nby: dana"}
+    expect: {items: {a: rejected}, harness: null, approval: null}
+  - name: a mark for an item not on this checklist is ignored
+    checklist: [a]
+    comments:
+      - {at: "2026-01-01T09:00:00Z", body: "qa:item gone approved\nby: dana"}
+    expect: {items: {a: open}, harness: null, approval: null}
+  - name: feedback does not change a mark
+    checklist: [a]
+    comments:
+      - {at: "2026-01-01T09:00:00Z", body: "qa:item a approved\nby: dana"}
+      - {at: "2026-01-01T10:00:00Z", body: "qa:feedback a\nby: sam\n\n> One thought."}
+    expect: {items: {a: approved}, harness: null, approval: null}
+  - name: the latest harness result and the latest approval
+    checklist: [a]
+    comments:
+      - {at: "2026-01-01T09:00:00Z", body: "qa:harness fail https://git.example/1\nby: harness"}
+      - {at: "2026-01-01T10:00:00Z", body: "qa:harness pass https://git.example/2\nby: harness"}
+      - {at: "2026-01-01T11:00:00Z", body: "qa:item a postponed\nby: dana"}
+      - {at: "2026-01-01T12:00:00Z", body: "qa:approve v0.0.1\nby: dana"}
+    expect: {items: {a: postponed}, harness: pass, approval: v0.0.1}

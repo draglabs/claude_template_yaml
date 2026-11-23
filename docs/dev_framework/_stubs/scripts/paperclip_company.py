@@ -53,6 +53,7 @@ PAPERCLIP_ROLE = {"fw-paperclip-lead": "general", "fw-strategist": "cto", "fw-or
 RETIRED = ["FW_Developer"]  # no longer in the package; never paused or removed from here (a pause cancels live runs)
 HIRES = {"fw-paperclip-lead"}  # in Paperclip a lead hires: it may propose agents for the board to approve
 TASKS = ["framework-alignment", "board-review"]
+LABELS = {"str_question": "#7c3aed", "fdr_question": "#d97706", "fdr_blocked": "#dc2626", "lead_review": "#2563eb"}  # who must act
 MANAGED_BY = "scripts/paperclip_company.py"
 
 E = os.environ.get
@@ -213,6 +214,15 @@ def cmd_lifecycle(verb: str) -> int:
     return 0
 
 
+def ensure_labels(co: dict, dry: bool) -> None:
+    have = {l["name"] for l in api("GET", f"/companies/{co['id']}/labels")}
+    for name, color in LABELS.items():
+        if name not in have:
+            print(f"label {name}: creating")
+            if not dry:
+                api("POST", f"/companies/{co['id']}/labels", {"name": name, "color": color})
+
+
 def ensure_routine(co: dict, by_name: dict, slug_to_name: dict, commit: str, dry: bool) -> None:
     for slug in TASKS:
         fm, body = split_frontmatter(fetch_package_file(commit, f"tasks/{slug}/TASK.md"))
@@ -303,6 +313,7 @@ def cmd_sync(dry: bool) -> int:
         if (by_name.get(name, {}).get("metadata") or {}).get("managed_by") == MANAGED_BY:
             print(f"NOTE {name} is no longer part of the framework package: reassign its open issues to "
                   "FW_Parallel_Developer, then terminate it on the board when it is idle")
+    ensure_labels(co, dry)
     ensure_routine(co, by_name, slug_to_name, commit, dry)
     print(f"pinned {FW_REPO}@{commit[:12]}")
     return 0

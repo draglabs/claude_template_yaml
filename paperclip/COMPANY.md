@@ -36,4 +36,4 @@ operator `.env` and stamps the framework commit. `status` reports when the templ
 moved past that commit.
 
 Org chart: `FW_Paperclip_Lead` and `FW_Strategist` report to the board; `FW_Orchestrator`, `FW_Designer` and
-`FW_Curator` report to the Strategist; the Parallel Developer reports to the Orchestrator.
+`FW_Curator` report to the Strategist; the Parallel Developer reports to the Orchestrator on the org chart and takes planned tickets directly.

@@ -101,6 +101,7 @@ Subagent briefs (load on spawn, not at session start):
 | Context budget (what each role loads) | [`context-management.md`](context-management.md) | Reference — loaded on demand |
 | Approved MCPs (tools each role uses; config + health owned by Strategist) | [`approved-mcps.md`](approved-mcps.md) | Reference — loaded when adding or evaluating an MCP; Strategist runs the session-start health check per [`strategist.md`](strategist.md) §"MCP health check" |
 | Dev environment (local vs remote `{{sub}}.dev.{{website}}.com`) | [`dev-environment.md`](dev-environment.md) | Orchestrator on first-time setup; loaded on demand otherwise |
+| Building the QA bubble and view | [`qa-view-build.md`](qa-view-build.md) | Whoever builds or reviews the view; on demand |
 | Env values (one encrypted `env.yaml`; places; delivery by hand; key backup) | [FWADR-041](adrs/fwadr-041-env-yaml.md) | Strategist, when a value or place changes; the push guard and sync hook enforce it for everyone |
 | Paperclip mode (how a role is played from an issue; record rule; carve-outs) | [`paperclip-mode.md`](paperclip-mode.md) | Every `FW_*` agent, every run; a human only when setting a company up ([FWADR-040](adrs/fwadr-040-paperclip-mode.md)) |
 | Process exceptions (raw field reports from agents) | [`process-exceptions.md`](../framework_exceptions/process-exceptions.md) | Appended to by any agent that hits process friction; read by Strategist at phase boundaries |
@@ -156,7 +157,7 @@ rewritten for it: one framework project is one Paperclip company; each role is a
 agent whose instructions are a **reading list** (the project's `CLAUDE.md` and exceptions
 file from its planning repo, the role's Layer-1 docs at a pinned framework commit) plus
 [`paperclip-mode.md`](paperclip-mode.md), the one document that says what differs when the
-user is a board rather than a chat: questions become cards, approval becomes a first
+user is a board rather than a chat: questions become a comment and a label naming who must answer, approval becomes a first
 comment, subagent dispatch becomes child issues, the Reviewer becomes a checklist the Orchestrator
 applies before it merges to `main` (the release tag stays the human's), and
 working notes live on the issue between milestones and reach the W-item log by MR at each

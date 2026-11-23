@@ -50,10 +50,16 @@ and how dev takes feedback.
    user creates the tag in the git host's interface.
 7. **No dev mode, no QA.** A repo that truly has no dev mode does not use this; the
    project records that, and how the repo releases, as a framework exception.
-8. **The framework ships the contract, not the code.** The view is a module in each
-   project's own stack. What is fixed is what makes views interchangeable to agents and
-   to the release job: the checklist file, the comment grammar, the comment-only key, the
-   release job's checks, the dev login with its exempt-path list.
+8. **The framework ships the description and the contract, not the code.** The user: "I
+   meant for the framework to carry instructions on how to create that QA bubble, this
+   way it would be 2nd nature for another project to adopt it." The view is a module in
+   each project's own stack, built from [`qa-view-build.md`](../qa-view-build.md): the
+   bubble (upper left corner of every dev page), the page top to bottom, three build
+   steps, and what is fixed so views are interchangeable to agents and to the release
+   job — the checklist file, the comment grammar, the comment-only key, the release
+   job's checks, the dev login with its exempt-path list. The grammar ships as test
+   cases in any language's reach (`_stubs/qa/grammar-cases.yaml`). A project's agents
+   never read another project's repo for it.
 
 ## Mechanisms
 
@@ -67,9 +73,13 @@ and how dev takes feedback.
 
 ## Honest ceiling
 
-- **The contract is English.** No framework check reads a project's release job or its
-  view; a project that implements the checks loosely releases loosely. The pilot's
-  `release` job and its tests are the model.
+- **The contract is English, except the grammar.** The comment grammar has shared test
+  cases a project copies; nothing makes a project run them, and no framework check reads
+  a project's release job or its view. A project that implements the checks loosely
+  releases loosely.
+- **The guide is ahead of the pilots in three places:** the `rejected` mark, the
+  `qa:harness` comment and the `overrides:` line are specified and not yet built
+  anywhere.
 - **A stolen dev-server key can post a false approval.** It cannot change code, so the
   worst case is an unwanted release of a commit already on `main`. The dev login and the
   job's checks are the guard.
