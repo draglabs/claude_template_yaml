@@ -24,8 +24,16 @@ and how dev takes feedback.
 1. **Every project has a dev mode, and its dev site carries a QA view.** One view per
    project, hosted by the project's main app on dev, covering every code repo of the
    project. Specified in [`dev-environment.md`](../dev-environment.md) §"The QA view".
+   The bubble opens it as an overlay over the page under review. The user: "one core
+   feature of the bubble is that it is supposed to open an overlay that shows me the
+   commit we are on, the features that need to be reviewed up to today, the options… and
+   finally the option to cut a release and no status ever prevents me from cutting a
+   release."
 2. **The checklist is in the code.** `qa/checklist.yaml` in each code repo, read at the
-   deployed commit. Every change adds the items the stakeholder should check. Beside it
+   deployed commit. Every change adds the items the stakeholder should check. The view
+   shows everything not yet released: an item on the checklist at the last release tag is
+   hidden unless that release's approval carried it (released while open, rejected or
+   postponed). Nobody removes items by hand. Beside it
    the view links the PRs merged since the last release: agents merge on their own gates
    ([FWADR-040](fwadr-040-paperclip-mode.md)), and this is where the human reviews them.
 3. **Three marks:** approved, rejected, postponed (a soft approval). **Nothing blocks
@@ -40,6 +48,10 @@ and how dev takes feedback.
    and Tier 3 cases run inside the app so the page and an agent can start them.
 4. **State is comments on the commit, in the git host,** with a machine-readable first
    line. The app keeps no QA state; agents read the same record the stakeholder wrote.
+   A mark is written on the deployed commit and counts until the next release: the view
+   reads the comments on every commit since the last release tag and the latest mark on
+   an item wins. Dev redeploys on every merge, and with marks read from one commit an
+   approval was lost at the next merge.
 5. **Approving cuts the release tag, on the git host.** The view posts an approval
    comment; a webhook starts the repo's `release` job, which re-checks everything and
    creates the tag with a token only it receives. The dev server holds a key that
@@ -73,6 +85,10 @@ and how dev takes feedback.
 
 ## Honest ceiling
 
+- **The overlay, marks that count across commits and items that leave at release are
+  specified and unbuilt.** The one project with a working view (a three-item checklist,
+  few merges) opens a page, reads marks from the deployed commit only, and never drops
+  an item. The cost of reading every commit since the last release is unmeasured.
 - **The contract is English, except the grammar.** The comment grammar has shared test
   cases a project copies; nothing makes a project run them, and no framework check reads
   a project's release job or its view. A project that implements the checks loosely

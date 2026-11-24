@@ -4,6 +4,9 @@
 # parse: one comment body in, what it reads as out. `expect: null` means "not a QA comment".
 # state: a checklist and comments (all by the bot, in the order the host returned them) in,
 #        the commit's state out.
+# carry: the deployed checklist, the checklist and approval at the last release tag (null when
+#        there is no release yet), and the commits after that tag, oldest first, each with its
+#        comments, in; the items shown out, each with its mark and the commit the mark is on.
 
 parse:
   - name: an approved mark with a note
@@ -26,10 +29,19 @@ parse:
     expect: {kind: harness, result: fail, url: "https://git.example/p/-/jobs/42", by: harness, note: ""}
   - name: an approval
     body: "qa:approve v1.4.2\nby: dana"
-    expect: {kind: approve, version: v1.4.2, overrides: [], by: dana, note: ""}
+    expect: {kind: approve, version: v1.4.2, overrides: [], carried: [], by: dana, note: ""}
   - name: an approval that overrides
     body: "qa:approve v1.4.2\nby: dana\noverrides: phone-width,harness"
-    expect: {kind: approve, version: v1.4.2, overrides: [phone-width, harness], by: dana, note: ""}
+    expect: {kind: approve, version: v1.4.2, overrides: [phone-width, harness], carried: [], by: dana, note: ""}
+  - name: an approval that carries items it did not approve
+    body: "qa:approve v1.4.2\nby: dana\noverrides: phone-width\ncarried: phone-width,dark-mode"
+    expect: {kind: approve, version: v1.4.2, overrides: [phone-width], carried: [phone-width, dark-mode], by: dana, note: ""}
+  - name: an approval that carries a postponed item and overrides nothing
+    body: "qa:approve v1.4.2\nby: dana\ncarried: dark-mode"
+    expect: {kind: approve, version: v1.4.2, overrides: [], carried: [dark-mode], by: dana, note: ""}
+  - name: carried before overrides is not an approval
+    body: "qa:approve v1.4.2\nby: dana\ncarried: dark-mode\noverrides: phone-width"
+    expect: null
   - name: a note of several lines, with a mention defused and restored
     body: "qa:feedback general\nby: dana\n\n> Ask @​sam.\n> /close is not a command here."
     expect: {kind: feedback, id: null, by: dana, note: "Ask @sam.\n/close is not a command here."}
@@ -94,3 +106,43 @@ state:
       - {at: "2026-01-01T11:00:00Z", body: "qa:item a postponed\nby: dana"}
       - {at: "2026-01-01T12:00:00Z", body: "qa:approve v0.0.1\nby: dana"}
     expect: {items: {a: postponed}, harness: pass, approval: v0.0.1}
+
+carry:
+  - name: a mark made on an earlier commit still counts
+    checklist: [a, b]
+    release: null
+    commits:
+      - {id: c1, comments: [{at: "2026-01-01T09:00:00Z", body: "qa:item a approved\nby: dana"}]}
+      - {id: c2, comments: []}
+    expect: {a: {mark: approved, on: c1}, b: {mark: open, on: null}}
+  - name: the latest mark wins across commits
+    checklist: [a]
+    release: null
+    commits:
+      - {id: c1, comments: [{at: "2026-01-01T09:00:00Z", body: "qa:item a approved\nby: dana"}]}
+      - {id: c2, comments: [{at: "2026-01-02T09:00:00Z", body: "qa:item a rejected\nby: dana\n\n> Broke again."}]}
+    expect: {a: {mark: rejected, on: c2}}
+  - name: an item released approved is not shown
+    checklist: [a, b]
+    release: {checklist: [a], approval: "qa:approve v0.0.1\nby: dana"}
+    commits:
+      - {id: c3, comments: []}
+    expect: {b: {mark: open, on: null}}
+  - name: an item carried by the release is shown and starts again
+    checklist: [a, b]
+    release: {checklist: [a, b], approval: "qa:approve v0.0.1\nby: dana\ncarried: b"}
+    commits:
+      - {id: c3, comments: []}
+    expect: {b: {mark: open, on: null}}
+  - name: an older approval carries the items it overrode
+    checklist: [a, b]
+    release: {checklist: [a, b], approval: "qa:approve v0.0.1\nby: dana\noverrides: a,harness"}
+    commits:
+      - {id: c3, comments: [{at: "2026-01-03T09:00:00Z", body: "qa:item a approved\nby: dana"}]}
+    expect: {a: {mark: approved, on: c3}}
+  - name: an item added after the release is shown
+    checklist: [a, new]
+    release: {checklist: [a], approval: "qa:approve v0.0.1\nby: dana"}
+    commits:
+      - {id: c3, comments: [{at: "2026-01-03T09:00:00Z", body: "qa:item a rejected\nby: dana\n\n> Late."}]}
+    expect: {new: {mark: open, on: null}}
