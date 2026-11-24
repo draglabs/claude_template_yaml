@@ -70,16 +70,28 @@ developer needs to be more discerning in what feedback he takes in. and there is
 second review."
 
 - **Always take** a finding that is an ADR violation, a coding-standard mistake, or an
-  acceptance criterion not met. Fix the class, not the one instance shown, and prove the
+  acceptance criterion not met. A criterion is not met only when a test written from the
+  criterion's own words would fail; a finding argued in from what the criterion "really
+  means" is one of the others. Fix the class, not the one instance shown, and prove the
   fix with a test.
-- **Weigh every other finding; nothing is taken or declined automatically.** The weights:
-  the effort to fix it, whether it grows the ticket past what was asked, what goes wrong
-  and how likely if it is left, and whether a later ticket is the better place. A cheap
-  fix inside the ticket's purpose is usually worth taking; a finding that turns the
-  ticket into a different ticket usually is not.
+- **Every other finding is not taken, unless it earns its place.** Err toward less work:
+  the ticket was sized for what it asked. The user: "after the parallel dev's review it
+  should be more cautious about erring toward more work." Take one only when all three
+  hold:
+  1. **A real fault if left:** something a user or the next developer will hit, not a
+     case that needs an unlikely or hostile input.
+  2. **Inside the ticket:** the fix touches only files in the item's `touches:`. A fix
+     outside them is not taken, however small.
+  3. **Small:** the fix adds less than about a quarter of the ticket's own change, and
+     all the optional fixes you take add up to less than a quarter too. Past that, the
+     rest are not taken.
 - **Write the decision down.** Under "Review findings" in the end-of-run comment, one
-  line per finding: taken or not taken, and why. The Strategist decides whether one that
-  was not taken becomes a work item.
+  line per finding: taken, with what breaks if it is left; or not taken, with which test
+  it failed. Then one line of totals: `Review: <taken> of <raised> taken; added <N> lines
+  and <M> minutes to a change of <P> lines.` The Strategist decides whether a finding not
+  taken becomes a work item.
+- **This is the rule on a board.** `developer.md`'s "doesn't second-guess the Reviewer"
+  is for a chat session, where the user chooses the outcome; here you choose.
 - **Then merge.** A fix does not go back to a Reviewer, not even a fix for a missed
   acceptance criterion: the test proves it, the end-of-run comment says so, and the post
   review reads that.

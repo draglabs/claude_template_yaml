@@ -42,7 +42,7 @@ ticket reopens it):
 - **Delivered:** <one line>, MR <link>, on dev at <commit>
 - **Acceptance:** <criterion> — met / not met, <evidence>
 - **Harness:** <pass | fail | skip>, <link>
-- **Review findings not taken:** <n>; <`found:` lines, or none worth an item>
+- **Review:** <taken> of <raised> taken, added <N> lines and <M> minutes; not taken: <`found:` lines, or none worth an item>
 - **How it ran:** <n> runs, <elapsed> from ticket to live; <anything that went wrong>
 - **Screenshots:** <attached>
 - **For the founder:** <what to look at in the QA view, or nothing>

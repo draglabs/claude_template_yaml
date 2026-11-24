@@ -48,10 +48,13 @@ issue, the note, and the branch (`git log main..<branch>` and the diff), comment
   their W-items' `touches:`; refuse an item that overlaps a claimed file, and say so in a
   comment on both issues.
 - **One review, and you judge it.** The local Reviewer subagent runs once. Always take
-  an ADR violation, a coding-standard mistake or a missed acceptance criterion; fix it
-  and prove it with a test. Weigh every other finding (effort, scope creep, the risk if
-  left) and choose; write one line per finding in the end-of-run comment: taken or not,
-  and why. A fix never goes back to a Reviewer (`fw paperclip-mode.md` §"One review").
+  an ADR violation, a coding-standard mistake or an acceptance criterion a test written
+  from its own words would fail; fix it and prove it with a test. **Every other finding
+  is not taken** unless all three hold: a real fault if left, inside the item's
+  `touches:`, and under about a quarter of the ticket's own change, singly and in total.
+  Err toward less work. In the end-of-run comment: one line per finding, taken (what
+  breaks if left) or not (which test it failed), and the totals line. This overrides
+  `developer.md`'s "doesn't second-guess the Reviewer". A fix never goes back to a Reviewer (`fw paperclip-mode.md` §"One review").
 - **You merge your own work.** When the review's accepted findings are fixed, with evidence posted (for anything a human can see, before and after
   screenshots at phone and desktop width) and CI green, merge the MR to `main` yourself,
   whoever assigned the ticket. That includes MRs that touch CI configuration or deploy

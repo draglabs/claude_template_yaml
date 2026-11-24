@@ -90,11 +90,19 @@ add a bubble to the dev page."
 6a. **One code review, then a post review.** The builder's own Reviewer subagent is the
    code review; it runs once, and nothing reads the diff twice. The builder judges the
    findings: it always takes an ADR violation, a coding-standard mistake or a missed
-   acceptance criterion; every other finding it weighs — effort, scope creep, the risk if
-   left — and records, taken or not and why; then it merges without a second pass. The
-   user: "not automatically not picking it up or declining... but making a choice against
-   weights like effort, scope creep, etc. Leaning on a documented decision to or not to
-   do it and why." On
+   acceptance criterion; every other finding is not taken unless it is a real fault if
+   left, inside the item's `touches:`, and under about a quarter of the ticket's own
+   change, singly and in total; each decision is recorded with its reason, and the
+   end-of-run comment gives findings taken against raised and what the review added.
+   Then it merges without a second pass. The measure followed the second ticket (THA-81,
+   1 point): with weights and no scale the builder took 11 of 12 findings, and two of
+   them — a check that added 217 lines to a 248-line change, and a cosmetic move outside
+   the item's files that failed a pipeline — cost 34 minutes. The user: "it should be
+   more cautious about erring toward more work." A criterion counts as not met only when
+   a test written from its own words would fail. The
+   decision stays the builder's and stays documented, as the user first asked: "making a
+   choice against weights like effort, scope creep, etc. Leaning on a documented decision
+   to or not to do it and why." On
    the first ticket of this flow (THA-79, a 1-point item) each fix went to a fresh
    Reviewer, each found a new hostile shape of the project's own env file, and the item
    was unmerged after three passes and 1 h 42 min. The user: "the purpose of the
@@ -168,8 +176,8 @@ add a bubble to the dev page."
 - **Named gap:** an Orchestrator's Executors die with its run. What they pushed survives;
   what they had not pushed does not. Unproven: no Orchestrator has yet run subagents on a
   board, and subagents multiply processes on an agent host that once hit its task limit.
-- **English-only:** that a builder reviews once and weighs a finding instead of taking
-  it as binding. The post review sees the recorded decisions and the number of runs.
+- **English-only:** that a builder reviews once and holds a finding to the measure
+  instead of taking it as binding. The quarter is a guess from two tickets. The post review sees the recorded decisions and the number of runs.
 - **Unproven:** that an agent's ticket update honours `labelIds`; it is read from
   Paperclip's source and was done on a live board only with a board key.
 - **Unproven:** the whole flow of decision 6 to 6c. Its first measured run is the
