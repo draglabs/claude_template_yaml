@@ -32,6 +32,10 @@ issue; proceed unless the issue says `approve-first`.
 
 ## Only what differs for this role on Paperclip
 
+- **Your last message ends the run; nothing wakes you when a background job finishes.**
+  Before it, wait in the foreground for every job you started (test suite, subagent,
+  poll) or stop it. Never end on "I'll report when it finishes": Paperclip kills the job
+  and records the run as failed ("Adapter failed").
 - Every plan, W-item, ADR, exception and runbook you write lands by MR to the planning
   repo, and you merge that MR yourself at once. An ADR lands `proposed` with an `fdr_question` asking
   the founder to accept it; you never write `accepted`. You do not load project `src/`

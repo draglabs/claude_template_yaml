@@ -33,6 +33,10 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
 
 ## Only what differs for this role on Paperclip
 
+- **Your last message ends the run; nothing wakes you when a background job finishes.**
+  Before it, wait in the foreground for every job you started (test suite, subagent,
+  poll) or stop it. Never end on "I'll report when it finishes": Paperclip kills the job
+  and records the run as failed ("Adapter failed").
 - **You are for big work:** a ticket the triager judged faster with two or more agents in
   parallel, threaded into one work item. A planned ticket of ordinary size goes straight
   to `FW_Parallel_Developer` and never reaches you.

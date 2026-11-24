@@ -245,8 +245,14 @@ human — checkpoint both repos and end your own run. Nothing is cancelled from 
 
 ## Ending a run
 
-A run never ends with a background process alive: Paperclip reads that exit as a failed
-run and blocks the issue. Prefer not to wait
+**The end of your turn is the end of the run, and nothing wakes you when a background
+job finishes.** Before your final message, wait in the foreground for every job you
+started (a test suite, a subagent, a poll) or stop it. "I'll report when the suite
+finishes" cannot happen: five seconds after your last message Paperclip kills what is
+still running and records the run as failed, under the name "Adapter failed", and the
+ticket sits `in_progress` with nobody on it. A job too long to wait for: stop it, write
+the resume note, and let the next wake rerun it. All six "Adapter failed" runs on one
+board in a week (2026-11-19 to 11-23) were this. Prefer not to wait
 inside a run at all: post the result so far, close or hand back the issue, and let the
 next wake read the pipeline. If you do wait for CI, wait in the foreground with a bounded
 poll, on the **newest** pipeline — a pipeline on `main` is cancelled when a newer commit

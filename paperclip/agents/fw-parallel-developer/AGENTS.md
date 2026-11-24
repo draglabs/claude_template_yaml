@@ -38,6 +38,10 @@ issue, the note, and the branch (`git log main..<branch>` and the diff), comment
 
 ## Only what differs for this role on Paperclip
 
+- **Your last message ends the run; nothing wakes you when a background job finishes.**
+  Before it, wait in the foreground for every job you started (test suite, subagent,
+  poll) or stop it. Never end on "I'll report when it finishes": Paperclip kills the job
+  and records the run as failed ("Adapter failed").
 - Work in a worktree at `/tmp/worktrees/<project>/w-<id>-<slug>` off the workspace
   checkout, never in the checkout itself, on `w-<id>/<slug>`.
 - The non-competing scan reads the board: list this company's `in_progress` issues and

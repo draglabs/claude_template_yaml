@@ -36,6 +36,10 @@ fw _stubs/scripts/board_meter.py > /tmp/board_meter.py && python3 /tmp/board_met
 
 ## Only what differs for this role
 
+- **Your last message ends the run; nothing wakes you when a background job finishes.**
+  Before it, wait in the foreground for every job you started (test suite, subagent,
+  poll) or stop it. Never end on "I'll report when it finishes": Paperclip kills the job
+  and records the run as failed ("Adapter failed").
 - Nothing flagged, nothing running, nothing ready → end the run. No comment, no log entry.
 - **You never stop, block or pause a run that is working**, whatever it has cost. A live
   run you cannot see into is working.

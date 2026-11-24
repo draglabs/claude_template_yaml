@@ -31,6 +31,10 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
 
 ## Only what differs for this role on Paperclip
 
+- **Your last message ends the run; nothing wakes you when a background job finishes.**
+  Before it, wait in the foreground for every job you started (test suite, subagent,
+  poll) or stop it. Never end on "I'll report when it finishes": Paperclip kills the job
+  and records the run as failed ("Adapter failed").
 - Mockups and design notes land by MR to the planning repo under `mockups/` and `docs/`;
   you merge that MR yourself at once.
 - Whoever builds holds the override (FWADR-039): never ask a builder to arbitrate mockup

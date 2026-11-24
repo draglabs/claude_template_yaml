@@ -243,6 +243,9 @@ def main(argv: list[str]) -> None:
         "at": now.strftime("%Y-%m-%d %H:%M UTC"), "company": co["name"],
         "open": collections.Counter(r["status"] for r in rows if r["open"]),
         "runs_24h": len(day), "failed_24h": sum(1 for r in day if r.get("status") in BAD_RUN),
+        # the agent ended its turn with a job still running; Paperclip calls it "Adapter failed"
+        "left_job_24h": sum(1 for r in day if r.get("status") in BAD_RUN and (
+            (r.get("resultJson") or {}).get("unmanagedBackgroundTask") or r.get("error") == "Adapter failed")),
         "tokens_read_24h_m": round(sum(num(r.get("cachedInputTokens")) for r in day) / 1e6),
         "live_runs": [f"{by[r['issueId']]['identifier']} ({agents.get(r.get('agentId'), '?')})" for r in runs
                       if r.get("status") in ("running", "queued") and r.get("issueId") in by and not is_stale_queued(r)],
@@ -300,7 +303,7 @@ def main(argv: list[str]) -> None:
         return
     print(f"# Board meter — {summary['company']} — {summary['at']}\n")
     print(f"- Open: {dict(summary['open'])}")
-    print(f"- Last 24 h: {summary['runs_24h']} runs, {summary['failed_24h']} failed, {summary['tokens_read_24h_m']}M tokens read")
+    print(f"- Last 24 h: {summary['runs_24h']} runs, {summary['failed_24h']} failed ({summary['left_job_24h']} ended with a background job still running), {summary['tokens_read_24h_m']}M tokens read")
     print(f"- Running now: {', '.join(summary['live_runs']) or 'nothing'}")
     print(f"- Waiting for post review (`lead_review`): {', '.join(summary['lead_review']) or 'nothing'}")
     print(f"- Waiting on the founder: {', '.join(summary['waiting_on_founder']) or 'nothing'}")
