@@ -126,17 +126,28 @@ def main(argv: list[str]) -> None:
         req = urllib.request.Request(base + path, headers={"Authorization": "Bearer " + key})
         return json.loads(urllib.request.urlopen(req, timeout=60).read())
 
-    companies = get("/companies")
-    want = (os.environ.get("PAPERCLIP_COMPANY") or os.environ.get("PROJECT_NAME") or "").lower()
-    co = next((c for c in companies if c["name"].lower() == want), None) or (companies[0] if len(companies) == 1 else None)
-    if co is None:
-        sys.exit(f"board_meter: set PAPERCLIP_COMPANY to one of {[c['name'] for c in companies]}")
+    # An agent's key may not list companies or labels (403) but knows its own company id.
+    if os.environ.get("PAPERCLIP_COMPANY_ID"):
+        co = get(f"/companies/{os.environ['PAPERCLIP_COMPANY_ID']}")
+    else:
+        companies = get("/companies")
+        want = (os.environ.get("PAPERCLIP_COMPANY") or os.environ.get("PROJECT_NAME") or "").lower()
+        co = next((c for c in companies if c["name"].lower() == want), None) or (companies[0] if len(companies) == 1 else None)
+        if co is None:
+            sys.exit(f"board_meter: set PAPERCLIP_COMPANY to one of {[c['name'] for c in companies]}")
     cid = co["id"]
     agents = {a["id"]: a["name"] for a in get(f"/companies/{cid}/agents")}
     issues = get(f"/companies/{cid}/issues?limit=500")
     issues = issues if isinstance(issues, list) else issues.get("items", [])
     by = {i["id"]: i for i in issues}
-    label_name = {l["id"]: l["name"] for l in get(f"/companies/{cid}/labels")}
+    try:
+        label_name = {l["id"]: l["name"] for l in get(f"/companies/{cid}/labels")}
+    except urllib.error.HTTPError as e:
+        if e.code != 403:
+            raise
+        # the names the tickets themselves carry; none at all means the label checks cannot run
+        label_name = {l["id"]: l["name"] for i in issues for l in i.get("labels") or [] if isinstance(l, dict) and l.get("name")}
+    labels_readable = bool(label_name)
     strategist = next((a for a, n in agents.items() if n == STRATEGIST), None)
     lead = next((a for a, n in agents.items() if n == LEAD), None)
 
@@ -224,7 +235,7 @@ def main(argv: list[str]) -> None:
         if is_open and "lead_review" in labs and lead and who != lead:
             flags.append(("label-mismatch", f"lead_review, but assigned to {agents.get(who, 'nobody')}"))
             misplaced.append((i, "lead_review", lead, LEAD))
-        if i["status"] == "blocked" and not labs:
+        if i["status"] == "blocked" and not labs and labels_readable:
             flags.append(("blocked-unlabelled", "blocked with no label saying who must act"))
         if i["status"] == "in_review" and "lead_review" not in labs and idle_h > WAIT_HOURS:
             flags.append(("waiting", f"in review for {idle_h / 24:.0f} days"))
@@ -255,7 +266,7 @@ def main(argv: list[str]) -> None:
         "tokens_read_24h_m": round(sum(num(r.get("cachedInputTokens")) for r in day) / 1e6),
         "live_runs": [f"{by[r['issueId']]['identifier']} ({agents.get(r.get('agentId'), '?')})" for r in runs
                       if r.get("status") in ("running", "queued") and r.get("issueId") in by and not is_stale_queued(r)],
-        "host": host,
+        "host": host, "labels_readable": labels_readable,
         "lead_review": [r["id"] for r in rows if r["open"] and "lead_review" in r["labels"]],
         "waiting_on_founder": [r["id"] for r in rows if r["open"] and {"fdr_question", "fdr_blocked"} & set(r["labels"])],
     }
@@ -311,6 +322,8 @@ def main(argv: list[str]) -> None:
     print(f"- Open: {dict(summary['open'])}")
     print(f"- Last 24 h: {summary['runs_24h']} runs, {summary['failed_24h']} failed ({summary['left_job_24h']} ended with a background job still running), {summary['tokens_read_24h_m']}M tokens read")
     print(f"- Running now: {', '.join(summary['live_runs']) or 'nothing'}")
+    if not summary["labels_readable"]:
+        print("- **Labels could not be read with this key:** the label checks did not run")
     print(f"- Waiting for post review (`lead_review`): {', '.join(summary['lead_review']) or 'nothing'}")
     print(f"- Waiting on the founder: {', '.join(summary['waiting_on_founder']) or 'nothing'}")
     for h in host:

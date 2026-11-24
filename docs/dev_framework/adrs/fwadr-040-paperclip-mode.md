@@ -178,8 +178,6 @@ add a bubble to the dev page."
   board, and subagents multiply processes on an agent host that once hit its task limit.
 - **English-only:** that a builder reviews once and holds a finding to the measure
   instead of taking it as binding. The quarter is a guess from two tickets. The post review sees the recorded decisions and the number of runs.
-- **Unproven:** that an agent's ticket update honours `labelIds`; it is read from
-  Paperclip's source and was done on a live board only with a board key.
 - **Unproven:** the whole flow of decision 6 to 6c. Its first measured run is the
   experiment of 2026-11-23, against the 4 h 52 min above.
 - What waits on the human is in two places: a release, and the feedback that precedes
