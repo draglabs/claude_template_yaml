@@ -9,7 +9,9 @@ package itself (an agent file, a routine) changes, and the Paperclip Lead's rout
 from the operator .env, creates or refreshes the FW_* agents and the recurring alignment
 task, stamps the framework commit on each agent, and reports drift.
 
-    scripts/paperclip_company.py status            # pinned commit vs the template's main; exit 1 on drift
+    scripts/paperclip_company.py status            # pinned commit vs the template's main; exit 1 on drift,
+                                                   # 2 when it could not tell. With an agent's key it compares
+                                                   # the package at the agent's own pin with the template's main
     scripts/paperclip_company.py sync [--dry-run]  # create or refresh the agents at the template's main
     scripts/paperclip_company.py pause             # the emergency switch: pause every FW_* agent. CANCELS their live runs;
                                                    # a cancelled run keeps only what it pushed
@@ -42,6 +44,7 @@ import os
 import re
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -73,15 +76,31 @@ def die(msg: str) -> None:
     sys.exit(f"paperclip_company: {msg}")
 
 
-def api(method: str, path: str, body=None):
+TRANSIENT = (409, 502, 503, 504)  # what an agent's bridge answers when a request ran out of time
+
+
+def api(method: str, path: str, body=None, soft: bool = False):
+    """One API call. A read is tried three times on a transient answer; a write never is, because
+    it may have landed. `soft` returns None instead of stopping the script."""
     data = json.dumps(body).encode() if body is not None else None
-    req = urllib.request.Request(API + path, data=data, method=method,
-                                 headers={"Authorization": "Bearer " + KEY, "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req) as r:
-            return json.load(r)
-    except urllib.error.HTTPError as e:
-        die(f"{method} {path} -> {e.code}: {e.read()[:300].decode(errors='replace')}")
+    tries = 3 if method == "GET" and not soft else 1
+    for n in range(tries):
+        req = urllib.request.Request(API + path, data=data, method=method,
+                                     headers={"Authorization": "Bearer " + KEY, "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req, timeout=60) as r:
+                return json.load(r)
+        except urllib.error.HTTPError as e:
+            why = f"{e.code}: {e.read()[:300].decode(errors='replace')}"
+            transient = e.code in TRANSIENT
+        except (urllib.error.URLError, TimeoutError) as e:
+            why, transient = str(e), True
+        if transient and n + 1 < tries:
+            time.sleep(5 * (n + 1))
+            continue
+        if soft:
+            return None
+        die(f"{method} {path} -> {why}" + (f" (after {tries} tries)" if tries > 1 else ""))
 
 
 def framework_commit() -> str:
@@ -92,9 +111,9 @@ def framework_commit() -> str:
     return out.stdout.split()[0]
 
 
-def fetch_package_file(commit: str, rel: str) -> str:
+def fetch_package_file(commit: str, rel: str, at_pin: bool = False) -> str:
     local = E("PAPERCLIP_PACKAGE_DIR")  # template development: render an unpushed package from disk
-    if local:
+    if local and not at_pin:
         p = os.path.join(local, rel)
         if not os.path.exists(p):
             die(f"package file {rel} not found under PAPERCLIP_PACKAGE_DIR={local}")
@@ -182,8 +201,38 @@ def load_agents(commit: str, co: dict) -> list[dict]:
     return out
 
 
+def status_from_an_agent(me: dict, commit: str) -> int:
+    """An agent's key cannot read the agents' files or the labels, and on a slow agent host the
+    agent list does not answer in time. What it can tell: whether the package changed on the
+    template since this agent was last synced. Hand edits on the board are not seen from here."""
+    pinned = (me.get("metadata") or {}).get("framework_commit")
+    if not pinned:
+        print(f"could not tell: {me.get('name', 'this agent')} carries no framework pin — run sync with a board key")
+        return 2
+    def at(c: str, slug: str, at_pin: bool) -> str | None:
+        try:
+            return fetch_package_file(c, f"agents/{slug}/AGENTS.md", at_pin)
+        except SystemExit:
+            return None  # not in the package at that commit
+
+    then = {slug: at(pinned, slug, True) for slug in ROLES}
+    if not any(then.values()):
+        print(f"could not tell: the package could not be read at this agent's pin {pinned[:12]}")
+        return 2
+    changed = [slug for slug in ROLES if then[slug] != at(commit, slug, False)]
+    print(f"template {FW_REPO}@{FW_REF} = {commit[:12]}; {me.get('name', 'this agent')} last synced at {pinned[:12]}")
+    if changed:
+        print(f"DRIFT: the package changed since {pinned[:12]} ({', '.join(changed)}) — sync needs a board key")
+        return 1
+    print("aligned (package unchanged since the last sync; checked with an agent's key, the files on the board were not read)")
+    return 0
+
+
 def cmd_status() -> int:
     commit = framework_commit()
+    me = api("GET", "/agents/me", soft=True)  # answers only for an agent's key
+    if isinstance(me, dict) and me.get("id"):
+        return status_from_an_agent(me, commit)
     co, by_name = load_company()
     drift = 0
     print(f"template {FW_REPO}@{FW_REF} = {commit[:12]}")
