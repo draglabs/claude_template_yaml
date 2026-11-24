@@ -145,9 +145,9 @@ def main(argv: list[str]) -> None:
     except urllib.error.HTTPError as e:
         if e.code != 403:
             raise
-        # the names the tickets themselves carry; none at all means the label checks cannot run
+        # the names the tickets themselves carry; a list with no `labels` field means the checks cannot run
         label_name = {l["id"]: l["name"] for i in issues for l in i.get("labels") or [] if isinstance(l, dict) and l.get("name")}
-    labels_readable = bool(label_name)
+    labels_readable = bool(label_name) or any(isinstance(i.get("labels"), list) for i in issues)
     strategist = next((a for a, n in agents.items() if n == STRATEGIST), None)
     lead = next((a for a, n in agents.items() if n == LEAD), None)
 
