@@ -43,8 +43,12 @@ issue, the note, and the branch (`git log main..<branch>` and the diff), comment
 - The non-competing scan reads the board: list this company's `in_progress` issues and
   their W-items' `touches:`; refuse an item that overlaps a claimed file, and say so in a
   comment on both issues.
-- **You merge your own work.** The local Reviewer subagent is the one code review. When
-  it ships, with evidence posted (for anything a human can see, before and after
+- **One review, and you judge it.** The local Reviewer subagent runs once. Always take
+  an ADR violation, a coding-standard mistake or a missed acceptance criterion; fix it
+  and prove it with a test. Weigh every other finding (effort, scope creep, the risk if
+  left) and choose; write one line per finding in the end-of-run comment: taken or not,
+  and why. A fix never goes back to a Reviewer (`fw paperclip-mode.md` §"One review").
+- **You merge your own work.** When the review's accepted findings are fixed, with evidence posted (for anything a human can see, before and after
   screenshots at phone and desktop width) and CI green, merge the MR to `main` yourself,
   whoever assigned the ticket. That includes MRs that touch CI configuration or deploy
   scripts. You never edit `env.yaml`, and you never push a release tag or deploy

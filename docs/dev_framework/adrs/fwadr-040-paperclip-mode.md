@@ -88,7 +88,19 @@ add a bubble to the dev page."
    on a board gets a worktree, which removes what sets the Default Developer apart; on
    2026-11-08, when every item went to one in a shared checkout, the runs collided.
 6a. **One code review, then a post review.** The builder's own Reviewer subagent is the
-   code review; nothing reads the diff twice. After merging, the builder sets
+   code review; it runs once, and nothing reads the diff twice. The builder judges the
+   findings: it always takes an ADR violation, a coding-standard mistake or a missed
+   acceptance criterion; every other finding it weighs — effort, scope creep, the risk if
+   left — and records, taken or not and why; then it merges without a second pass. The
+   user: "not automatically not picking it up or declining... but making a choice against
+   weights like effort, scope creep, etc. Leaning on a documented decision to or not to
+   do it and why." On
+   the first ticket of this flow (THA-79, a 1-point item) each fix went to a fresh
+   Reviewer, each found a new hostile shape of the project's own env file, and the item
+   was unmerged after three passes and 1 h 42 min. The user: "the purpose of the
+   framework reviewer is to catch ADR violations, and coding style mistakes, not treat
+   everything as hostile… and there is no second review." The Reviewer brief names what
+   a `block` is and that the project's own committed files are trusted. After merging, the builder sets
    `lead_review`, and the Paperclip Lead reviews what happened — did the ticket run
    smoothly, did the work land on dev, is each acceptance criterion met — and posts a
    final report with screenshots ([FWADR-043](fwadr-043-paperclip-lead.md)).
@@ -152,6 +164,8 @@ add a bubble to the dev page."
 - **Named gap:** an Orchestrator's Executors die with its run. What they pushed survives;
   what they had not pushed does not. Unproven: no Orchestrator has yet run subagents on a
   board, and subagents multiply processes on an agent host that once hit its task limit.
+- **English-only:** that a builder reviews once and weighs a finding instead of taking
+  it as binding. The post review sees the recorded decisions and the number of runs.
 - **Unproven:** the whole flow of decision 6 to 6c. Its first measured run is the
   experiment of 2026-11-23, against the 4 h 52 min above.
 - What waits on the human is in two places: a release, and the feedback that precedes

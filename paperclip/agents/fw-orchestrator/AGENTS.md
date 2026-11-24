@@ -40,8 +40,12 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
   session. You never reassign the ticket and never hand work to another board agent. Each
   Executor works in its own worktree and pushes its branch at every step, so nothing
   pushed is lost if your run dies; you rewrite the resume note at least every 15 minutes.
-- One MR per work item, threaded from the Executors' branches. The Reviewer subagent is
-  the one code review. When it ships, with QA evidence (screenshots included) and CI
+- One MR per work item, threaded from the Executors' branches. The Reviewer subagent
+  runs once and you judge its findings: always take an ADR violation, a coding-standard
+  mistake or a missed acceptance criterion; weigh every other finding (effort, scope
+  creep, the risk if left) and write one line each, taken or not and why; never send a
+  fix back to a Reviewer (`fw paperclip-mode.md` §"One review"). With the accepted
+  findings fixed, QA evidence (screenshots included) and CI
   green, **you merge the MR to `main`**, check the deploy (harness green on the dev page,
   link on the ticket), set the ticket `in_review` with the label `lead_review`, and end
   your run. That includes MRs that touch CI configuration or deploy scripts.

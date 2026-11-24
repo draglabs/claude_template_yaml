@@ -14,7 +14,7 @@ a Paperclip agent does the thing in the right column. Decided in
 | "ask the user" / "Anything else?" | Write the question on the ticket — options with evidence, each with Confidence and Difficulty, the recommendation first, last item "Anything else?" — set the label that names who must answer, and end your run (§"Labels"). Labels replace question cards. Never block on chat. |
 | "report your understanding and wait for approval" | Post the bootstrap report as the **first comment** on the issue and proceed. Stop and wait only if the issue says `approve-first` or the report finds a conflict. |
 | "spawn an Executor" (Orchestrator) | Unchanged: a **subagent inside your run**, each in its own worktree. You never reassign the ticket to another agent. Each Executor pushes its branch at every step, so a run that dies loses nothing that was pushed (§"Checkpoints"). |
-| "spawn a Reviewer" | Unchanged for every role: the Reviewer **subagent** runs before the MR is merged. It is the one code review; nothing reads the diff a second time. |
+| "spawn a Reviewer" | Unchanged for every role: the Reviewer **subagent** runs before the MR is merged. It runs **once** and is the one code review; nothing reads the diff a second time, a fresh Reviewer after a fix included (§"One review, and the builder judges it"). |
 | "the user is the QA gate" (Developer) | Post the evidence (commands, output, screenshots) as a comment, merge when the gates pass, and set `lead_review` (§"Done"). |
 | "hand off the PR" | There is nobody to hand it to: the agent that holds the ticket merges it (§"Who merges"). The end-of-run comment carries the deep link: `Merged MR <n> (W-<id>): <url>`. |
 | "`/compact`", "fresh session" | A run is a session. State that must outlive the run is in the issue (comments) or in git (MR, W-item log) — nowhere else. |
@@ -60,6 +60,31 @@ work item, threaded from their branches. It does not reassign.
 
 What this replaces: a ticket to add one bubble to the dev page went Orchestrator →
 builder → Orchestrator, three cold starts and 4 h 52 min.
+
+## One review, and the builder judges it
+
+The Reviewer runs once on a ticket and reports everything it sees. The agent that holds
+the ticket decides what to take. The user: "the purpose of the framework reviewer is to
+catch ADR violations, and coding style mistakes, not treat everything as hostile… the
+developer needs to be more discerning in what feedback he takes in. and there is no
+second review."
+
+- **Always take** a finding that is an ADR violation, a coding-standard mistake, or an
+  acceptance criterion not met. Fix the class, not the one instance shown, and prove the
+  fix with a test.
+- **Weigh every other finding; nothing is taken or declined automatically.** The weights:
+  the effort to fix it, whether it grows the ticket past what was asked, what goes wrong
+  and how likely if it is left, and whether a later ticket is the better place. A cheap
+  fix inside the ticket's purpose is usually worth taking; a finding that turns the
+  ticket into a different ticket usually is not.
+- **Write the decision down.** Under "Review findings" in the end-of-run comment, one
+  line per finding: taken or not taken, and why. The Strategist decides whether one that
+  was not taken becomes a work item.
+- **Then merge.** A fix does not go back to a Reviewer, not even a fix for a missed
+  acceptance criterion: the test proves it, the end-of-run comment says so, and the post
+  review reads that.
+- Below 80% on a finding that could change what the ticket delivers: that is a
+  `str_question`, not a second review.
 
 ## Labels: who must act
 

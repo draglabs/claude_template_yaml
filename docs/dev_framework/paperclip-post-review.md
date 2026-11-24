@@ -12,7 +12,7 @@ own Reviewer subagent, before the merge. Never read the diff for quality.
 
 1. The ticket: what was asked, its acceptance criteria, the agent's end-of-run comment.
 2. The MR: merged, into `main`, by the agent that held the ticket; the Reviewer's verdict
-   is on it.
+   is on it, and the end-of-run comment lists each review finding, taken or not, and why.
 3. The pipeline on the merge commit, and the deploy.
 4. Dev: the deployed commit is the merge commit or a later one; the harness result for it.
 5. The run history: how many runs, any that failed, any question labels along the way.
@@ -25,6 +25,8 @@ own Reviewer subagent, before the merge. Never read the diff for quality.
 - The work is on dev, not only merged.
 - The harness is green for that commit, or the red is explained.
 - The W-item's status row moved and its log has the milestones.
+- The review findings the builder did not take: any that deserves a work item goes in the report as a
+  `found:` line for the Strategist. Do not reopen the review.
 - Nothing went wrong on the way that the next ticket will hit again: a failed run, a
   retry, a question nobody answered. One line each in the report.
 
@@ -39,6 +41,7 @@ ticket reopens it):
 - **Delivered:** <one line>, MR <link>, on dev at <commit>
 - **Acceptance:** <criterion> — met / not met, <evidence>
 - **Harness:** <pass | fail | skip>, <link>
+- **Review findings not taken:** <n>; <`found:` lines, or none worth an item>
 - **How it ran:** <n> runs, <elapsed> from ticket to live; <anything that went wrong>
 - **Screenshots:** <attached>
 - **For the founder:** <what to look at in the QA view, or nothing>

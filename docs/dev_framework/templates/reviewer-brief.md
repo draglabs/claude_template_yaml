@@ -25,6 +25,20 @@ Read in full BEFORE reading the diff:
   deviations from the standard SOP. Some coding-standards rules may be
   suspended for this project; read the exceptions before judging.
 
+## What blocks, and what is trusted
+
+`block` means one of three things: an ADR or a framework check this brief names is
+violated, a coding standard is broken, or an acceptance criterion is not met. Anything
+else you see is a concern under `ship-with-concerns`, never a `block`. Report every
+finding once, as the class of problem and not one instance of it: on a Paperclip board
+you review once, a fix is not sent back to you, and the builder weighs each concern and
+records whether it took it.
+
+The project's own committed files, and the people who can commit to it, are trusted. A
+finding that needs someone to commit a hostile line to the project's own repo is a
+concern at most. Input from outside the repo (requests, uploads, third-party data) is
+not trusted.
+
 ## Where to read from
 
 The Executor worked in an isolated git worktree at:
