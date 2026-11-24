@@ -21,6 +21,10 @@ reviewed once, before the merge.
 2. The MR: merged into `main`; the Reviewer's verdict, and any `doc-conflict` in it.
 3. Dev: the deployed commit is the merge commit or a later one; the harness result for it.
 4. The run history: how many runs, what they cost, any that failed, any question labels.
+   Cost and run count are this ticket's row (`cost_usd`, `runs`) in
+   `python3 /tmp/board_meter.py --json --all`; Paperclip refuses an agent the ticket's own
+   run list. A run that ended by reassigning its ticket records no cost, and every
+   hand-off is one, so write the figure as "at least $<n>".
 
 ## What to do
 
@@ -45,7 +49,7 @@ ticket reopens it). About one screen; the four figures come first:
 
 ```markdown
 ## Rundown — <ticket> — <one line: what was asked and what is now live>
-- **Cost:** $<total>, <n> runs, <elapsed> from ticket to live
+- **Cost:** at least $<total>, <n> runs, <elapsed> from ticket to live
 - **Confidence it is done:** <n>% — <what holds it down, or nothing>
 - **Review:** <taken> of <raised> taken, added <N> lines and <M> minutes; not taken: <one phrase each, or none>
 - **ADR conflicts for you:** <ADR — what to approve; or none>
