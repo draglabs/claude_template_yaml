@@ -22,7 +22,7 @@ metadata:
    that is working.
 3. No live run → wake one ready ticket.
 3a. For each ticket the meter lists under `lead_review`: the post review
-   (`fw paperclip-post-review.md`). Final report on the ticket first, then clear the label
-   and close it, or send it back to the agent that merged.
+   (`fw paperclip-post-review.md`). Rundown on the ticket first, then clear the label
+   and close it. Never send a ticket back.
 4. Append one entry to `docs/paperclip_lead/log.md`; put anything for the human and the
    Strategist in `docs/paperclip_lead/triage/`. One MR to the planning repo, merged at once.

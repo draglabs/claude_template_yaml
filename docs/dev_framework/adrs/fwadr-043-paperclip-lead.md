@@ -55,9 +55,17 @@ paperclip ethos is to hire subagents."
    error. It may ask a working run to "checkpoint and stop"; the agent ends its own run.
 5a. **It does the post review.** A ticket whose work is merged is assigned to the Lead with `lead_review`
    ([FWADR-040](fwadr-040-paperclip-mode.md)); the assignment starts a run in which the
-   Lead checks what happened — the MR, the pipeline, the commit on dev, the harness, the run history, each
-   acceptance criterion — and posts a final report with screenshots, then closes the
-   ticket or sends it back. It never reads the diff for quality. The hand-off is an assignment because Paperclip refuses an agent's
+   Lead reads what happened (the MR, the commit on dev, the harness, the run history),
+   takes the relevant screenshots, and posts a rundown for the founder, then closes the
+   ticket. The user: "the purpose of the post review is for me to see a clean readable
+   rundown of what happened on the run. KPIs are cost, confidence rating, items accepted
+   and items rejected from the reviewer, ADR conflicts that need my approval to rewrite.
+   Never in that list is the lead sending it back to the developer." The confidence is
+   the Lead's own that the ticket is done; acceptance gets a light reading against the
+   builder's evidence, not a re-test. **It never sends a ticket back:** a miss is a "Not
+   met" line and the Strategist decides whether it becomes work. On THA-82 a send-back
+   over two record corrections cost two hours and two cold starts after the code was
+   live. It never reads the diff for quality. The hand-off is an assignment because Paperclip refuses an agent's
    `in_review` that nobody owns; the report then arrives minutes after the merge, at the
    cost of one Lead cold start per ticket. The steps are in
    their own short document ([`paperclip-post-review.md`](../paperclip-post-review.md)),
@@ -104,8 +112,9 @@ near $18). It is a starting number, meant to be changed in the project's variabl
   file for the human.
 - **`PAPERCLIP_LEAD_ACTS` is read by the agent, not enforced.** With acting off, nothing
   but its instructions keeps the Lead from blocking a ticket.
-- **The post review is unexercised,** and the Lead cannot yet take a screenshot from
-  where it runs; until it can, the report uses the builder's.
+- **A miss the post review finds waits on the Strategist reading the rundown.** Nothing
+  checks that it was read.
+- **The Lead's confidence figure is self-rated.**
 - **The thresholds are guesses** from two weeks of one board.
 - **Housekeeping is unexercised as a script.** The cancel and the wake were done once by
   hand; the wake request's shape was read from Paperclip's source. Nothing checks that a

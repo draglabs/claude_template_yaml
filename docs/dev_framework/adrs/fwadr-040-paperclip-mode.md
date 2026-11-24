@@ -109,9 +109,8 @@ add a bubble to the dev page."
    framework reviewer is to catch ADR violations, and coding style mistakes, not treat
    everything as hostile… and there is no second review." The Reviewer brief names what
    a `block` is and that the project's own committed files are trusted. After merging, the builder hands the ticket to the Paperclip Lead (`lead_review`, set
-   in the update that reassigns it), and the Lead reviews what happened — did the ticket run
-   smoothly, did the work land on dev, is each acceptance criterion met — and posts a
-   final report with screenshots ([FWADR-043](fwadr-043-paperclip-lead.md)).
+   in the update that reassigns it), and the Lead posts a rundown of what happened for the
+   founder and closes the ticket; it never sends one back ([FWADR-043](fwadr-043-paperclip-lead.md)).
 6b. **Four labels, each naming who must act:** `str_question`, `fdr_question`,
    `fdr_blocked`, `lead_review`. The user: "'str_question', 'fdr_question' is better
    because it informs me and the framework about who needs to act on it." Labels replace

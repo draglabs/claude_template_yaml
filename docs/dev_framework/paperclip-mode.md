@@ -108,7 +108,7 @@ none is being worked or is closed.
 | `str_question` | The Strategist | An agent below 80% confidence on something; a builder handed a ticket that is not yet a concrete objective | The Strategist, with the answer |
 | `fdr_question` | The founder | The Strategist, when it cannot answer at 80% either; or any agent, when only the founder could know | The agent that resumes on the founder's answer |
 | `fdr_blocked` | The founder | Anyone, for what no agent can fix: a secret, access, money, an outside party | The agent that resumes once it is fixed |
-| `lead_review` | The Paperclip Lead | The agent that merged, in the update that reassigns the ticket to the Lead | The Lead, with the final report |
+| `lead_review` | The Paperclip Lead | The agent that merged, in the update that reassigns the ticket to the Lead | The Lead, with the rundown |
 
 **A label always travels with what wakes the right agent.** Paperclip wakes on
 assignment and on comment, never on a label:
@@ -361,9 +361,11 @@ reassigns it to `FW_Paperclip_Lead`, and ends its run.
 ([`paperclip-post-review.md`](paperclip-post-review.md)). The user: "the job is to ensure
 the ticket ran smoothly, the agent did what it was supposed to, code landed on the real
 dev server etc. So it's a review of 'what happened and if anything went wrong', not a
-review of the code." The Lead posts a final report with screenshots, clears the label and
-closes the ticket; or it sends the ticket back to the agent that merged, saying what went
-wrong. The report can come up to four hours after the merge; nothing waits on it.
+review of the code." The Lead posts a rundown for the founder (cost, its confidence
+that the ticket is done, review findings taken and not, ADR conflicts needing approval,
+anything not met, screenshots), clears the label and closes the ticket. It never sends a
+ticket back: a miss is a line in the rundown, and the Strategist decides whether it
+becomes work.
 
 ## Dev slots
 
@@ -396,7 +398,10 @@ under way keeps what it started with. Nobody chooses to take an update and nothi
 for running work. `scripts/paperclip_company.py` renders the package into a company
 (`sync`) and says when the package itself — an agent's file, a routine — is behind
 (`status`); the Paperclip Lead's four-hour routine runs that sync unasked, the Curator's
-daily task is the backstop, and the session-start hook NOTICEs on drift.
+daily task is the backstop, and the session-start hook NOTICEs on drift. Where agents
+reach Paperclip through its sandbox bridge, an agent's key cannot read or write the
+agents' files: `status` then compares the package at the agent's own pin with the
+template's `main`, and a drift is an `fdr_blocked` for a `sync` run with a board key.
 
 ## The Paperclip Lead
 
