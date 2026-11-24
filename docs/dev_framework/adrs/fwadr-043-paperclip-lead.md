@@ -57,7 +57,9 @@ paperclip ethos is to hire subagents."
    ([FWADR-040](fwadr-040-paperclip-mode.md)); the assignment starts a run in which the
    Lead reads what happened (the MR, the commit on dev, the harness, the run history),
    takes the relevant screenshots, and posts a rundown for the founder, then closes the
-   ticket. The user: "the purpose of the post review is for me to see a clean readable
+   ticket with `fdr_review_pending` in place of `lead_review`, which the founder clears
+   once the rundown is read ("it can close the ticket.... note i can always reopen the
+   ticket"). The user: "the purpose of the post review is for me to see a clean readable
    rundown of what happened on the run. KPIs are cost, confidence rating, items accepted
    and items rejected from the reviewer, ADR conflicts that need my approval to rewrite.
    Never in that list is the lead sending it back to the developer." The confidence is

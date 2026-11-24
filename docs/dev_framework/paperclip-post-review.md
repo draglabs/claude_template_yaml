@@ -58,8 +58,10 @@ ticket reopens it). About one screen; the four figures come first:
 A figure the builder did not give (no totals line, no lines and minutes) is written as
 "not reported", never worked out from the diff.
 
-Then one update that clears `lead_review` (`labelIds: []`) and closes the ticket. That is
-the only outcome.
+Then one update that swaps `lead_review` for `fdr_review_pending` (`labelIds` holding
+that one id) and closes the ticket. That is the only outcome. The label marks a closed
+ticket whose rundown the founder has not read; the founder clears it, and can reopen the
+ticket. The user: "it can close the ticket.... note i can always reopen the ticket."
 
 **Cannot take a screenshot from where you run:** say so in the rundown and use the
 builder's own; put the gap in the triage folder once, not per ticket.

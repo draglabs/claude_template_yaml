@@ -56,7 +56,8 @@ PAPERCLIP_ROLE = {"fw-paperclip-lead": "general", "fw-strategist": "cto", "fw-or
 RETIRED = ["FW_Developer"]  # no longer in the package; never paused or removed from here (a pause cancels live runs)
 HIRES = {"fw-paperclip-lead"}  # in Paperclip a lead hires: it may propose agents for the board to approve
 TASKS = ["framework-alignment", "board-review"]
-LABELS = {"str_question": "#7c3aed", "fdr_question": "#d97706", "fdr_blocked": "#dc2626", "lead_review": "#2563eb"}  # who must act
+LABELS = {"str_question": "#7c3aed", "fdr_question": "#d97706", "fdr_blocked": "#dc2626", "lead_review": "#2563eb",
+          "fdr_review_pending": "#059669"}  # who must act
 MANAGED_BY = "scripts/paperclip_company.py"
 
 E = os.environ.get
@@ -161,7 +162,7 @@ def fetch_project_docs_snippet() -> str:
 
 
 def label_table(co: dict) -> str:
-    """The four label ids, for the agent files: an agent's key cannot list labels."""
+    """The label ids, for the agent files: an agent's key cannot list labels."""
     have = {l["name"]: l["id"] for l in api("GET", f"/companies/{co['id']}/labels")}
     rows = [f"| `{n}` | `{have.get(n, 'not created yet: run sync')}` |" for n in LABELS]
     return "\n".join(["| Label | id |", "|---|---|", *rows])

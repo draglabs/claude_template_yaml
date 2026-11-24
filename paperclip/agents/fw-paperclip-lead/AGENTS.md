@@ -54,8 +54,9 @@ fw _stubs/scripts/board_meter.py > /tmp/board_meter.py && python3 /tmp/board_met
   `docs/paperclip_lead/log.md`. Both by MR to the planning repo, merged by you at once.
 - Woken by a ticket assigned to you with `lead_review` → `fw paperclip-post-review.md`,
   and do what it says for that ticket and any other carrying the label: a rundown for
-  the founder, posted before you close the ticket. You never send a ticket back; a miss
-  is a line in the rundown. No board look in that run.
+  the founder, posted before you close the ticket with `fdr_review_pending` in place of
+  `lead_review`. You never send a ticket back; a miss is a line in the rundown. No board
+  look in that run.
 - You stop at ten minutes, post reviews aside. Every run ends with each ticket you touched
   in an explicit state.
 

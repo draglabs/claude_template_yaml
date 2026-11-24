@@ -100,8 +100,8 @@ second review."
 
 ## Labels: who must act
 
-A ticket carries at most one of four labels. Each names who must act next; a ticket with
-none is being worked or is closed.
+A ticket carries at most one of five labels. Each names who must act next; a ticket with
+none is being worked, or is closed and read.
 
 | Label | Who acts | Set by | Cleared by |
 |---|---|---|---|
@@ -109,6 +109,7 @@ none is being worked or is closed.
 | `fdr_question` | The founder | The Strategist, when it cannot answer at 80% either; or any agent, when only the founder could know | The agent that resumes on the founder's answer |
 | `fdr_blocked` | The founder | Anyone, for what no agent can fix: a secret, access, money, an outside party | The agent that resumes once it is fixed |
 | `lead_review` | The Paperclip Lead | The agent that merged, in the update that reassigns the ticket to the Lead | The Lead, with the rundown |
+| `fdr_review_pending` | The founder | The Lead, in the update that closes the ticket after its rundown | The founder, once the rundown is read |
 
 **A label always travels with what wakes the right agent.** Paperclip wakes on
 assignment and on comment, never on a label:
@@ -127,7 +128,7 @@ assignment and on comment, never on a label:
 
 **A label is set by id, inside the ticket update.** `PATCH /api/issues/<id>` with
 `labelIds`: the whole set the ticket should carry, `[]` to clear. A label name is
-accepted and ignored, and an agent's key cannot list labels, so the four ids are in your
+accepted and ignored, and an agent's key cannot list labels, so the five ids are in your
 agent file, written there by `paperclip_company.py sync`. Agent ids come from
 `GET /api/companies/<id>/agents`.
 
@@ -147,7 +148,7 @@ agent file, written there by `paperclip_company.py sync`. Agent ids come from
 
 **The backstop costs no tokens:** the board meter flags a `str_question` that is not on
 the Strategist and a `blocked` ticket with no label, and its hourly housekeeping puts a
-`str_question` on the Strategist. `paperclip_company.py sync` creates the four labels.
+`str_question` on the Strategist. `paperclip_company.py sync` creates the five labels.
 
 ## Below 80%: stop, flag, wait
 
@@ -363,7 +364,9 @@ the ticket ran smoothly, the agent did what it was supposed to, code landed on t
 dev server etc. So it's a review of 'what happened and if anything went wrong', not a
 review of the code." The Lead posts a rundown for the founder (cost, its confidence
 that the ticket is done, review findings taken and not, ADR conflicts needing approval,
-anything not met, screenshots), clears the label and closes the ticket. It never sends a
+anything not met, screenshots), then closes the ticket carrying `fdr_review_pending` in
+place of `lead_review`: a closed ticket the founder has not read yet. The founder clears
+that label, and can reopen the ticket. The Lead never sends a
 ticket back: a miss is a line in the rundown, and the Strategist decides whether it
 becomes work.
 
@@ -441,7 +444,7 @@ it pushed — so the built-in budget is at most a far-off fuse, and
    human create them.
 4. `PAPERCLIP_AGENT_BUDGET_CENTS` set (a soft budget per agent is a project variable), then
    `./scripts/paperclip_company.py sync` — creates or refreshes the six agents, the two
-   routines (the daily alignment check, the four-hour board review) and the four labels.
+   routines (the daily alignment check, the four-hour board review) and the five labels.
 5. One ops issue that proves the loop end to end before any work issue.
 6. On the hosts, by the user: a timer on the agent host that kills the agent user's
    processes older than any run could be (one stuck process group once held the host at

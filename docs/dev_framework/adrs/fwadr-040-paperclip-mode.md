@@ -111,8 +111,9 @@ add a bubble to the dev page."
    a `block` is and that the project's own committed files are trusted. After merging, the builder hands the ticket to the Paperclip Lead (`lead_review`, set
    in the update that reassigns it), and the Lead posts a rundown of what happened for the
    founder and closes the ticket; it never sends one back ([FWADR-043](fwadr-043-paperclip-lead.md)).
-6b. **Four labels, each naming who must act:** `str_question`, `fdr_question`,
-   `fdr_blocked`, `lead_review`. The user: "'str_question', 'fdr_question' is better
+6b. **Five labels, each naming who must act:** `str_question`, `fdr_question`,
+   `fdr_blocked`, `lead_review`, `fdr_review_pending` (a ticket the Lead closed whose
+   rundown the founder has not read; the founder clears it). The user: "'str_question', 'fdr_question' is better
    because it informs me and the framework about who needs to act on it." Labels replace
    question cards; the question is a comment in the card's shape. Paperclip wakes on
    assignment and comment, never on a label, so a label always travels with one: a
