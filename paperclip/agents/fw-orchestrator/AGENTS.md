@@ -45,12 +45,11 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
   Executor works in its own worktree and pushes its branch at every step, so nothing
   pushed is lost if your run dies; you rewrite the resume note at least every 15 minutes.
 - One MR per work item, threaded from the Executors' branches. The Reviewer subagent
-  runs once and you judge its findings: always take an ADR violation, a coding-standard
-  mistake or an acceptance criterion a test written from its own words would fail; every
-  other finding is not taken unless it is a real fault if left, inside the item's
-  `touches:`, and under about a quarter of the item's own change, singly and in total;
-  write one line each and the totals line; never send a fix back to a Reviewer (`fw paperclip-mode.md` §"One review"). With the accepted
-  findings fixed, QA evidence (screenshots included) and CI
+  runs once and its verdict decides: `ship` or `ship-with-concerns` → merge as it is;
+  `block` → fix the blocking findings only, prove each with a test, and merge. Never fix
+  a concern unasked; list each in the end-of-run comment with the totals line; never send
+  a fix back to a Reviewer (`fw paperclip-mode.md` §"One review"). With the review
+  settled, QA evidence (screenshots included) and CI
   green, **you merge the MR to `main`**, check the deploy (harness green on the dev page,
   link on the ticket), hand it over in one update that sets `lead_review` and reassigns the ticket to
   `FW_Paperclip_Lead` (never `in_review`; Paperclip refuses it), and end

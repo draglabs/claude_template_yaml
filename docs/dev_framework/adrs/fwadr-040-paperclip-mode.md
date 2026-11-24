@@ -88,26 +88,24 @@ add a bubble to the dev page."
    on a board gets a worktree, which removes what sets the Default Developer apart; on
    2026-11-08, when every item went to one in a shared checkout, the runs collided.
 6a. **One code review, then a post review.** The builder's own Reviewer subagent is the
-   code review; it runs once, and nothing reads the diff twice. The builder judges the
-   findings: it always takes an ADR violation, a coding-standard mistake or a missed
-   acceptance criterion; every other finding is not taken unless it is a real fault if
-   left, inside the item's `touches:`, and under about a quarter of the ticket's own
-   change, singly and in total; each decision is recorded with its reason, and the
-   end-of-run comment gives findings taken against raised and what the review added.
-   Then it merges without a second pass. The measure followed the second ticket (THA-81,
-   1 point): with weights and no scale the builder took 11 of 12 findings, and two of
-   them — a check that added 217 lines to a 248-line change, and a cosmetic move outside
-   the item's files that failed a pipeline — cost 34 minutes. The user: "it should be
-   more cautious about erring toward more work." A criterion counts as not met only when
-   a test written from its own words would fail. The
-   decision stays the builder's and stays documented, as the user first asked: "making a
-   choice against weights like effort, scope creep, etc. Leaning on a documented decision
-   to or not to do it and why." On
-   the first ticket of this flow (THA-79, a 1-point item) each fix went to a fresh
-   Reviewer, each found a new hostile shape of the project's own env file, and the item
-   was unmerged after three passes and 1 h 42 min. The user: "the purpose of the
-   framework reviewer is to catch ADR violations, and coding style mistakes, not treat
-   everything as hostile… and there is no second review." The Reviewer brief names what
+   code review; it runs once, and nothing reads the diff twice. **Its verdict decides:**
+   on `ship` or `ship-with-concerns` the builder merges as it is and lists the concerns;
+   on `block` it fixes the blocking findings only, proves each with a test, and merges
+   without a second pass. The Lead's rundown recommends a fix or not for each concern,
+   and the founder decides. The user: "Ship with concerns merges, and fixes only happen
+   on block. Then the lead looks at the report and makes a recommendation... it is up to
+   me to comment." A rule that had the builder weigh each finding did not hold: across
+   THA-81, THA-82, THA-83 and THA-88 builders took 11 of 12, 9 of 10, 7 of 9 and 11 of
+   12 findings, the same before and after a size test was added, at 20 to 70 minutes a
+   ticket; a careful agent settles a doubt by doing the work. On the first ticket of
+   this flow (THA-79, a 1-point item) each fix went to a fresh Reviewer, each found a
+   new hostile shape of the project's own env file, and the item was unmerged after
+   three passes and 1 h 42 min. The user: "the purpose of the framework reviewer is to
+   catch ADR violations, and coding style mistakes, not treat everything as hostile… and
+   there is no second review." **The founder's comment brings the builder back:** a
+   comment of his on a closed ticket that asks for a change has the Lead reassign that
+   ticket to its builder, with no new ticket ("i have feedback on the feature then that
+   reopens the ticket, it does not create tickets"). The Reviewer brief names what
    a `block` is and that the project's own committed files are trusted. After merging, the builder hands the ticket to the Paperclip Lead (`lead_review`, set
    in the update that reassigns it), and the Lead posts a rundown of what happened for the
    founder and closes the ticket; it never sends one back ([FWADR-043](fwadr-043-paperclip-lead.md)).
@@ -176,8 +174,12 @@ add a bubble to the dev page."
 - **Named gap:** an Orchestrator's Executors die with its run. What they pushed survives;
   what they had not pushed does not. Unproven: no Orchestrator has yet run subagents on a
   board, and subagents multiply processes on an agent host that once hit its task limit.
-- **English-only:** that a builder reviews once and holds a finding to the measure
-  instead of taking it as binding. The quarter is a guess from two tickets. The post review sees the recorded decisions and the number of runs.
+- **English-only:** that a builder reviews once, merges on a non-blocking verdict and
+  fixes only blocking findings. The verdict now carries the whole decision, so a Reviewer
+  that blocks too readily brings the old cost back; the rundown records the verdict and
+  what the fixes added. A blocking fix is not re-reviewed.
+- **A reassigned ticket whose builder is busy has nothing to start it** when that builder
+  frees up, short of the housekeeping schedule.
 - **Unproven:** the whole flow of decision 6 to 6c. Its first measured run is the
   experiment of 2026-11-23, against the 4 h 52 min above.
 - What waits on the human is in two places: a release, and the feedback that precedes

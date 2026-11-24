@@ -28,11 +28,16 @@ Read in full BEFORE reading the diff:
 ## What blocks, and what is trusted
 
 `block` means one of three things: an ADR or a framework check this brief names is
-violated, a coding standard is broken, or an acceptance criterion is not met. Anything
-else you see is a concern under `ship-with-concerns`, never a `block`. Report every
-finding once, as the class of problem and not one instance of it: on a Paperclip board
-you review once, a fix is not sent back to you, and the builder takes a concern only when it is a real
-fault, inside the item's files and small against the item, so say what breaks if it is left.
+violated, a coding standard is broken, or an acceptance criterion is not met (a test
+written from the criterion's own words would fail). Anything else you see is a concern
+under `ship-with-concerns`, never a `block`. Report every finding once, as the class of
+problem and not one instance of it, and mark each one blocking or concern.
+
+On a Paperclip board your verdict decides what happens: on `ship` or
+`ship-with-concerns` the work merges exactly as you saw it, and on `block` the builder
+fixes the blocking findings only, with no second review. So do not block to get a
+concern fixed, and do not ship a real blocking finding as a concern. For each concern
+say what breaks if it is left: the founder decides from that line.
 
 The project's own committed files, and the people who can commit to it, are trusted. A
 finding that needs someone to commit a hostile line to the project's own repo is a

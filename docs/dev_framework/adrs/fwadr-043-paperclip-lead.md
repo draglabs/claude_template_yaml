@@ -64,10 +64,10 @@ paperclip ethos is to hire subagents."
    and items rejected from the reviewer, ADR conflicts that need my approval to rewrite.
    Never in that list is the lead sending it back to the developer." The confidence is
    the Lead's own that the ticket is done; acceptance gets a light reading against the
-   builder's evidence, not a re-test. **It never sends a ticket back:** a miss is a "Not
+   builder's evidence, not a re-test. Its rundown recommends, per Reviewer concern, a fix or not. **It never sends a ticket back on its own judgement:** a miss is a "Not
    met" line and the Strategist decides whether it becomes work. On THA-82 a send-back
    over two record corrections cost two hours and two cold starts after the code was
-   live. It never reads the diff for quality. The hand-off is an assignment because Paperclip refuses an agent's
+   live. A comment from the founder on a closed ticket that asks for a change is different: the Lead reassigns that ticket to its builder and does nothing else. It never reads the diff for quality. The hand-off is an assignment because Paperclip refuses an agent's
    `in_review` that nobody owns; the report then arrives minutes after the merge, at the
    cost of one Lead cold start per ticket. The steps are in
    their own short document ([`paperclip-post-review.md`](../paperclip-post-review.md)),

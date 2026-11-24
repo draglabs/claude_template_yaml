@@ -17,7 +17,7 @@ reviewed once, before the merge.
 ## What to read, per ticket
 
 1. The ticket: what was asked, its acceptance criteria, the agent's end-of-run comment
-   (its review findings, taken or not, and its totals line).
+   (the Reviewer's verdict, blocking findings fixed, concerns listed, its totals line).
 2. The MR: merged into `main`; the Reviewer's verdict, and any `doc-conflict` in it.
 3. Dev: the deployed commit is the merge commit or a later one; the harness result for it.
 4. The run history: how many runs, what they cost, any that failed, any question labels.
@@ -38,6 +38,9 @@ reviewed once, before the merge.
 - **A miss is a line, not a hand-off.** A criterion not met, work that is not on dev, a
   red harness nobody explained: write it under "Not met" and close the ticket all the
   same. The Strategist reads the rundown and decides whether it becomes work.
+- **Recommend on each concern.** For every concern the Reviewer raised and the builder
+  listed: "fix" or "leave", with the reason in a phrase. You recommend; the founder
+  decides. Do not reopen the review and do not read the diff to do it.
 - **ADR conflicts.** Every `doc-conflict` the Reviewer reported, every deviation from an
   accepted ADR the builder recorded, every ADR left `proposed`: one line each, naming the
   ADR and what the founder is asked to approve.
@@ -51,7 +54,7 @@ ticket reopens it). About one screen; the four figures come first:
 ## Rundown — <ticket> — <one line: what was asked and what is now live>
 - **Cost:** at least $<total>, <n> runs, <elapsed> from ticket to live
 - **Confidence it is done:** <n>% — <what holds it down, or nothing>
-- **Review:** <taken> of <raised> taken, added <N> lines and <M> minutes; not taken: <one phrase each, or none>
+- **Review:** <verdict>; <B> blocking fixed (+<N> lines, <M> minutes); concerns: <each — fix | leave, why; or none>
 - **ADR conflicts for you:** <ADR — what to approve; or none>
 - **Not met:** <criterion or step — what is missing; or nothing>
 - **Delivered:** MR <link>, on dev at <commit>, harness <pass | fail | skip> <link>
@@ -59,13 +62,26 @@ ticket reopens it). About one screen; the four figures come first:
 - **Screenshots:** <attached, or none: nothing to see>
 ```
 
-A figure the builder did not give (no totals line, no lines and minutes) is written as
+A figure the builder did not give (no verdict, no totals line) is written as
 "not reported", never worked out from the diff.
 
 Then one update that swaps `lead_review` for `fdr_review_pending` (`labelIds` holding
 that one id) and closes the ticket. That is the only outcome. The label marks a closed
 ticket whose rundown the founder has not read; the founder clears it, and can reopen the
 ticket. The user: "it can close the ticket.... note i can always reopen the ticket."
+
+## Woken by the founder's comment on a closed ticket
+
+His comment reopened it. Read the comment and nothing else.
+
+- **It asks for a change** (a concern to fix, something wrong on dev): one update that
+  clears `fdr_review_pending` and reassigns the ticket, `in_progress`, to the builder that
+  merged it. That is all: no checking on dev, no rundown, no new ticket. If that builder
+  is mid-run on another ticket in the same files, say so in one comment first. This is
+  the founder's request, not a send-back of yours.
+- **It asks for nothing** ("ok", "thanks"): close the ticket again, label unchanged.
+- **The fix comes back** with `lead_review`: a rundown of the fix only (cost, confidence,
+  what changed, screenshots), then close with `fdr_review_pending`.
 
 **Cannot take a screenshot from where you run:** say so in the rundown and use the
 builder's own; put the gap in the triage folder once, not per ticket.

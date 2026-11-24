@@ -14,7 +14,7 @@ a Paperclip agent does the thing in the right column. Decided in
 | "ask the user" / "Anything else?" | Write the question on the ticket — options with evidence, each with Confidence and Difficulty, the recommendation first, last item "Anything else?" — set the label that names who must answer, and end your run (§"Labels"). Labels replace question cards. Never block on chat. |
 | "report your understanding and wait for approval" | Post the bootstrap report as the **first comment** on the issue and proceed. Stop and wait only if the issue says `approve-first` or the report finds a conflict. |
 | "spawn an Executor" (Orchestrator) | Unchanged: a **subagent inside your run**, each in its own worktree. You never reassign the ticket to another agent. Each Executor pushes its branch at every step, so a run that dies loses nothing that was pushed (§"Checkpoints"). |
-| "spawn a Reviewer" | Unchanged for every role: the Reviewer **subagent** runs before the MR is merged. It runs **once** and is the one code review; nothing reads the diff a second time, a fresh Reviewer after a fix included (§"One review, and the builder judges it"). |
+| "spawn a Reviewer" | Unchanged for every role: the Reviewer **subagent** runs before the MR is merged. It runs **once** and is the one code review; nothing reads the diff a second time, a fresh Reviewer after a fix included (§"One review, and the verdict decides"). |
 | "the user is the QA gate" (Developer) | Post the evidence (commands, output, screenshots) as a comment, merge when the gates pass, and hand the ticket to the Lead with `lead_review` (§"Done"). |
 | "hand off the PR" | There is nobody to hand it to: the agent that holds the ticket merges it (§"Who merges"). The end-of-run comment carries the deep link: `Merged MR <n> (W-<id>): <url>`. |
 | "`/compact`", "fresh session" | A run is a session. State that must outlive the run is in the issue (comments) or in git (MR, W-item log) — nowhere else. |
@@ -61,42 +61,44 @@ work item, threaded from their branches. It does not reassign.
 What this replaces: a ticket to add one bubble to the dev page went Orchestrator →
 builder → Orchestrator, three cold starts and 4 h 52 min.
 
-## One review, and the builder judges it
+## One review, and the verdict decides
 
-The Reviewer runs once on a ticket and reports everything it sees. The agent that holds
-the ticket decides what to take. The user: "the purpose of the framework reviewer is to
-catch ADR violations, and coding style mistakes, not treat everything as hostile… the
-developer needs to be more discerning in what feedback he takes in. and there is no
-second review."
+The Reviewer runs once on a ticket. Its verdict, not the builder's judgement, decides
+whether anything is fixed. The user: "Ship with concerns merges, and fixes only happen on
+block. Then the lead looks at the report and makes a recommendation... it is up to me to
+comment."
 
-- **Always take** a finding that is an ADR violation, a coding-standard mistake, or an
-  acceptance criterion not met. A criterion is not met only when a test written from the
-  criterion's own words would fail; a finding argued in from what the criterion "really
-  means" is one of the others. Fix the class, not the one instance shown, and prove the
-  fix with a test.
-- **Every other finding is not taken, unless it earns its place.** Err toward less work:
-  the ticket was sized for what it asked. The user: "after the parallel dev's review it
-  should be more cautious about erring toward more work." Take one only when all three
-  hold:
-  1. **A real fault if left:** something a user or the next developer will hit, not a
-     case that needs an unlikely or hostile input.
-  2. **Inside the ticket:** the fix touches only files in the item's `touches:`. A fix
-     outside them is not taken, however small.
-  3. **Small:** the fix adds less than about a quarter of the ticket's own change, and
-     all the optional fixes you take add up to less than a quarter too. Past that, the
-     rest are not taken.
-- **Write the decision down.** Under "Review findings" in the end-of-run comment, one
-  line per finding: taken, with what breaks if it is left; or not taken, with which test
-  it failed. Then one line of totals: `Review: <taken> of <raised> taken; added <N> lines
-  and <M> minutes to a change of <P> lines.` The Strategist decides whether a finding not
-  taken becomes a work item.
+- **`ship` or `ship-with-concerns`: merge as it is.** Change nothing for the review. List
+  every concern in the end-of-run comment, one line each, as the Reviewer put it.
+- **`block`: fix the blocking findings, and only those.** A blocking finding is an ADR
+  violation, a broken coding standard, or an acceptance criterion not met. Fix the class,
+  not the one instance shown, prove each fix with a test, and merge. The other findings
+  in the same review are listed as concerns, untouched.
+- **A fix never goes back to a Reviewer.** The test proves it, the end-of-run comment
+  says so, and the post review reads that.
+- **Write it down.** Under "Review" in the end-of-run comment: the verdict, each blocking
+  finding fixed and the test that proves it, each concern listed, and one totals line:
+  `Review: <verdict>; <B> blocking fixed, <C> concerns listed; the fixes added <N> lines
+  and <M> minutes.`
+- **Who decides on a concern:** the Paperclip Lead's rundown recommends, per concern, a
+  fix or leaving it; the founder decides. No agent fixes a concern unasked, and no agent
+  makes a ticket of one.
 - **This is the rule on a board.** `developer.md`'s "doesn't second-guess the Reviewer"
-  is for a chat session, where the user chooses the outcome; here you choose.
-- **Then merge.** A fix does not go back to a Reviewer, not even a fix for a missed
-  acceptance criterion: the test proves it, the end-of-run comment says so, and the post
-  review reads that.
-- Below 80% on a finding that could change what the ticket delivers: that is a
-  `str_question`, not a second review.
+  is for a chat session, where the user is in the loop to choose.
+- Below 80% on whether a blocking finding is right: that is a `str_question`, not a
+  second review.
+
+**The founder's comment brings the builder back.** The user: "i have feedback on the
+feature then that reopens the ticket, it does not create tickets... i would expect
+parallel dev to be assigned and then fix the commit and tell me when it's done." A
+comment from the founder on a closed ticket reopens it and wakes the Lead, which holds
+it. When the comment asks for a change (a concern to fix, something wrong on dev), the
+Lead reassigns that ticket to the builder that merged it, in one update that clears
+`fdr_review_pending`, and does nothing else: no checking on dev, no new ticket, no
+planning item. The founder may also assign the ticket to the builder himself, which
+starts it directly. The builder reads the founder's comment, fixes it on a new MR on the
+same ticket, and hands off as usual; the Lead's second rundown covers the fix only. A
+comment that asks for nothing is closed again with no reassignment.
 
 ## Labels: who must act
 
@@ -363,7 +365,7 @@ reassigns it to `FW_Paperclip_Lead`, and ends its run.
 the ticket ran smoothly, the agent did what it was supposed to, code landed on the real
 dev server etc. So it's a review of 'what happened and if anything went wrong', not a
 review of the code." The Lead posts a rundown for the founder (cost, its confidence
-that the ticket is done, review findings taken and not, ADR conflicts needing approval,
+that the ticket is done, a recommendation on each Reviewer concern, ADR conflicts needing approval,
 anything not met, screenshots), then closes the ticket carrying `fdr_review_pending` in
 place of `lead_review`: a closed ticket the founder has not read yet. The founder clears
 that label, and can reopen the ticket. The Lead never sends a

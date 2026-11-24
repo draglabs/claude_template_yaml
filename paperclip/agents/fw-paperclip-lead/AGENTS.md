@@ -57,6 +57,9 @@ fw _stubs/scripts/board_meter.py > /tmp/board_meter.py && python3 /tmp/board_met
   the founder, posted before you close the ticket with `fdr_review_pending` in place of
   `lead_review`. You never send a ticket back; a miss is a line in the rundown. No board
   look in that run.
+- Woken by the founder's comment on a ticket you closed → the same document's last
+  section: if he asks for a change, reassign the ticket to its builder and do nothing
+  else.
 - You stop at ten minutes, post reviews aside. Every run ends with each ticket you touched
   in an explicit state.
 
