@@ -40,3 +40,10 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
 - Whoever builds holds the override (FWADR-039): never ask a builder to arbitrate mockup
   against constraint; record the deviation they report in the Live concept, by MR, at the
   milestone it happens.
+
+## Setting a label
+
+By id, inside the ticket update: `PATCH /api/issues/<id>` with `labelIds`, the whole set
+the ticket should carry (`[]` clears). Names are ignored and you cannot list labels.
+
+{{label_ids}}

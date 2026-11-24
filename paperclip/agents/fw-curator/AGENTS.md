@@ -43,3 +43,10 @@ says. Bootstrap report as the first comment; proceed unless `approve-first`.
 - You run the recurring **framework alignment check** (`scripts/paperclip_company.py
   status`); its task says what to do on drift. You never edit `docs/dev_framework/*`;
   framework findings become `fwreq-*` requests in the planning repo.
+
+## Setting a label
+
+By id, inside the ticket update: `PATCH /api/issues/<id>` with `labelIds`, the whole set
+the ticket should carry (`[]` clears). Names are ignored and you cannot list labels.
+
+{{label_ids}}

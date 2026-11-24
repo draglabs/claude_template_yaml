@@ -15,7 +15,7 @@ a Paperclip agent does the thing in the right column. Decided in
 | "report your understanding and wait for approval" | Post the bootstrap report as the **first comment** on the issue and proceed. Stop and wait only if the issue says `approve-first` or the report finds a conflict. |
 | "spawn an Executor" (Orchestrator) | Unchanged: a **subagent inside your run**, each in its own worktree. You never reassign the ticket to another agent. Each Executor pushes its branch at every step, so a run that dies loses nothing that was pushed (§"Checkpoints"). |
 | "spawn a Reviewer" | Unchanged for every role: the Reviewer **subagent** runs before the MR is merged. It runs **once** and is the one code review; nothing reads the diff a second time, a fresh Reviewer after a fix included (§"One review, and the builder judges it"). |
-| "the user is the QA gate" (Developer) | Post the evidence (commands, output, screenshots) as a comment, merge when the gates pass, and set `lead_review` (§"Done"). |
+| "the user is the QA gate" (Developer) | Post the evidence (commands, output, screenshots) as a comment, merge when the gates pass, and hand the ticket to the Lead with `lead_review` (§"Done"). |
 | "hand off the PR" | There is nobody to hand it to: the agent that holds the ticket merges it (§"Who merges"). The end-of-run comment carries the deep link: `Merged MR <n> (W-<id>): <url>`. |
 | "`/compact`", "fresh session" | A run is a session. State that must outlive the run is in the issue (comments) or in git (MR, W-item log) — nowhere else. |
 | "worktree at `/tmp/worktrees/…`" (Parallel) | Same path, off the workspace checkout Paperclip gives the run, never in the checkout itself. |
@@ -96,7 +96,7 @@ none is being worked or is closed.
 | `str_question` | The Strategist | An agent below 80% confidence on something; a builder handed a ticket that is not yet a concrete objective | The Strategist, with the answer |
 | `fdr_question` | The founder | The Strategist, when it cannot answer at 80% either; or any agent, when only the founder could know | The agent that resumes on the founder's answer |
 | `fdr_blocked` | The founder | Anyone, for what no agent can fix: a secret, access, money, an outside party | The agent that resumes once it is fixed |
-| `lead_review` | The Paperclip Lead | The agent that merged, after merging | The Lead, with the final report |
+| `lead_review` | The Paperclip Lead | The agent that merged, in the update that reassigns the ticket to the Lead | The Lead, with the final report |
 
 **A label always travels with what wakes the right agent.** Paperclip wakes on
 assignment and on comment, never on a label:
@@ -108,7 +108,16 @@ assignment and on comment, never on a label:
   on the answer, status `blocked`, the label set, the question or the obstacle written on
   it. The founder finds these by label; the founder's comment wakes the assignee, which
   clears the label and carries on.
-- **`lead_review`:** no wake. The Lead's four-hour look finds it.
+- **`lead_review`:** **one update** that sets the label and reassigns the ticket to
+  `FW_Paperclip_Lead`. The assignment wakes the Lead, which does the post review at once.
+  Do not set `in_review`: Paperclip refuses an agent's move to `in_review` unless a
+  person, a card or a monitor owns the next step.
+
+**A label is set by id, inside the ticket update.** `PATCH /api/issues/<id>` with
+`labelIds`: the whole set the ticket should carry, `[]` to clear. A label name is
+accepted and ignored, and an agent's key cannot list labels, so the four ids are in your
+agent file, written there by `paperclip_company.py sync`. Agent ids come from
+`GET /api/companies/<id>/agents`.
 
 **What Paperclip does on its own, and what follows from it** (seen on a live board):
 
@@ -258,7 +267,7 @@ next wake read the pipeline. If you do wait for CI, wait in the foreground with 
 poll, on the **newest** pipeline — a pipeline on `main` is cancelled when a newer commit
 lands, and polling the cancelled one never ends. **Every run ends with the ticket in an
 explicit state** — still `in_progress` with a resume note, `blocked` with a label, or
-`in_review` with `lead_review` — set before any optional waiting. A comment on a closed
+handed to the Lead with `lead_review` — set before any optional waiting. A comment on a closed
 ticket reopens it, so the last comment goes on first.
 
 ## Record: git is the record, Paperclip is the queue
@@ -333,8 +342,8 @@ are writing against dev's services. Whole suites go through the harness
 
 **The agent that merged finishes the job itself:** merged → deployed to dev → harness
 green on the dev page → the link to that result posted on the ticket. A red harness is
-its own to fix, on the same ticket. Then it sets the ticket `in_review` with
-`lead_review` and ends its run.
+its own to fix, on the same ticket. Then it hands the ticket over, in one update that sets `lead_review` and
+reassigns it to `FW_Paperclip_Lead`, and ends its run.
 
 **The post review is the Paperclip Lead's, and it is not a code review**
 ([`paperclip-post-review.md`](paperclip-post-review.md)). The user: "the job is to ensure
@@ -388,8 +397,8 @@ it has cost. It nudges; it may ask you to "checkpoint and stop"; with
 `PAPERCLIP_LEAD_ACTS=on` it may end a run that is *not* working and block its ticket, and
 re-open one stopped in error. A ticket of yours it blocks carries
 `<code>: <evidence>. Unblock: <what>`: do what the way out says. Its log
-and what it needs triaged are in the planning repo under `docs/paperclip_lead/`. In the
-same look it does the post review of every ticket carrying `lead_review` (§"Done").
+and what it needs triaged are in the planning repo under `docs/paperclip_lead/`. It does the
+post review of a ticket when the ticket is assigned to it with `lead_review` (§"Done").
 
 **Between its looks, the queue is kept moving by a script, hourly, with no agent:**
 `board_meter.py --housekeep` cancels a run that sat queued without ever starting and wakes

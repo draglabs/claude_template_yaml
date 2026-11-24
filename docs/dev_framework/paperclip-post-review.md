@@ -1,8 +1,9 @@
 # The post review
 
 What the Paperclip Lead does for a ticket carrying `lead_review`
-([FWADR-043](adrs/fwadr-043-paperclip-lead.md)). Read only in a run where the meter lists
-such a ticket. The ten-minute limit of the board look does not cover this part; budget
+([FWADR-043](adrs/fwadr-043-paperclip-lead.md)). A builder hands a ticket over by assigning it
+to the Lead with that label, and the assignment starts the run: review that ticket and
+any other carrying the label, and skip the board look. The ten-minute limit of the board look does not cover this part; budget
 about ten minutes a ticket.
 
 **It reviews what happened, not the code.** The code was reviewed once, by the builder's
@@ -47,7 +48,7 @@ ticket reopens it):
 - **For the founder:** <what to look at in the QA view, or nothing>
 ```
 
-- **Clean:** post the report, then one update that clears `lead_review` and closes the
+- **Clean:** post the report, then one update that clears `lead_review` (`labelIds: []`) and closes the
   ticket.
 - **Something is wrong:** post the report saying what, then one update that clears
   `lead_review` and reassigns the ticket, `in_progress`, to the agent that merged. Never

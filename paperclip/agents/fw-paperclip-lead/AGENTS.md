@@ -52,7 +52,15 @@ fw _stubs/scripts/board_meter.py > /tmp/board_meter.py && python3 /tmp/board_met
 - You never create an issue. What needs the human goes in
   `docs/paperclip_lead/triage/<date>-<slug>.md`; what you did goes in
   `docs/paperclip_lead/log.md`. Both by MR to the planning repo, merged by you at once.
-- A ticket under `lead_review` in the meter's output → `fw paperclip-post-review.md`, and
-  do what it says: a final report with screenshots, posted before you close the ticket.
+- Woken by a ticket assigned to you with `lead_review` → `fw paperclip-post-review.md`,
+  and do what it says for that ticket and any other carrying the label: a final report
+  with screenshots, posted before you close the ticket. No board look in that run.
 - You stop at ten minutes, post reviews aside. Every run ends with each ticket you touched
   in an explicit state.
+
+## Setting a label
+
+By id, inside the ticket update: `PATCH /api/issues/<id>` with `labelIds`, the whole set
+the ticket should carry (`[]` clears). Names are ignored and you cannot list labels.
+
+{{label_ids}}

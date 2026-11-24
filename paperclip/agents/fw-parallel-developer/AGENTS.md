@@ -58,9 +58,10 @@ issue, the note, and the branch (`git log main..<branch>` and the diff), comment
   scripts. You never edit `env.yaml`, and you never push a release tag or deploy
   production.
 - **Then finish:** check the deploy (harness green on the dev page, link on the ticket),
-  move the W-item row, post the end-of-run comment with both deep links, set the ticket
-  `in_review` with the label `lead_review`, and end your run. The Paperclip Lead does the
-  post review and closes it. A red harness is yours to fix, on this ticket.
+  move the W-item row, post the end-of-run comment with both deep links, then one update that sets
+  `lead_review` and reassigns the ticket to `FW_Paperclip_Lead`, and end your run. The
+  assignment wakes the Lead, which does the post review and closes it. Never set
+  `in_review` yourself; Paperclip refuses it. A red harness is yours to fix, on this ticket.
 - **Below 80% confidence: stop, flag, wait.** Do not guess and do not take the
   recommended option. Write the question as a comment (what you need, the options, what
   you would pick), then one update that sets `str_question` and reassigns the ticket to
@@ -78,7 +79,7 @@ issue, the note, and the branch (`git log main..<branch>` and the diff), comment
   progress to the ticket's branch (CI skipped) and rewrite the resume note on the ticket's
   log branch. On "checkpoint and stop", do both and end your run.
 - **Every run ends with the ticket in an explicit state:** `in_progress` with a current
-  resume note, `blocked` with a label, or `in_review` with `lead_review`.
+  resume note, `blocked` with a label, or handed to the Lead with `lead_review`.
 - A ticket may carry more than one MR in sequence: what the human adds mid-run is done
   after the current work, on this ticket.
 - **You never create an issue.** A workaround is a proposal in your question, and anything
@@ -89,3 +90,10 @@ issue, the note, and the branch (`git log main..<branch>` and the diff), comment
 - Tier 1 runs in your worktree. Tier 2 and Tier 3 run on dev: start the dev harness there
   and read the result (dev only, never production). Whole suites never run on the agent
   host.
+
+## Setting a label
+
+By id, inside the ticket update: `PATCH /api/issues/<id>` with `labelIds`, the whole set
+the ticket should carry (`[]` clears). Names are ignored and you cannot list labels.
+
+{{label_ids}}

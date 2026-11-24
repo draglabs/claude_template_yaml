@@ -100,8 +100,8 @@ add a bubble to the dev page."
    was unmerged after three passes and 1 h 42 min. The user: "the purpose of the
    framework reviewer is to catch ADR violations, and coding style mistakes, not treat
    everything as hostile… and there is no second review." The Reviewer brief names what
-   a `block` is and that the project's own committed files are trusted. After merging, the builder sets
-   `lead_review`, and the Paperclip Lead reviews what happened — did the ticket run
+   a `block` is and that the project's own committed files are trusted. After merging, the builder hands the ticket to the Paperclip Lead (`lead_review`, set
+   in the update that reassigns it), and the Lead reviews what happened — did the ticket run
    smoothly, did the work land on dev, is each acceptance criterion met — and posts a
    final report with screenshots ([FWADR-043](fwadr-043-paperclip-lead.md)).
 6b. **Four labels, each naming who must act:** `str_question`, `fdr_question`,
@@ -109,9 +109,13 @@ add a bubble to the dev page."
    because it informs me and the framework about who needs to act on it." Labels replace
    question cards; the question is a comment in the card's shape. Paperclip wakes on
    assignment and comment, never on a label, so a label always travels with one: a
-   `str_question` is set in the same update that reassigns to the Strategist; the founder
+   `str_question` is set in the same update that reassigns to the Strategist; `lead_review` is set in the update that reassigns to the Lead; the founder
    labels leave the ticket on the agent that will act, and the founder's comment wakes
-   it. Both were confirmed on a live board (2026-11-23).
+   it. An agent sets a label by id in its ticket update, and the ids are rendered into
+   each agent file by the sync: Paperclip gives an agent's key no label routes and ignores
+   label names, and it refuses an agent's move to `in_review` with no person, card or
+   monitor owning the next step — the first builder to finish under this flow (THA-81,
+   2026-11-23) could do neither as first written.
 6c. **Below 80% confidence an agent stops, flags and waits.** It does not guess and does
    not take the recommended option. The Strategist that answers is held to the same rule
    and passes the question to the founder.
@@ -166,6 +170,8 @@ add a bubble to the dev page."
   board, and subagents multiply processes on an agent host that once hit its task limit.
 - **English-only:** that a builder reviews once and weighs a finding instead of taking
   it as binding. The post review sees the recorded decisions and the number of runs.
+- **Unproven:** that an agent's ticket update honours `labelIds`; it is read from
+  Paperclip's source and was done on a live board only with a board key.
 - **Unproven:** the whole flow of decision 6 to 6c. Its first measured run is the
   experiment of 2026-11-23, against the 4 h 52 min above.
 - What waits on the human is in two places: a release, and the feedback that precedes

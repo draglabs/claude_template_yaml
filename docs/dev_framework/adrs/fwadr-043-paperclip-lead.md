@@ -53,13 +53,13 @@ paperclip ethos is to hire subagents."
    `on` lets it end a run that is **not working** (waiting on something that has ended,
    failing at start), block that ticket, and re-open a ticket it judges was stopped in
    error. It may ask a working run to "checkpoint and stop"; the agent ends its own run.
-5a. **It does the post review.** A ticket whose work is merged carries `lead_review`
-   ([FWADR-040](fwadr-040-paperclip-mode.md)); in its four-hour look the Lead checks what
-   happened — the MR, the pipeline, the commit on dev, the harness, the run history, each
+5a. **It does the post review.** A ticket whose work is merged is assigned to the Lead with `lead_review`
+   ([FWADR-040](fwadr-040-paperclip-mode.md)); the assignment starts a run in which the
+   Lead checks what happened — the MR, the pipeline, the commit on dev, the harness, the run history, each
    acceptance criterion — and posts a final report with screenshots, then closes the
-   ticket or sends it back. It never reads the diff for quality. The Lead, and not a
-   reviewer per ticket, because one cold start then covers every waiting ticket; the cost
-   is a report up to four hours after the merge, which nothing waits on. The steps are in
+   ticket or sends it back. It never reads the diff for quality. The hand-off is an assignment because Paperclip refuses an agent's
+   `in_review` that nobody owns; the report then arrives minutes after the merge, at the
+   cost of one Lead cold start per ticket. The steps are in
    their own short document ([`paperclip-post-review.md`](../paperclip-post-review.md)),
    fetched only in a run that has a ticket to review, so the board look keeps its budget.
 6. **It answers to the health of the company, in the planning repo.** `docs/paperclip_lead/`

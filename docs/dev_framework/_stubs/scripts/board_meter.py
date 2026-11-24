@@ -26,7 +26,8 @@ Signals, and the reason code each one gives a ticket:
   stalled        a live run older than LONG_RUN_MIN with no output for QUIET_MIN
   queued-stale   a run queued for QUEUED_MIN that never started; it holds its agent's slot
   assigned-no-run  `in_progress`, idle for ASSIGNED_MIN, and its assignee has never run it
-  label-mismatch a `str_question` that is not assigned to FW_Strategist (housekeeping moves it)
+  label-mismatch a `str_question` that is not assigned to FW_Strategist, or a `lead_review` that is
+                 not assigned to FW_Paperclip_Lead (housekeeping moves it)
   blocked-unlabelled  `blocked` with none of the four labels: Paperclip blocked it after a failed
                  run, or an agent forgot to say who must act
 The summary lists the tickets carrying `lead_review` (waiting for the Lead's post review) and the
@@ -77,6 +78,7 @@ AGENT_BUDGET_CENTS = float(os.environ.get("PAPERCLIP_AGENT_BUDGET_CENTS") or 0) 
 OPEN = ("todo", "in_progress", "in_review", "blocked")
 LABELS = ("str_question", "fdr_question", "fdr_blocked", "lead_review")
 STRATEGIST = os.environ.get("BOARD_METER_STRATEGIST", "FW_Strategist")
+LEAD = os.environ.get("BOARD_METER_LEAD", "FW_Paperclip_Lead")
 BAD_RUN = ("failed", "timed_out")
 
 
@@ -136,6 +138,7 @@ def main(argv: list[str]) -> None:
     by = {i["id"]: i for i in issues}
     label_name = {l["id"]: l["name"] for l in get(f"/companies/{cid}/labels")}
     strategist = next((a for a, n in agents.items() if n == STRATEGIST), None)
+    lead = next((a for a, n in agents.items() if n == LEAD), None)
 
     def labels_of(i) -> set[str]:
         ids = i.get("labelIds") or [l.get("id") for l in i.get("labels") or []]
@@ -191,7 +194,7 @@ def main(argv: list[str]) -> None:
 
     rows = []
     never_ran = []  # issues whose current assignee has never run them
-    misplaced = []  # str_question tickets that are not on the Strategist
+    misplaced = []  # (ticket, label, agent id, agent name): a label whose ticket is not on the agent it names
     for i in issues:
         s = stat[i["id"]]
         is_open = i["status"] in OPEN
@@ -217,7 +220,10 @@ def main(argv: list[str]) -> None:
         labs = labels_of(i)
         if is_open and "str_question" in labs and strategist and who != strategist:
             flags.append(("label-mismatch", f"str_question, but assigned to {agents.get(who, 'nobody')}"))
-            misplaced.append(i)
+            misplaced.append((i, "str_question", strategist, STRATEGIST))
+        if is_open and "lead_review" in labs and lead and who != lead:
+            flags.append(("label-mismatch", f"lead_review, but assigned to {agents.get(who, 'nobody')}"))
+            misplaced.append((i, "lead_review", lead, LEAD))
         if i["status"] == "blocked" and not labs:
             flags.append(("blocked-unlabelled", "blocked with no label saying who must act"))
         if i["status"] == "in_review" and "lead_review" not in labs and idle_h > WAIT_HOURS:
@@ -288,14 +294,14 @@ def main(argv: list[str]) -> None:
                     failed |= not wake(i, "queued-stale")
         for i in never_ran:
             failed |= not wake(i, "assigned-no-run")
-        for i in misplaced:  # an assignment is what wakes the Strategist
+        for i, label, target, target_name in misplaced:  # an assignment is what wakes the agent the label names
             try:
-                req = urllib.request.Request(base + f"/issues/{i['id']}", data=json.dumps({"assigneeAgentId": strategist}).encode(),
+                req = urllib.request.Request(base + f"/issues/{i['id']}", data=json.dumps({"assigneeAgentId": target}).encode(),
                                              method="PATCH", headers={"Authorization": "Bearer " + key, "Content-Type": "application/json"})
                 urllib.request.urlopen(req, timeout=60).read()
-                print(f"housekeep: moved {i['identifier']} (str_question) to {STRATEGIST}")
+                print(f"housekeep: moved {i['identifier']} ({label}) to {target_name}")
             except urllib.error.HTTPError as e:
-                print(f"housekeep: REFUSED ({e.code}) moving {i['identifier']} to {STRATEGIST}")
+                print(f"housekeep: REFUSED ({e.code}) moving {i['identifier']} to {target_name}")
                 failed = True
         sys.exit(1 if failed else 0)
     if "--json" in argv:

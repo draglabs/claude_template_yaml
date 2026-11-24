@@ -141,8 +141,16 @@ def fetch_project_docs_snippet() -> str:
     return "\n".join(lines)
 
 
-def render(text: str, commit: str) -> str:
+def label_table(co: dict) -> str:
+    """The four label ids, for the agent files: an agent's key cannot list labels."""
+    have = {l["name"]: l["id"] for l in api("GET", f"/companies/{co['id']}/labels")}
+    rows = [f"| `{n}` | `{have.get(n, 'not created yet: run sync')}` |" for n in LABELS]
+    return "\n".join(["| Label | id |", "|---|---|", *rows])
+
+
+def render(text: str, commit: str, labels: str) -> str:
     return (text.replace("{{project_name}}", COMPANY)
+                .replace("{{label_ids}}", labels)
                 .replace("{{framework_repo}}", FW_REPO)
                 .replace("{{framework_commit}}", commit)
                 .replace("{{framework_ref}}", FW_REF)
@@ -165,12 +173,12 @@ def load_company():
     return co, {a["name"]: a for a in agents}
 
 
-def load_agents(commit: str) -> list[dict]:
-    out = []
+def load_agents(commit: str, co: dict) -> list[dict]:
+    out, labels = [], label_table(co)
     for slug in ROLES:
         fm, body = split_frontmatter(fetch_package_file(commit, f"agents/{slug}/AGENTS.md"))
         out.append({"slug": slug, "name": fm.get("name") or slug, "title": fm.get("title"),
-                    "reports_to": fm.get("reportsTo"), "content": render(body, commit)})
+                    "reports_to": fm.get("reportsTo"), "content": render(body, commit, labels)})
     return out
 
 
@@ -179,7 +187,7 @@ def cmd_status() -> int:
     co, by_name = load_company()
     drift = 0
     print(f"template {FW_REPO}@{FW_REF} = {commit[:12]}")
-    for spec in load_agents(commit):
+    for spec in load_agents(commit, co):
         a = by_name.get(spec["name"])
         if not a:
             print(f"DRIFT {spec['name']}: agent missing"); drift += 1; continue
@@ -231,7 +239,7 @@ def ensure_routine(co: dict, by_name: dict, slug_to_name: dict, commit: str, dry
         routines = api("GET", f"/companies/{co['id']}/routines")
         routines = routines if isinstance(routines, list) else routines.get("items", [])
         existing = next((r for r in routines if r.get("title") == title), None)
-        desc = render(body, commit)
+        desc = render(body, commit, label_table(co))
         if existing:
             if existing.get("description") != desc and not dry:
                 api("PATCH", f"/routines/{existing['id']}", {"description": desc})
@@ -269,7 +277,8 @@ def cmd_sync(dry: bool) -> int:
     stamp = {"managed_by": MANAGED_BY, "framework_repo": FW_REPO, "framework_commit": commit,
              "stamped_at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")}
     slug_to_name = {}
-    for spec in load_agents(commit):  # package order: managers before reports
+    ensure_labels(co, dry)  # before the agent files: they carry the label ids
+    for spec in load_agents(commit, co):  # package order: managers before reports
         slug_to_name[spec["slug"]] = spec["name"]
         reports_to = by_name[slug_to_name[spec["reports_to"]]]["id"] if spec["reports_to"] else None
         meta = dict(stamp, framework_role=spec["slug"])
@@ -313,7 +322,6 @@ def cmd_sync(dry: bool) -> int:
         if (by_name.get(name, {}).get("metadata") or {}).get("managed_by") == MANAGED_BY:
             print(f"NOTE {name} is no longer part of the framework package: reassign its open issues to "
                   "FW_Parallel_Developer, then terminate it on the board when it is idle")
-    ensure_labels(co, dry)
     ensure_routine(co, by_name, slug_to_name, commit, dry)
     print(f"pinned {FW_REPO}@{commit[:12]}")
     return 0

@@ -62,3 +62,10 @@ issue; proceed unless the issue says `approve-first`.
 - The first-contact interview is done for this project; do not re-run it. A missing value
   is an `fdr_question`, not a guess.
 - Every run ends with the ticket in an explicit state.
+
+## Setting a label
+
+By id, inside the ticket update: `PATCH /api/issues/<id>` with `labelIds`, the whole set
+the ticket should carry (`[]` clears). Names are ignored and you cannot list labels.
+
+{{label_ids}}

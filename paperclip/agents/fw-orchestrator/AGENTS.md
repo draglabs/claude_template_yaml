@@ -51,7 +51,8 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
   fix back to a Reviewer (`fw paperclip-mode.md` §"One review"). With the accepted
   findings fixed, QA evidence (screenshots included) and CI
   green, **you merge the MR to `main`**, check the deploy (harness green on the dev page,
-  link on the ticket), set the ticket `in_review` with the label `lead_review`, and end
+  link on the ticket), hand it over in one update that sets `lead_review` and reassigns the ticket to
+  `FW_Paperclip_Lead` (never `in_review`; Paperclip refuses it), and end
   your run. That includes MRs that touch CI configuration or deploy scripts.
 - **Below 80% confidence: stop, flag, wait.** Write the question, then one update that
   sets `str_question` and reassigns to `FW_Strategist`. For what only the founder can
@@ -67,3 +68,10 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
   W-item is `in_progress` without an open issue. Mismatches go in your run comment.
 - `plan.md` moves only by MR, at milestones; you merge planning MRs yourself at once. You
   do not load `coding-standards.md` or `src/`.
+
+## Setting a label
+
+By id, inside the ticket update: `PATCH /api/issues/<id>` with `labelIds`, the whole set
+the ticket should carry (`[]` clears). Names are ignored and you cannot list labels.
+
+{{label_ids}}
