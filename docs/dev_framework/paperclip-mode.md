@@ -509,7 +509,10 @@ agent:** `board_meter.py --housekeep` cancels a run that sat queued without ever
 and wakes the ticket's current assignee, wakes the assignee of a ticket that never got a
 run, and wakes the holder of a ticket whose run died 15 minutes ago with nothing since.
 A run that dies twice more in a row is not woken a third time: the ticket stays flagged
-for a person. It touches nothing that has started.
+for a person. It touches nothing that has started. **When the last four runs on the
+company all failed, on more than one agent, it wakes nobody:** the agent host or
+Paperclip is at fault, a wake would start one more run that dies, and it reports
+`runs-all-failing` until a run succeeds again.
 
 **No budget ends a working run.** Budgets are soft project variables
 (`PAPERCLIP_AGENT_BUDGET_CENTS`, `PAPERCLIP_TICKET_BUDGET_CENTS`): past one, the Lead
@@ -532,11 +535,16 @@ it pushed — so the built-in budget is at most a far-off fuse, and
    `./scripts/paperclip_company.py sync` — creates or refreshes the seven agents, the two
    routines (the daily alignment check, the four-hour board review) and the seven labels.
 5. One ops issue that proves the loop end to end before any work issue.
-6. On the hosts, by the user: a timer on the agent host that kills the agent user's
-   processes older than any run could be (one stuck process group once held the host at
-   its task limit for ten days; new runs then died at start with `exit 255`), and a
-   breaker on the Paperclip host that runs `paperclip_company.py pause` on three failed
-   runs in an hour or when the board review has not run.
+6. On the hosts, by the user: a timer on the agent host, every ten minutes, for
+   `agent_host_reaper.py --kill`. A run that dies leaves its children running (a test
+   runner, a helper that calls itself); they count against the agent user's task limit,
+   and at the limit every new run dies at start with `exit 255`. That has held one host
+   for ten days and for a night. The reaper ends the agent user's process trees that
+   belong to no live run and are older than 30 minutes, and never one under a live run.
+   Run it without `--kill` first and read the list; name what must survive in
+   `REAPER_KEEP`. Also a breaker on the Paperclip host that runs
+   `paperclip_company.py pause` on three failed runs in an hour or when the board review
+   has not run.
 7. A schedule, every five minutes, for `./scripts/board_meter.py --housekeep` with a board key: a cron
    entry on the Paperclip host or a scheduled pipeline in the planning repo. Where it
    runs is recorded in the project's Paperclip section.

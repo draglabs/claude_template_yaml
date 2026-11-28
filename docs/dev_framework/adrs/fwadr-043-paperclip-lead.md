@@ -30,7 +30,10 @@ paperclip ethos is to hire subagents."
    nothing. Its report changes nothing; its one acting mode, `--housekeep`, run every five
    minutes with no agent, only unsticks the queue (a run that died mid-ticket included: its
    holder is woken, at most twice in a row): it cancels a run that sat queued and never
-   started, and wakes the assignee of that ticket or of one that never got a run. On
+   started, and wakes the assignee of that ticket or of one that never got a run. When
+   the last four runs on the company all failed, on more than one agent, it wakes nobody
+   and says the host is at fault: on 2026-11-28 an agent host at its task limit failed
+   every run for a night, and a wake there only starts one more run that dies. On
    2026-11-20 one such queued run held the builder's only slot and two tickets sat for
    68 minutes with every agent idle; four hours is too long to wait for that, and
    nothing that has started is touched. The **Paperclip Lead** (`FW_Paperclip_Lead`,
@@ -100,6 +103,8 @@ near $18). It is a starting number, meant to be changed in the project's variabl
 | The board is looked at every four hours | The `board-review` routine, created by `paperclip_company.py sync` |
 | Counting costs nothing | The meter is a script; its thresholds are `BOARD_METER_<NAME>` variables |
 | A stuck queue, or a ticket whose run died, is picked up within minutes | `board_meter.py --housekeep` on a five-minute schedule the project sets up (adoption step 7); the Lead reports a `queued-stale` it still sees |
+| Housekeeping does not feed a host that fails every run | `board_meter.py` reports `runs-all-failing` and `--housekeep` exits 1 without acting until a run succeeds |
+| What a dead run leaves on the agent host is ended | `agent_host_reaper.py --kill` on a timer the user installs on the agent host (adoption step 6); it ends only process trees under no live run |
 | Spend past a budget is seen, and kills nothing | The meter lists tickets and agents past their soft budgets; nothing sets Paperclip's hard budget unless the fuse variable is set |
 | Everything can be stopped at once | `paperclip_company.py pause`, a board operation that cancels live runs — the emergency switch |
 | The Lead acts only when switched on | `PAPERCLIP_LEAD_ACTS`, read by the agent — English-only, see below |
@@ -119,6 +124,13 @@ near $18). It is a starting number, meant to be changed in the project's variabl
   checks that it was read.
 - **The Lead's confidence figure is self-rated.**
 - **The thresholds are guesses** from two weeks of one board.
+- **The reaper has run in a test container only,** never on an agent host: it ended a
+  made-up leftover tree and spared a run's processes, a kept daemon and another user's.
+  It tells a live run by its `sshd` ancestor and its login session; where Paperclip
+  reaches the host another way, `REAPER_LIVE_ROOT` must be set or it sees no run as live.
+- **`runs-all-failing` needs failures on two agents.** One agent failing alone is left
+  to the per-ticket limit of two wakes. After the host is fixed nothing lifts the hold
+  but a run that succeeds, so a person wakes one ticket.
 - **Housekeeping is unexercised as a script.** The cancel and the wake were done once by
   hand; the wake request's shape was read from Paperclip's source. The wake for a run
   that died was added after one sat two hours on a live board (THA-119) and has not run

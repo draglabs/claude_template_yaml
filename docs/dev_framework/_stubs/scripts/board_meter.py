@@ -15,6 +15,8 @@ Paperclip Lead (docs/dev_framework/paperclip-lead.md).
 that has sat in the queue without starting (`queued-stale`) and wakes the ticket's current
 assignee, it wakes the assignee of a ticket that never got a run (`assigned-no-run`), and it
 wakes the holder of a ticket whose run died (`run-failed`), at most FAILED_RETRIES times in a row.
+When every recent run on the company failed (`runs-all-failing`) it does none of that: a wake
+would start one more run that dies. It says so and exits 1 until a run succeeds again.
 It never touches a run that has started. It needs a board key (cancel and wake are board
 operations in Paperclip) and is meant to run every five minutes, with no agent, from a schedule
 the project sets up. Exit 1 when an action was refused.
@@ -45,6 +47,9 @@ founder has not read (`fdr_review_pending`).
 The summary also lists agents whose recorded spend this month is past
 PAPERCLIP_AGENT_BUDGET_CENTS. Both budgets are SOFT: this script reports, and no run is ended
 or held back for a budget alone.
+  runs-all-failing  (summary, not a ticket) the last HOST_FAILED_RUNS finished runs all failed, on
+                 more than one agent: the fault is the agent host or Paperclip, not a ticket.
+                 Housekeeping wakes nobody while it holds; the first run that succeeds lifts it
   host           (when run on the agent host) the agent user's task count near its limit, or
                  processes older than a day
 
@@ -80,6 +85,7 @@ ORPHAN_HOURS = setting("ORPHAN_HOURS", 24)
 WAIT_HOURS = setting("WAIT_HOURS", 24)
 FAMILY_SIZE = setting("FAMILY_SIZE", 3)
 HOST_TASK_SHARE = setting("HOST_TASK_SHARE", 0.5)
+HOST_FAILED_RUNS = int(setting("HOST_FAILED_RUNS", 4))
 TICKET_BUDGET_CENTS = float(os.environ.get("PAPERCLIP_TICKET_BUDGET_CENTS") or 0)  # 0 = no per-ticket cap
 AGENT_BUDGET_CENTS = float(os.environ.get("PAPERCLIP_AGENT_BUDGET_CENTS") or 0)    # 0 = no per-agent monthly cap
 OPEN = ("todo", "in_progress", "in_review", "blocked")
@@ -273,6 +279,13 @@ def main(argv: list[str]) -> None:
 
     flagged = sorted((r for r in rows if r["flags"]), key=lambda r: (-len(r["flags"]), -r["tokens_read_m"]))
     host = host_findings()
+    ended = [r for r in runs if r.get("status") in BAD_RUN + ("succeeded",)][-HOST_FAILED_RUNS:]
+    all_failing = (len(ended) == HOST_FAILED_RUNS and all(r.get("status") in BAD_RUN for r in ended)
+                   and len({r.get("agentId") for r in ended}) > 1)
+    if all_failing:
+        since = min(r.get("createdAt") or "" for r in ended)[:16].replace("T", " ")
+        host.insert(0, f"runs-all-failing: the last {len(ended)} runs, on {len({r.get('agentId') for r in ended})} agents, all failed "
+                       f"(since {since} UTC); the agent host or Paperclip is at fault, not a ticket")
     day = [r for r in runs if (now - (when(r.get("createdAt")) or now)).total_seconds() < 86400]
     summary = {
         "at": now.strftime("%Y-%m-%d %H:%M UTC"), "company": co["name"],
@@ -284,7 +297,7 @@ def main(argv: list[str]) -> None:
         "tokens_read_24h_m": round(sum(num(r.get("cachedInputTokens")) for r in day) / 1e6),
         "live_runs": [f"{by[r['issueId']]['identifier']} ({agents.get(r.get('agentId'), '?')})" for r in runs
                       if r.get("status") in ("running", "queued") and r.get("issueId") in by and not is_stale_queued(r)],
-        "host": host, "labels_readable": labels_readable,
+        "host": host, "runs_all_failing": all_failing, "labels_readable": labels_readable,
         "lead_review": [r["id"] for r in rows if r["open"] and "lead_review" in r["labels"]],
         "founder_to_read": [r["id"] for r in rows if "fdr_review_pending" in r["labels"]],
         "waiting_on_founder": [r["id"] for r in rows if r["open"] and {"fdr_question", "fdr_blocked"} & set(r["labels"])],
@@ -297,6 +310,10 @@ def main(argv: list[str]) -> None:
     summary["agents_over_budget"] = [f"{a} (${c / 100:.2f} of ${AGENT_BUDGET_CENTS / 100:.2f} this month)"
                                      for a, c in sorted(month.items()) if AGENT_BUDGET_CENTS and c > AGENT_BUDGET_CENTS]
     if "--housekeep" in argv:
+        if all_failing:
+            print(f"housekeep: {host[0]}. Woke nobody and cancelled nothing; a person looks at the host. "
+                  "The first run that succeeds lifts this.")
+            sys.exit(1)
         failed = False
 
         def act(what: str, path: str, body: dict) -> bool:
