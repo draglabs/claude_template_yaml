@@ -27,8 +27,9 @@ paperclip ethos is to hire subagents."
 
 1. **A meter and a reader, kept apart.** `scripts/board_meter.py` (framework-owned) reads
    Paperclip's records and flags tickets with reason codes. It costs no tokens and judges
-   nothing. Its report changes nothing; its one acting mode, `--housekeep`, run hourly
-   with no agent, only unsticks the queue: it cancels a run that sat queued and never
+   nothing. Its report changes nothing; its one acting mode, `--housekeep`, run every five
+   minutes with no agent, only unsticks the queue (a run that died mid-ticket included: its
+   holder is woken, at most twice in a row): it cancels a run that sat queued and never
    started, and wakes the assignee of that ticket or of one that never got a run. On
    2026-11-20 one such queued run held the builder's only slot and two tickets sat for
    68 minutes with every agent idle; four hours is too long to wait for that, and
@@ -98,7 +99,7 @@ near $18). It is a starting number, meant to be changed in the project's variabl
 |---|---|
 | The board is looked at every four hours | The `board-review` routine, created by `paperclip_company.py sync` |
 | Counting costs nothing | The meter is a script; its thresholds are `BOARD_METER_<NAME>` variables |
-| A stuck queue is cleared within the hour | `board_meter.py --housekeep` on an hourly schedule the project sets up (adoption step 7); the Lead reports a `queued-stale` it still sees |
+| A stuck queue, or a ticket whose run died, is picked up within minutes | `board_meter.py --housekeep` on a five-minute schedule the project sets up (adoption step 7); the Lead reports a `queued-stale` it still sees |
 | Spend past a budget is seen, and kills nothing | The meter lists tickets and agents past their soft budgets; nothing sets Paperclip's hard budget unless the fuse variable is set |
 | Everything can be stopped at once | `paperclip_company.py pause`, a board operation that cancels live runs — the emergency switch |
 | The Lead acts only when switched on | `PAPERCLIP_LEAD_ACTS`, read by the agent — English-only, see below |
@@ -119,7 +120,9 @@ near $18). It is a starting number, meant to be changed in the project's variabl
 - **The Lead's confidence figure is self-rated.**
 - **The thresholds are guesses** from two weeks of one board.
 - **Housekeeping is unexercised as a script.** The cancel and the wake were done once by
-  hand; the wake request's shape was read from Paperclip's source. Nothing checks that a
+  hand; the wake request's shape was read from Paperclip's source. The wake for a run
+  that died was added after one sat two hours on a live board (THA-119) and has not run
+  there. Nothing checks that a
   project scheduled it, beyond the Lead seeing a stale queued run four hours later.
 - **The meter does not see the git host** (a mergeable MR on a waiting ticket, a cancelled
   pipeline a run is polling), and Paperclip records no cost on some runs, so `over-budget`

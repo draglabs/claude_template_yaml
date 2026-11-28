@@ -224,10 +224,12 @@ agent file, written there by `paperclip_company.py sync`. Agent ids come from
 - A comment on a closed ticket reopens it and wakes its agent. **The last comment goes on
   before the ticket is closed.**
 - Two tickets assigned to one agent in the same second can fail on the agent host. The
-  failed one is picked up by the hourly housekeeping.
+  failed one is picked up by the housekeeping.
+- A run that dies mid-ticket (the agent exits with an error) leaves the ticket
+  `in_progress` and owned, and Paperclip wakes nobody. The housekeeping does.
 
 **The backstop costs no tokens:** the board meter flags a `str_question` that is not on
-the Strategist and a `blocked` ticket with no label, and its hourly housekeeping puts a
+the Strategist and a `blocked` ticket with no label, and its housekeeping puts a
 `str_question` on the Strategist. `paperclip_company.py sync` creates the seven labels.
 
 ## Below 80%: stop, flag, wait
@@ -502,10 +504,12 @@ re-open one stopped in error. A ticket of yours it blocks carries
 and what it needs triaged are in the planning repo under `docs/paperclip_lead/`. It does the
 post review of a ticket when the ticket is assigned to it with `lead_review` (§"Done").
 
-**Between its looks, the queue is kept moving by a script, hourly, with no agent:**
-`board_meter.py --housekeep` cancels a run that sat queued without ever starting and wakes
-the ticket's current assignee, and wakes the assignee of a ticket that never got a run.
-It touches nothing that has started.
+**Between its looks, the queue is kept moving by a script, every five minutes, with no
+agent:** `board_meter.py --housekeep` cancels a run that sat queued without ever starting
+and wakes the ticket's current assignee, wakes the assignee of a ticket that never got a
+run, and wakes the holder of a ticket whose run died 15 minutes ago with nothing since.
+A run that dies twice more in a row is not woken a third time: the ticket stays flagged
+for a person. It touches nothing that has started.
 
 **No budget ends a working run.** Budgets are soft project variables
 (`PAPERCLIP_AGENT_BUDGET_CENTS`, `PAPERCLIP_TICKET_BUDGET_CENTS`): past one, the Lead
@@ -533,6 +537,6 @@ it pushed — so the built-in budget is at most a far-off fuse, and
    its task limit for ten days; new runs then died at start with `exit 255`), and a
    breaker on the Paperclip host that runs `paperclip_company.py pause` on three failed
    runs in an hour or when the board review has not run.
-7. An hourly schedule for `./scripts/board_meter.py --housekeep` with a board key: a cron
+7. A schedule, every five minutes, for `./scripts/board_meter.py --housekeep` with a board key: a cron
    entry on the Paperclip host or a scheduled pipeline in the planning repo. Where it
    runs is recorded in the project's Paperclip section.

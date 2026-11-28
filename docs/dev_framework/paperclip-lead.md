@@ -68,7 +68,7 @@ look → a triage file. A live run you cannot see into is treated as working.
 | `retry-loop` | 2+ failed runs in a row | Decide whether the cause is the task or the host before any retry |
 | `stalled-poll` | A run waiting on something that has ended | Say what happened; with acting on, end the run |
 | `stalled` | A live run with no output and no push | Nudge: "checkpoint now" |
-| `queued-stale`, `assigned-no-run` | A queued run that never started; a ticket its assignee never ran | The hourly `board_meter.py --housekeep` clears these; still there: report |
+| `queued-stale`, `assigned-no-run`, `run-failed` | A queued run that never started; a ticket never run; a run that died | `board_meter.py --housekeep` clears these; else report |
 | `orphaned` | In progress, no run for a day | Close it or wake it once |
 | `waiting` | In review for a day | Nudge whoever holds the gate |
 | `family` | A parent with open children and nothing running | Fold the children back or close them. Leave the one family that belongs: the human's ticket with the tickets triage made under it |

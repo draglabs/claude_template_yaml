@@ -13,10 +13,11 @@ Paperclip Lead (docs/dev_framework/paperclip-lead.md).
 
 --housekeep is the one mode that acts, and only on work that is not running: it cancels a run
 that has sat in the queue without starting (`queued-stale`) and wakes the ticket's current
-assignee, and it wakes the assignee of a ticket that never got a run (`assigned-no-run`). It
-never touches a run that has started. It needs a board key (cancel and wake are board
-operations in Paperclip) and is meant to run hourly, with no agent, from a schedule the
-project sets up. Exit 1 when an action was refused.
+assignee, it wakes the assignee of a ticket that never got a run (`assigned-no-run`), and it
+wakes the holder of a ticket whose run died (`run-failed`), at most FAILED_RETRIES times in a row.
+It never touches a run that has started. It needs a board key (cancel and wake are board
+operations in Paperclip) and is meant to run every five minutes, with no agent, from a schedule
+the project sets up. Exit 1 when an action was refused.
 
 Waste is unuseful work, not cost: the flags are signs of unuseful work, and cost is shown as
 information (runs, tokens read, spend) that flags nothing by itself.
@@ -26,6 +27,9 @@ Signals, and the reason code each one gives a ticket:
   stalled        a live run older than LONG_RUN_MIN with no output for QUIET_MIN
   queued-stale   a run queued for QUEUED_MIN that never started; it holds its agent's slot
   assigned-no-run  `in_progress`, idle for ASSIGNED_MIN, and its assignee has never run it
+  run-failed     `in_progress`, its holder's last run failed FAILED_MIN ago and nothing has run since.
+                 Housekeeping wakes the holder; after FAILED_RETRIES failures in a row it stops and
+                 the ticket stays flagged (`retry-loop`) for a person
   label-mismatch a `str_question` that is not assigned to FW_Strategist, or a `lead_review` that is
                  not assigned to FW_Paperclip_Lead (housekeeping moves it)
   blocked-unlabelled  `blocked` with none of the seven labels: Paperclip blocked it after a failed
@@ -70,6 +74,8 @@ LONG_RUN_MIN = setting("LONG_RUN_MIN", 45)
 QUIET_MIN = setting("QUIET_MIN", 15)
 QUEUED_MIN = setting("QUEUED_MIN", 10)
 ASSIGNED_MIN = setting("ASSIGNED_MIN", 30)
+FAILED_MIN = setting("FAILED_MIN", 15)
+FAILED_RETRIES = setting("FAILED_RETRIES", 2)
 ORPHAN_HOURS = setting("ORPHAN_HOURS", 24)
 WAIT_HOURS = setting("WAIT_HOURS", 24)
 FAMILY_SIZE = setting("FAMILY_SIZE", 3)
@@ -206,6 +212,7 @@ def main(argv: list[str]) -> None:
 
     rows = []
     never_ran = []  # issues whose current assignee has never run them
+    died = []  # issues whose holder's last run failed, with nothing running since, still within the retry cap
     misplaced = []  # (ticket, label, agent id, agent name): a label whose ticket is not on the agent it names
     for i in issues:
         s = stat[i["id"]]
@@ -227,6 +234,16 @@ def main(argv: list[str]) -> None:
                 and (s["last_run"] is None or s["last_run"].get("agentId") != who)):
             flags.append(("assigned-no-run", f"assigned to {agents.get(who, '?')}, which has never run it"))
             never_ran.append(i)
+        last = s["last_run"]
+        if (i["status"] == "in_progress" and who and not s["live"] and not s["stale"] and last
+                and last.get("agentId") == who and last.get("status") in BAD_RUN):
+            since = (now - (when(last.get("finishedAt")) or when(last.get("updatedAt")) or when(last["createdAt"]))).total_seconds() / 60
+            if since > FAILED_MIN:
+                retry = s["streak"] <= FAILED_RETRIES
+                flags.append(("run-failed", f"{agents.get(who, '?')}'s run {last.get('status')} {since:.0f} min ago, nothing since; "
+                              + ("housekeeping wakes it" if retry else f"{s['streak']} failures in a row, not retried")))
+                if retry:
+                    died.append(i)
         if i["status"] == "in_progress" and not s["live"] and idle_h > ORPHAN_HOURS:
             flags.append(("orphaned", f"in progress, no run for {idle_h / 24:.0f} days"))
         labs = labels_of(i)
@@ -308,6 +325,8 @@ def main(argv: list[str]) -> None:
                     failed |= not wake(i, "queued-stale")
         for i in never_ran:
             failed |= not wake(i, "assigned-no-run")
+        for i in died:
+            failed |= not wake(i, "run-failed")
         for i, label, target, target_name in misplaced:  # an assignment is what wakes the agent the label names
             try:
                 req = urllib.request.Request(base + f"/issues/{i['id']}", data=json.dumps({"assigneeAgentId": target}).encode(),

@@ -44,6 +44,10 @@ reviewed once, after the founder's first QA.
 - **Recommend on each declined item.** For every review item the refactor developer
   declined: "fix" or "leave", with the reason in a phrase. You recommend; the founder
   decides. Do not reopen the review and do not read the diff to do it.
+- **Summarise what the refactor developer did to the tests.** From its "Review" comment,
+  in plain words: what was removed and why, what was merged or moved between tiers, what
+  was added, and what now proves the feature. If a removed test looks like it protected
+  something, say so under "Not met".
 - **ADR conflicts.** Every `doc-conflict` reported, every deviation from an
   accepted ADR the builder recorded, every ADR left `proposed`: one line each, naming the
   ADR and what the founder is asked to approve.
@@ -51,7 +55,7 @@ reviewed once, after the founder's first QA.
 ## The rundown
 
 One comment on the ticket, **posted before the ticket is closed** (a comment on a closed
-ticket reopens it). About one screen; the four figures come first:
+ticket reopens it). About one screen; the figures come first:
 
 ```markdown
 ## Rundown — <ticket> — <one line: what was asked and what is now live>
@@ -59,6 +63,7 @@ ticket reopens it). About one screen; the four figures come first:
 - **Confidence it is done:** <n>% — <what holds it down, or nothing>
 - **Review:** <F> items, <A> acted on, <D> declined (<D/F>%; the aim is a third or more); +<N> / −<R> lines, <M> minutes; declined: <each — fix | leave, why; or none>
 - **Tests:** <before> → <after> for this ticket; fast tier <seconds before> → <after>
+- **What changed in the tests:** <two or three sentences from the refactor developer's "Test structure" line: what kinds of test were removed, merged or moved between tiers, what was added, and what now proves the feature>
 - **ADR conflicts for you:** <ADR — what to approve; or none>
 - **Not met:** <criterion or step — what is missing; or nothing>
 - **Delivered:** MR <link>, on dev at <commit>, harness <pass | fail | skip> <link>, flag <removed | kept: why | none>

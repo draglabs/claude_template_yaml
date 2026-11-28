@@ -103,6 +103,7 @@ Merge when CI is green, check the harness on dev, and post one "Review" comment:
 - **Acted on:** <item — what changed, the test that proves it; one line each>
 - **Declined:** <item — why; one line each>
 - **Tests:** <before> → <after> for this ticket; Tier 1 <seconds before> → <after>; harness cases <before> → <after>
+- **Test structure:** <what was removed, merged, rewritten, moved between tiers or added, by kind and with the reason; what now proves the feature>
 - **The changes:** +<N> / −<R> lines, <M> minutes, MR <link>
 ```
 

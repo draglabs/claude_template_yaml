@@ -170,7 +170,7 @@ add a bubble to the dev page."
   `FW_Strategist`.
 - **Mechanism for the labels:** `paperclip_company.py sync` creates the four; the board
   meter flags a `str_question` that is not on the Strategist and a `blocked` ticket with
-  no label, and its hourly housekeeping moves the first. That an agent sets a label at
+  no label, and its housekeeping moves the first. That an agent sets a label at
   all, and stops below 80%, is English-only.
 - **Named gap:** an Orchestrator's Executors die with its run. What they pushed survives;
   what they had not pushed does not. Unproven: no Orchestrator has yet run subagents on a
