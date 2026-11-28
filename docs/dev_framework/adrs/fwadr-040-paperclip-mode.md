@@ -87,31 +87,32 @@ add a bubble to the dev page."
    be reassigning, it should be running subagents." There is no `FW_Developer`: every run
    on a board gets a worktree, which removes what sets the Default Developer apart; on
    2026-11-08, when every item went to one in a shared checkout, the runs collided.
-6a. **One code review, then a post review.** The builder's own Reviewer subagent is the
-   code review; it runs once, and nothing reads the diff twice. **Its verdict decides:**
-   on `ship` or `ship-with-concerns` the builder merges as it is and lists the concerns;
-   on `block` it fixes the blocking findings only, proves each with a test, and merges
-   without a second pass. The Lead's rundown recommends a fix or not for each concern,
-   and the founder decides. The user: "Ship with concerns merges, and fixes only happen
-   on block. Then the lead looks at the report and makes a recommendation... it is up to
-   me to comment." A rule that had the builder weigh each finding did not hold: across
-   THA-81, THA-82, THA-83 and THA-88 builders took 11 of 12, 9 of 10, 7 of 9 and 11 of
-   12 findings, the same before and after a size test was added, at 20 to 70 minutes a
-   ticket; a careful agent settles a doubt by doing the work. On the first ticket of
-   this flow (THA-79, a 1-point item) each fix went to a fresh Reviewer, each found a
-   new hostile shape of the project's own env file, and the item was unmerged after
-   three passes and 1 h 42 min. The user: "the purpose of the framework reviewer is to
-   catch ADR violations, and coding style mistakes, not treat everything as hostile… and
-   there is no second review." **The founder's comment brings the builder back:** a
-   comment of his on a closed ticket that asks for a change has the Lead reassign that
-   ticket to its builder, with no new ticket ("i have feedback on the feature then that
-   reopens the ticket, it does not create tickets"). The Reviewer brief names what
-   a `block` is and that the project's own committed files are trusted. After merging, the builder hands the ticket to the Paperclip Lead (`lead_review`, set
-   in the update that reassigns it), and the Lead posts a rundown of what happened for the
-   founder and closes the ticket; it never sends one back ([FWADR-043](fwadr-043-paperclip-lead.md)).
-6b. **Five labels, each naming who must act:** `str_question`, `fdr_question`,
-   `fdr_blocked`, `lead_review`, `fdr_review_pending` (a ticket the Lead closed whose
-   rundown the founder has not read; the founder clears it). The user: "'str_question', 'fdr_question' is better
+6a. **Self-test, the founder's QA, then one code review, then a post review**
+   ([FWADR-045](fwadr-045-feature-flags-two-qa-rounds.md)). The builder self-tests and
+   merges behind a feature flag; the founder tries the work on dev and declares "QA
+   complete"; only then the builder's Reviewer subagent runs, once, as a defensive
+   technical review. Blocking findings are fixed in one round without a second pass,
+   every other finding is listed as a concern, the Lead's rundown recommends a fix or not
+   for each, and the founder decides. The ticket stays with the builder throughout,
+   `blocked` and labelled while it waits for him. A review before the merge was tried
+   first and held up his QA without changing what merged: with builders weighing each
+   finding they took 11 of 12, 9 of 10, 7 of 9 and 11 of 12 (THA-81, THA-82, THA-83,
+   THA-88) at 20 to 70 minutes a ticket; with the verdict deciding, both tickets came
+   back with 0 blocking findings. On the first ticket of all (THA-79, a 1-point item)
+   each fix went to a fresh Reviewer and the item was unmerged after three passes and
+   1 h 42 min. The user: "the purpose of the framework reviewer is to catch ADR
+   violations, and coding style mistakes, not treat everything as hostile… and there is
+   no second review." **After the close, the founder's comment brings the builder
+   back:** the Lead reassigns that ticket to its builder, with no new ticket ("i have
+   feedback on the feature then that reopens the ticket, it does not create tickets").
+   After the founder's Accept the builder hands the ticket to the Paperclip Lead
+   (`lead_review`, set in the update that reassigns it), and the Lead posts a rundown of
+   what happened for the founder and closes the ticket; it never sends one back
+   ([FWADR-043](fwadr-043-paperclip-lead.md)).
+6b. **Seven labels, each naming who must act:** `str_question`, `fdr_question`,
+   `fdr_blocked`, `fdr_qa_1` and `fdr_qa_2` (work on dev waiting for the founder's first
+   and second QA round), `lead_review`, `fdr_review_pending` (a ticket the Lead closed
+   whose rundown the founder has not read; the founder clears it). The user: "'str_question', 'fdr_question' is better
    because it informs me and the framework about who needs to act on it." Labels replace
    question cards; the question is a comment in the card's shape. Paperclip wakes on
    assignment and comment, never on a label, so a label always travels with one: a
@@ -174,12 +175,16 @@ add a bubble to the dev page."
 - **Named gap:** an Orchestrator's Executors die with its run. What they pushed survives;
   what they had not pushed does not. Unproven: no Orchestrator has yet run subagents on a
   board, and subagents multiply processes on an agent host that once hit its task limit.
-- **English-only:** that a builder reviews once, merges on a non-blocking verdict and
-  fixes only blocking findings. The verdict now carries the whole decision, so a Reviewer
-  that blocks too readily brings the old cost back; the rundown records the verdict and
-  what the fixes added. A blocking fix is not re-reviewed.
-- **A reassigned ticket whose builder is busy has nothing to start it** when that builder
-  frees up, short of the housekeeping schedule.
+- **English-only:** that a builder self-tests on two questions only, reviews once after
+  the founder's QA, and fixes only blocking findings. A Reviewer that blocks too readily
+  brings the old cost back; the rundown records the verdict and what the fixes added. A
+  blocking fix is not re-reviewed.
+- **Paperclip starts runs on its own schedule, and nothing an agent writes delays it.**
+  Seen on one board: a ticket reassigned to a busy builder was started nine minutes later
+  beside that builder's other run; a hand-off was moved to `blocked` by Paperclip a
+  minute after it was made; a retry started a second run on a ticket whose first run was
+  still working. Keeping the ticket with one builder through the founder's QA removes two
+  of the three hand-offs; the rest leans on the housekeeping schedule.
 - **Unproven:** the whole flow of decision 6 to 6c. Its first measured run is the
   experiment of 2026-11-23, against the 4 h 52 min above.
 - What waits on the human is in two places: a release, and the feedback that precedes

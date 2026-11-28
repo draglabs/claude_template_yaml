@@ -73,6 +73,19 @@ and how dev takes feedback.
    cases in any language's reach (`_stubs/qa/grammar-cases.yaml`). A project's agents
    never read another project's repo for it.
 
+9. **On a Paperclip board the view also carries the founder's side of each ticket**
+   ([FWADR-045](fwadr-045-feature-flags-two-qa-rounds.md)): "QA complete" and "Accept"
+   per waiting ticket, taken only from a named person's own sign-in; the list of features
+   still behind a flag; and "Send to the team", which posts the gathered notes as one
+   comment per ticket the cards name and opens a Strategist ticket for general feedback.
+   The user: "we need the comment to find it's way into paperclip on the relevant ticket
+   (not creating a new ticket)." Only a person's comment wakes an agent, so the view holds a person's
+   board key; a user made for the view and limited to one company is the rule, and the
+   founder's own key is an exception only he grants.
+10. **Unaccepted work is released switched off.** With feature flags a release never
+   waits for a ticket; Approve warns about unflagged changes the stakeholder has not
+   accepted and lists flagged work as "ships off".
+
 ## Mechanisms
 
 | Rule | What makes it mechanical |

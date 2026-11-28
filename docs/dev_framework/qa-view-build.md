@@ -71,16 +71,34 @@ to bottom:
      outlined. Reject and Send feedback need a note; Approve and Postpone take one
      optionally.
 5. **What changed.** The PRs merged since the last release, each a link to the git host.
-6. **Anything else.** General feedback since the last release, each with the commit it
+6. **Waiting for you** (a project on a Paperclip board). One row per ticket carrying
+   `fdr_qa_1` or `fdr_qa_2`, read from the board: its title, a link to it, the builder's
+   "what to try", a note box, and one button: **QA complete** in the first round,
+   **Accept** in the second, with a "keep the flag" tick beside Accept. Pressing posts a
+   comment on the ticket whose first line is `QA complete` or `Accept` (`Accept, keep
+   the flag` when ticked), then the note, then who pressed and on which commit. A note
+   with no press goes with "Send to the team" and leaves the ticket waiting. The
+   buttons are shown to, and accepted from, a named person's own sign-in only: never the
+   harness's user or any shared account.
+7. **Still behind a flag.** Every flag in the code's list at the deployed commit: its
+   name, its ticket and how long ago it was added. These are released switched off.
+8. **Anything else.** General feedback since the last release, each with the commit it
    was written on, then a box and a Send feedback button.
-7. **Release.** A version field, filled with the next patch after the highest release
+9. **Send to the team** (a project on a Paperclip board). One button, with the count of
+   notes and rejections not yet sent. It posts one comment per affected ticket and one
+   new Strategist ticket for general feedback
+   ([`dev-environment.md`](dev-environment.md) §"Feedback from the QA view"), and records
+   what it sent so nothing is sent twice. A note deleted before the press is not sent.
+10. **Release.** A version field, filled with the next patch after the highest release
    tag (`v0.0.1` when there is none), and **Approve release**. Above it, one sentence on
    where things stand. When anything is unsettled, pressing the button shows exactly what
-   and asks for confirmation; nothing disables it. After approval the box says "Approved
+   and asks for confirmation; nothing disables it. A ticket still waiting for the
+   stakeholder is not unsettled when its work is behind a flag: it is listed as
+   "ships off". After approval the box says "Approved
    as `<version>`; waiting for the release job", then "Released as `<version>`".
 
 With several code repos, sections 3 to 5 repeat per repo under the repo's name, and
-section 7 releases one repo at a time.
+section 10 releases one repo at a time.
 
 **When the git host cannot be read,** the page shows the header and one sentence saying
 so, and nothing else. It never shows a checklist with guessed state.
@@ -187,6 +205,7 @@ language proves it reads the same comments by passing the same cases.
 | `SITE_ACCESS` | `restricted` / `open`, required | Dev is `restricted`: per-user passwords. |
 | `QA_GIT_TOKEN_<REPO>` | secret | One token per repo, the lowest role that reads commits and writes commit comments. |
 | `QA_BOT_USER_ID` | number | The token's own user; only its comments count. |
+| `QA_BOARD_API_KEY` | secret | Paperclip board only: a person's key, for a user made for the view and limited to the one company. Reads the waiting tickets and comments on tickets. |
 
 Names beyond these are the project's. All of them are `env.yaml` entries routed to the
 dev environment only ([FWADR-041](adrs/fwadr-041-env-yaml.md)).

@@ -19,7 +19,8 @@ metadata:
 2. For each live run: is it doing normal things (a recent push, a current resume note)?
    For each flagged ticket: its last two comments, its last run's outcome, its resume
    note, then one of leave / nudge / report (`paperclip-lead.md`). Never interrupt a run
-   that is working.
+   that is working. A `blocked` ticket carrying `fdr_qa_1` or `fdr_qa_2` waits for the
+   founder's QA: leave it, whatever its age.
 3. No live run → wake one ready ticket.
 3a. For each ticket the meter lists under `lead_review`: the post review
    (`fw paperclip-post-review.md`). Rundown on the ticket first, then close it

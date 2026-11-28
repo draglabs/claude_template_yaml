@@ -28,10 +28,10 @@ Signals, and the reason code each one gives a ticket:
   assigned-no-run  `in_progress`, idle for ASSIGNED_MIN, and its assignee has never run it
   label-mismatch a `str_question` that is not assigned to FW_Strategist, or a `lead_review` that is
                  not assigned to FW_Paperclip_Lead (housekeeping moves it)
-  blocked-unlabelled  `blocked` with none of the five labels: Paperclip blocked it after a failed
+  blocked-unlabelled  `blocked` with none of the seven labels: Paperclip blocked it after a failed
                  run, or an agent forgot to say who must act
 The summary lists the tickets carrying `lead_review` (waiting for the Lead's post review) and the
-ones waiting on the founder (`fdr_question`, `fdr_blocked`), and the closed tickets whose rundown the
+ones waiting on the founder (`fdr_question`, `fdr_blocked`; `fdr_qa_1`, `fdr_qa_2` for his QA), and the closed tickets whose rundown the
 founder has not read (`fdr_review_pending`).
   orphaned       `in_progress` with no live run for ORPHAN_HOURS
   waiting        `in_review` for WAIT_HOURS
@@ -77,7 +77,7 @@ HOST_TASK_SHARE = setting("HOST_TASK_SHARE", 0.5)
 TICKET_BUDGET_CENTS = float(os.environ.get("PAPERCLIP_TICKET_BUDGET_CENTS") or 0)  # 0 = no per-ticket cap
 AGENT_BUDGET_CENTS = float(os.environ.get("PAPERCLIP_AGENT_BUDGET_CENTS") or 0)    # 0 = no per-agent monthly cap
 OPEN = ("todo", "in_progress", "in_review", "blocked")
-LABELS = ("str_question", "fdr_question", "fdr_blocked", "lead_review", "fdr_review_pending")
+LABELS = ("str_question", "fdr_question", "fdr_blocked", "lead_review", "fdr_review_pending", "fdr_qa_1", "fdr_qa_2")
 STRATEGIST = os.environ.get("BOARD_METER_STRATEGIST", "FW_Strategist")
 LEAD = os.environ.get("BOARD_METER_LEAD", "FW_Paperclip_Lead")
 BAD_RUN = ("failed", "timed_out")
@@ -271,6 +271,7 @@ def main(argv: list[str]) -> None:
         "lead_review": [r["id"] for r in rows if r["open"] and "lead_review" in r["labels"]],
         "founder_to_read": [r["id"] for r in rows if "fdr_review_pending" in r["labels"]],
         "waiting_on_founder": [r["id"] for r in rows if r["open"] and {"fdr_question", "fdr_blocked"} & set(r["labels"])],
+        "founder_qa": [r["id"] for r in rows if r["open"] and {"fdr_qa_1", "fdr_qa_2"} & set(r["labels"])],
     }
     month = collections.Counter()
     for r in runs:
@@ -328,6 +329,7 @@ def main(argv: list[str]) -> None:
         print("- **Labels could not be read with this key:** the label checks did not run")
     print(f"- Waiting for post review (`lead_review`): {', '.join(summary['lead_review']) or 'nothing'}")
     print(f"- Waiting on the founder: {', '.join(summary['waiting_on_founder']) or 'nothing'}")
+    print(f"- Waiting for the founder's QA (`fdr_qa_1`, `fdr_qa_2`): {', '.join(summary['founder_qa']) or 'nothing'}")
     print(f"- Closed, rundown not yet read by the founder (`fdr_review_pending`): {', '.join(summary['founder_to_read']) or 'nothing'}")
     for h in host:
         print(f"- **Host:** {h}")

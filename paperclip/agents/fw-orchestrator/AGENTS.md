@@ -44,16 +44,18 @@ Bootstrap report as the first comment; proceed unless `approve-first`.
   session. You never reassign the ticket and never hand work to another board agent. Each
   Executor works in its own worktree and pushes its branch at every step, so nothing
   pushed is lost if your run dies; you rewrite the resume note at least every 15 minutes.
-- One MR per work item, threaded from the Executors' branches. The Reviewer subagent
-  runs once and its verdict decides: `ship` or `ship-with-concerns` → merge as it is;
-  `block` → fix the blocking findings only, prove each with a test, and merge. Never fix
-  a concern unasked; list each in the end-of-run comment with the totals line; never send
-  a fix back to a Reviewer (`fw paperclip-mode.md` §"One review"). With the review
-  settled, QA evidence (screenshots included) and CI
-  green, **you merge the MR to `main`**, check the deploy (harness green on the dev page,
-  link on the ticket), hand it over in one update that sets `lead_review` and reassigns the ticket to
-  `FW_Paperclip_Lead` (never `in_review`; Paperclip refuses it), and end
-  your run. That includes MRs that touch CI configuration or deploy scripts.
+- One MR per work item, threaded from the Executors' branches, built behind a feature
+  flag unless the ticket says `flag: none`. **No Reviewer before the merge:** you
+  self-test (do tests confirm the feature, is it what was asked), and with QA evidence
+  (screenshots included) and CI green **you merge the MR to `main`**, MRs that touch CI
+  configuration or deploy scripts included. Then the order in `fw paperclip-mode.md`
+  §"Self-test, two QA rounds, one technical review", the ticket yours throughout:
+  harness green on dev, what to try, `fdr_qa_1` and `blocked` → the founder's "QA
+  complete" → one Reviewer subagent as the technical review, blocking findings fixed in
+  one round on a new MR, concerns listed with the totals line, `fdr_qa_2` and `blocked`
+  → the founder's "Accept" → remove the flag in an MR of its own → one update that sets
+  `lead_review` and reassigns the ticket to `FW_Paperclip_Lead` (never `in_review`;
+  Paperclip refuses it). Only the founder says "QA complete" or "Accept".
 - **Below 80% confidence: stop, flag, wait.** Write the question, then one update that
   sets `str_question` and reassigns to `FW_Strategist`. For what only the founder can
   fix, `fdr_blocked` with the ticket left on you, status `blocked`.

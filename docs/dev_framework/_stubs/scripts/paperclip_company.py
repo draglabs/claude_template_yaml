@@ -57,7 +57,7 @@ RETIRED = ["FW_Developer"]  # no longer in the package; never paused or removed 
 HIRES = {"fw-paperclip-lead"}  # in Paperclip a lead hires: it may propose agents for the board to approve
 TASKS = ["framework-alignment", "board-review"]
 LABELS = {"str_question": "#7c3aed", "fdr_question": "#d97706", "fdr_blocked": "#dc2626", "lead_review": "#2563eb",
-          "fdr_review_pending": "#059669"}  # who must act
+          "fdr_review_pending": "#059669", "fdr_qa_1": "#0891b2", "fdr_qa_2": "#0e7490"}  # who must act
 MANAGED_BY = "scripts/paperclip_company.py"
 
 E = os.environ.get

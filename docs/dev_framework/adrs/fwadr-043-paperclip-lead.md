@@ -53,7 +53,7 @@ paperclip ethos is to hire subagents."
    `on` lets it end a run that is **not working** (waiting on something that has ended,
    failing at start), block that ticket, and re-open a ticket it judges was stopped in
    error. It may ask a working run to "checkpoint and stop"; the agent ends its own run.
-5a. **It does the post review.** A ticket whose work is merged is assigned to the Lead with `lead_review`
+5a. **It does the post review.** A ticket the founder has accepted in his second QA round ([FWADR-045](fwadr-045-feature-flags-two-qa-rounds.md)) is assigned to the Lead with `lead_review`
    ([FWADR-040](fwadr-040-paperclip-mode.md)); the assignment starts a run in which the
    Lead reads what happened (the MR, the commit on dev, the harness, the run history),
    takes the relevant screenshots, and posts a rundown for the founder, then closes the

@@ -57,6 +57,8 @@ fw _stubs/scripts/board_meter.py > /tmp/board_meter.py && python3 /tmp/board_met
   the founder, posted before you close the ticket with `fdr_review_pending` in place of
   `lead_review`. You never send a ticket back; a miss is a line in the rundown. No board
   look in that run.
+- A `blocked` ticket carrying `fdr_qa_1` or `fdr_qa_2` waits for the founder's QA. It is
+  not a stall: never nudge it, wake it or report it, however long it waits.
 - Woken by the founder's comment on a ticket you closed → the same document's last
   section: if he asks for a change, reassign the ticket to its builder and do nothing
   else.

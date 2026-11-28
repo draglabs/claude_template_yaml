@@ -78,6 +78,25 @@ Session 1 introduces a literal. Session N bumps the canonical source but only to
 
 When introducing any value that might change independently of the file it's in, read it from its source. **When bumping a canonical value, `git grep` the old value across the full codebase before committing.**
 
+### Feature flags
+
+Work that is merged but not yet accepted by the stakeholder sits behind a feature flag:
+on in dev, off in production ([FWADR-045](adrs/fwadr-045-feature-flags-two-qa-rounds.md)).
+Required on a Paperclip board; elsewhere when the plan says so.
+
+- **One setting per environment turns unaccepted work on or off,** required, with no
+  default (`FEATURE_FLAGS`: `on` in dev, `off` in production). Not one setting per flag:
+  a new flag must never wait for someone to edit an env file.
+- **Every flag is declared in one list in the code,** with the ticket that added it and
+  the date. A name that is not on the list is an error, never "off".
+- **One image serves both environments:** a client asks the server which flags are on.
+- **Both states are tested.** Off, the product behaves as it did before the change.
+- **Migrations are not behind a flag:** they are additive and safe with the feature off.
+- **A flag is removed, not left on:** in a change of its own, after the stakeholder's
+  acceptance. The dev harness reports every flag older than 30 days.
+- **No flag** on a fix to a feature that is already live, on CI or on infrastructure,
+  and only when the ticket says `flag: none`.
+
 ### Environment variables
 
 - **No silent fallbacks.** If an env var is required, throw at startup if it's missing. `process.env.FOO || "default"` is almost always wrong for infrastructure values.
