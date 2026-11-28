@@ -76,7 +76,9 @@ to bottom:
    "what to try", a note box, and one button: **QA complete** in the first round,
    **Accept** in the second, with a "keep the flag" tick beside Accept. Pressing posts a
    comment on the ticket whose first line is `QA complete` or `Accept` (`Accept, keep
-   the flag` when ticked), then the note, then who pressed and on which commit. A note
+   the flag` when ticked), then the note, then who pressed and on which commit. **QA
+   complete** also, in the same update, clears `fdr_qa_1` and assigns the ticket,
+   `in_progress`, to `FW_Refactor_Developer`. A note
    with no press goes with "Send to the team" and leaves the ticket waiting. The
    buttons are shown to, and accepted from, a named person's own sign-in only: never the
    harness's user or any shared account.

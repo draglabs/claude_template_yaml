@@ -14,7 +14,7 @@ a Paperclip agent does the thing in the right column. Decided in
 | "ask the user" / "Anything else?" | Write the question on the ticket — options with evidence, each with Confidence and Difficulty, the recommendation first, last item "Anything else?" — set the label that names who must answer, and end your run (§"Labels"). Labels replace question cards. Never block on chat. |
 | "report your understanding and wait for approval" | Post the bootstrap report as the **first comment** on the issue and proceed. Stop and wait only if the issue says `approve-first` or the report finds a conflict. |
 | "spawn an Executor" (Orchestrator) | Unchanged: a **subagent inside your run**, each in its own worktree. You never reassign the ticket to another agent. Each Executor pushes its branch at every step, so a run that dies loses nothing that was pushed (§"Checkpoints"). |
-| "spawn a Reviewer" | The agent that holds the ticket self-tests before the merge. The Reviewer **subagent** runs **once**, after the founder's "QA complete", as the technical review; nothing reads the diff a second time, a fresh Reviewer after a fix included (§"Self-test, two QA rounds, one technical review"). |
+| "spawn a Reviewer" | The agent that holds the ticket self-tests before the merge and spawns no Reviewer. The review is done **once**, after the founder's "QA complete", by `FW_Refactor_Developer`, which then acts on it; nothing reads the diff a second time (§"Self-test, two QA rounds, one technical review"). |
 | "the user is the QA gate" (Developer) | Post the evidence (commands, output, screenshots) as a comment, merge when the gates pass, and hand the ticket to the Lead with `lead_review` (§"Done"). |
 | "hand off the PR" | There is nobody to hand it to: the agent that holds the ticket merges it (§"Who merges"). The end-of-run comment carries the deep link: `Merged MR <n> (W-<id>): <url>`. |
 | "`/compact`", "fresh session" | A run is a session. State that must outlive the run is in the issue (comments) or in git (MR, W-item log) — nowhere else. |
@@ -26,7 +26,7 @@ a Paperclip agent does the thing in the right column. Decided in
 | Where | Who merges | When |
 |---|---|---|
 | Planning repo `main` — everyone's shared page | The agent that wrote the change | At once: open the MR, merge it yourself, the MR stays as the record. No stacked or long-lived planning branches. |
-| Code repo `main` | The agent that holds the ticket: `FW_Parallel_Developer`, or `FW_Orchestrator` on the big work it threads together | When the gates pass: its self-test, QA evidence including screenshots, CI green. Every MR, CI configuration and deploy scripts included. |
+| Code repo `main` | The agent that holds the ticket: `FW_Parallel_Developer`, or `FW_Orchestrator` on the big work it threads together; after the founder's "QA complete", `FW_Refactor_Developer` | When the gates pass: its self-test, QA evidence including screenshots, CI green. Every MR, CI configuration and deploy scripts included. |
 | Release tag | The human, never an agent — by approving in the QA view on dev | After the human works the checklist at the end of an epic or phase. |
 
 **ADRs.** An ADR lands with status `proposed`, and an `fdr_question` asks the founder to accept it.
@@ -48,8 +48,8 @@ changed or routed to you is an `fdr_blocked` naming the variable and the place.
 
 **A planned ticket goes straight to `FW_Parallel_Developer`,** assigned by whoever
 triaged it. It builds, self-tests, merges when that and CI pass, checks the deploy, and keeps the
-ticket through the founder's two QA rounds (§"Self-test, two QA rounds, one technical
-review"). One agent holds the ticket from start to the hand-off for the rundown.
+ticket until the founder's "QA complete", when `FW_Refactor_Developer` takes it to the
+end (§"Self-test, two QA rounds, one technical review").
 
 **The Orchestrator is for big work.** The user: "5 points but it's really a judgement
 call. We use orchestrators when we think that the coding could be completed faster using
@@ -72,20 +72,21 @@ wrong thing or the lack of the thing that I asked for."
 | Step | Who | What | The ticket while it waits |
 |---|---|---|---|
 | 1 | Builder | Builds behind a feature flag, self-tests, merges | |
-| 2 | Builder | Checks the deploy on dev, says what to try | `fdr_qa_1`, `blocked`, still the builder's |
+| 2 | Builder | Checks the deploy on dev, says what to try | `fdr_qa_1`, `blocked`, the builder's |
 | 3 | Founder | Tries it on dev: **QA complete** | |
-| 4 | Builder | Technical review, one round of fixes | `fdr_qa_2`, `blocked`, still the builder's |
+| 4 | Refactor developer | Reviews the code, decides per item, acts, trims the tests | `fdr_qa_2`, `blocked`, the refactor developer's |
 | 5 | Founder | Checks nothing broke: **Accept** | |
-| 6 | Builder | Removes the flag, merges, hands to the Lead | `lead_review`, the Lead's |
+| 6 | Refactor developer | Removes the flag, merges, hands to the Lead | `lead_review`, the Lead's |
 | 7 | Lead | The rundown; closes the ticket | `fdr_review_pending`, closed |
 
-Every ticket goes through both rounds, including one with nothing for the founder to
-try. The user: "they can still go through this process, even though I'll probably end
-up just clicking accept on them."
+The builder is `FW_Parallel_Developer`, or `FW_Orchestrator` on big work; the path is
+the same for both. Every ticket goes through both rounds, including one with nothing for
+the founder to try. The user: "they can still go through this process, even though I'll
+probably end up just clicking accept on them."
 
 **1. The self-test is two questions, and the builder answers them itself.** Are there
 tests that confirm the feature works, and is what was built what the ticket asked for?
-No Reviewer runs before the merge. Hunting for security holes, performance and edge
+No review runs before the merge. Hunting for security holes, performance and edge
 cases is not this step's job: a defensive review is coming, after the founder has
 tried the work. The user: "the first Claude knows that there's a defensive analyst
 coming up, it will be less of a defensive analyst in getting the job done so that I can
@@ -107,57 +108,68 @@ tested it and the human said it was done." He presses it in the QA view, which c
 on the ticket as him, or he writes it on the ticket. No agent presses either button,
 writes either phrase, or takes a green harness for his word.
 
-**Woken while waiting: read the founder's last comment.**
+**"QA complete" passes the ticket to `FW_Refactor_Developer`.** Pressed in the QA view,
+the same update that carries his comment clears `fdr_qa_1` and assigns the ticket to the
+refactor developer, which starts it. Written on the ticket by hand, it wakes the
+builder, which makes that one update and ends its run.
 
-- *QA complete* (ticket in `fdr_qa_1`) → step 4.
-- *Accept* (ticket in `fdr_qa_2`) → step 6.
-- *A note or a rejection* → fix it on a new MR on this ticket, self-test, merge, and
-  wait again in the same round.
+**Woken on a waiting ticket: read the founder's last comment.**
+
+- *QA complete* (the builder, `fdr_qa_1`) → pass the ticket on, as above.
+- *Accept* (the refactor developer, `fdr_qa_2`) → step 6.
+- *A note or a rejection* → whoever holds the ticket fixes it on a new MR on this
+  ticket, tests it, merges, and waits again in the same round.
 - *Anything else, or no comment of his* → set `blocked` again, label unchanged, and end
   the run.
 
-**4. The technical review: one Reviewer subagent, as a defensive analyst.** It reads
-everything this ticket merged, against `main` as it is now.
+**4. The refactor developer reviews, decides, then acts, in one run**
+([`paperclip-refactor.md`](paperclip-refactor.md)). The user: "first it acts as code
+review then it reads the evaluation criteria, then acts on the code review analysis."
+It did not write the code, so it reads it fresh, and it reads it once: no Reviewer
+subagent, and no builder starting cold to re-read a Reviewer's list.
 
-- **A blocking finding is fixed, and only those:** an ADR violation, a broken coding
-  standard, an acceptance criterion not met. Fix the class, not the one instance shown,
-  prove each fix with a test, and merge on a new MR cut from `main`: other work may
-  already be built on the code.
-- **One round. A fix never goes back to a Reviewer.** The user: "I also still like the
-  way we do one round of fixes, not infinite looping on fix."
-- **Every other finding is a concern,** listed one line each as the Reviewer put it and
-  left alone. The Lead's rundown recommends a fix or leaving it; the founder decides.
-- **Write it down** under "Review" in a comment: the verdict, each blocking finding
-  fixed and the test that proves it, each concern, and the totals line
-  `Review: <verdict>; <B> blocking fixed, <C> concerns listed; the fixes added <N> lines
-  and <M> minutes.`
-- Below 80% on whether a blocking finding is right: that is a `str_question`, not a
-  second review.
+- **Review:** everything this ticket merged, against `main` as it is now, as a
+  defensive analyst. Every item is written down before any is judged.
+- **Decide:** each item is marked *act* or *decline*, with a reason, before any code
+  changes. An ADR violation, a broken coding standard and an acceptance criterion not
+  met are always acted on. The rest are weighed, and a third or more are expected to be
+  declined as overly defensive.
+- **Act:** the items marked *act*, each proven by a test, on a new MR cut from `main`:
+  other work may already be built on the code.
+- **Trim the tests:** the ticket's tests are refactored down to targeted proof that the
+  feature works, and the routine bulk is removed.
+- **One round, and nothing is reviewed again.** The user: "I also still like the way we
+  do one round of fixes, not infinite looping on fix."
+- **Declined items are listed,** one line each. The Lead's rundown recommends a fix or
+  leaving it; the founder decides.
+- Below 80% on whether an item must be acted on: that is a `str_question`.
 
-Then harness green on dev again, the resume note, and one update that sets `fdr_qa_2`
-and `blocked`. A review that found nothing blocking changes no code and goes to round
-two all the same.
+Then harness green on dev, the "Review" comment with its totals, the resume note,
+and one update that sets `fdr_qa_2` and `blocked`, the ticket still the refactor
+developer's. A review that changes no code goes to round two all the same.
 
-**6. Accept settles the feature.** The builder removes the flag in an MR that holds the
-removal and nothing else, merges it, checks the harness on dev, and hands the ticket to
-the Lead (§"Done"). The user: "flag is removed after the second accept unless otherwise
-specified by me": when his Accept says to keep the flag, it stays and the hand-off says
-so. The feature reaches production at the founder's next release
+**6. Accept settles the feature.** The refactor developer removes the flag in an MR that
+holds the removal and nothing else, merges it, checks the harness on dev, and hands the
+ticket to the Lead (§"Done"). The user: "flag is removed after the second accept unless
+otherwise specified by me": when his Accept says to keep the flag, it stays and the
+hand-off says so. The feature reaches production at the founder's next release
 ([FWADR-042](adrs/fwadr-042-qa-view-release.md)); work still behind a flag is released
 switched off, so a release never waits for a ticket.
 
 **A red harness on `main` holds up dev for everyone.** The builder whose merge turned it
 red fixes it or reverts that merge before anything else.
 
-**This is the rule on a board.** `developer.md`'s review gate and its "doesn't
-second-guess the Reviewer" are for a chat session, where the user is in the loop.
+**This is the rule on a board.** `developer.md`'s review gate, its Reviewer subagent and
+its "doesn't second-guess the Reviewer" are for a chat session, where the user is in the
+loop.
 
 **After the ticket is closed, the founder's comment brings the builder back.** The user:
 "i have feedback on the feature then that reopens the ticket, it does not create
 tickets... i would expect parallel dev to be assigned and then fix the commit and tell
 me when it's done." A comment from the founder on a closed ticket reopens it and wakes
 its assignee, the Lead. When the comment asks for a change, the Lead reassigns that
-ticket to the builder that merged it, in one update that clears `fdr_review_pending`,
+ticket to the builder that built it (never the refactor developer), in one update that
+clears `fdr_review_pending`,
 and does nothing else: no checking on dev, no new ticket, no planning item. The founder
 may also assign the ticket to the builder himself. The builder fixes it on a new MR on
 the same ticket, self-tests, merges, and hands to the Lead with `lead_review`; the
@@ -174,9 +186,9 @@ none is being worked, or is closed and read.
 | `str_question` | The Strategist | An agent below 80% confidence on something; a builder handed a ticket that is not yet a concrete objective | The Strategist, with the answer |
 | `fdr_question` | The founder | The Strategist, when it cannot answer at 80% either; or any agent, when only the founder could know | The agent that resumes on the founder's answer |
 | `fdr_blocked` | The founder | Anyone, for what no agent can fix: a secret, access, money, an outside party | The agent that resumes once it is fixed |
-| `fdr_qa_1` | The founder | The builder, once the work is on dev with a green harness | The builder, woken by the founder's "QA complete" |
-| `fdr_qa_2` | The founder | The builder, after the technical review and its fixes | The builder, woken by the founder's "Accept" |
-| `lead_review` | The Paperclip Lead | The builder, after the founder's Accept, in the update that reassigns the ticket to the Lead | The Lead, with the rundown |
+| `fdr_qa_1` | The founder | The builder, once the work is on dev with a green harness | The update that passes the ticket to the refactor developer on the founder's "QA complete" |
+| `fdr_qa_2` | The founder | The refactor developer, after its review and changes | The refactor developer, woken by the founder's "Accept" |
+| `lead_review` | The Paperclip Lead | The refactor developer, after the founder's Accept, in the update that reassigns the ticket to the Lead | The Lead, with the rundown |
 | `fdr_review_pending` | The founder | The Lead, in the update that closes the ticket after its rundown | The founder, once the rundown is read |
 
 **A label always travels with what wakes the right agent.** Paperclip wakes on
@@ -421,19 +433,19 @@ are writing against dev's services. Whole suites go through the harness
 
 ## Done
 
-**The builder finishes the job itself.** After each merge: deployed to dev → harness
+**Whoever merges finishes the job itself.** After each merge: deployed to dev → harness
 green on the dev page → the link to that result posted on the ticket. A red harness is
 its own to fix, on the same ticket. The ticket then waits for the founder twice
 (§"Self-test, two QA rounds, one technical review"). After his Accept and the flag's
-removal, the builder hands the ticket over in one update that sets `lead_review` and
-reassigns it to `FW_Paperclip_Lead`, and ends its run.
+removal, the refactor developer hands the ticket over in one update that sets
+`lead_review` and reassigns it to `FW_Paperclip_Lead`, and ends its run.
 
 **The post review is the Paperclip Lead's, and it is not a code review**
 ([`paperclip-post-review.md`](paperclip-post-review.md)). The user: "the job is to ensure
 the ticket ran smoothly, the agent did what it was supposed to, code landed on the real
 dev server etc. So it's a review of 'what happened and if anything went wrong', not a
 review of the code." The Lead posts a rundown for the founder (cost, its confidence
-that the ticket is done, a recommendation on each concern of the technical review, ADR conflicts needing approval,
+that the ticket is done, a recommendation on each review item that was declined, ADR conflicts needing approval,
 anything not met, screenshots), then closes the ticket carrying `fdr_review_pending` in
 place of `lead_review`: a closed ticket the founder has not read yet. The founder clears
 that label, and can reopen the ticket. The Lead never sends a
@@ -454,7 +466,7 @@ its work on dev, as before.
 
 One company per framework project. The company is created from the package at
 [`paperclip/`](../../paperclip/) in the template repo — `FW_Strategist`, `FW_Orchestrator`,
-`FW_Parallel_Developer`, `FW_Designer`, `FW_Curator` — each a reading list
+`FW_Parallel_Developer`, `FW_Refactor_Developer`, `FW_Designer`, `FW_Curator` — each a reading list
 (and `FW_Paperclip_Lead`, whose list is two documents — §"The Paperclip Lead"):
 
 1. the project's `CLAUDE.md` and `docs/framework_exceptions/dev_framework_exceptions.md`,
@@ -513,7 +525,7 @@ it pushed — so the built-in budget is at most a far-off fuse, and
    each code repo's `main`; `v*` tags are protected — only the `release` job and the
    human create them.
 4. `PAPERCLIP_AGENT_BUDGET_CENTS` set (a soft budget per agent is a project variable), then
-   `./scripts/paperclip_company.py sync` — creates or refreshes the six agents, the two
+   `./scripts/paperclip_company.py sync` — creates or refreshes the seven agents, the two
    routines (the daily alignment check, the four-hour board review) and the seven labels.
 5. One ops issue that proves the loop end to end before any work issue.
 6. On the hosts, by the user: a timer on the agent host that kills the agent user's

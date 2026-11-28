@@ -46,7 +46,8 @@ needs a database is not a CI test.
    test runner supports (a pytest marker, a jest project or tag, a Go build
    tag, a directory per tier). A test with no tier fails collection.
    - **Tier 1** — fast, deterministic, no database, no network. The only
-     tier CI runs; run in parallel; budget a few minutes; target at most
+     tier CI runs; run in parallel; budget a few minutes, with merge to
+     live on dev capped at 15 by the CI timeout; target at most
      about 5% of the project's test cases.
    - **Tier 2** — needs the database or another service. Code that runs **on
      the dev site**, inside the app, after each deploy and on demand.

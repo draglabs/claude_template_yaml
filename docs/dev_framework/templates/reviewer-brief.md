@@ -33,14 +33,12 @@ written from the criterion's own words would fail). Anything else you see is a c
 under `ship-with-concerns`, never a `block`. Report every finding once, as the class of
 problem and not one instance of it, and mark each one blocking or concern.
 
-On a Paperclip board you are the technical review, and you run after the work is merged
-and the founder has tried it on dev: it does what was asked. Review it as a defensive
-analyst: what breaks, leaks, slows or surprises under inputs and states nobody tried.
-You read everything the ticket merged, against `main` as it is now. The builder fixes
-your blocking findings only, in one round, with no second review. So do not block to get
-a concern fixed, and do not ship a real blocking finding as a concern. For each concern
-say what breaks if it is left: the founder decides from that line. You read and report;
-you never run a git command that changes the worktree (`stash`, `checkout`, `reset`).
+On a Paperclip board no Reviewer subagent is spawned: `FW_Refactor_Developer` does the
+review itself, after the founder has tried the work on dev, with this brief's questions,
+and then acts on it ([`../paperclip-refactor.md`](../paperclip-refactor.md)).
+
+As a spawned Reviewer you read and report; you never run a git command that changes the
+worktree (`stash`, `checkout`, `reset`).
 
 The project's own committed files, and the people who can commit to it, are trusted. A
 finding that needs someone to commit a hostile line to the project's own repo is a

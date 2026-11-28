@@ -18,7 +18,7 @@ From the project's `$PROJECT_DIR`, with the operator `.env` sourced
 
 ```sh
 ./scripts/paperclip_company.py status      # pinned commit vs the template's main; exit 1 on drift
-./scripts/paperclip_company.py sync        # create or refresh the six agents at the template's main
+./scripts/paperclip_company.py sync        # create or refresh the seven agents at the template's main
 ./scripts/paperclip_company.py pause       # the kill switch; `resume` undoes it
 ./scripts/paperclip_company.py sync --dry-run
 ```

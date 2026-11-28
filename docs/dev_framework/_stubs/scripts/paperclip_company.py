@@ -50,9 +50,10 @@ import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
 
-ROLES = ["fw-paperclip-lead", "fw-strategist", "fw-orchestrator", "fw-parallel-developer", "fw-designer", "fw-curator"]
+ROLES = ["fw-paperclip-lead", "fw-strategist", "fw-orchestrator", "fw-parallel-developer", "fw-refactor-developer",
+         "fw-designer", "fw-curator"]
 PAPERCLIP_ROLE = {"fw-paperclip-lead": "general", "fw-strategist": "cto", "fw-orchestrator": "pm",
-                  "fw-parallel-developer": "engineer", "fw-designer": "designer", "fw-curator": "general"}
+                  "fw-parallel-developer": "engineer", "fw-refactor-developer": "engineer", "fw-designer": "designer", "fw-curator": "general"}
 RETIRED = ["FW_Developer"]  # no longer in the package; never paused or removed from here (a pause cancels live runs)
 HIRES = {"fw-paperclip-lead"}  # in Paperclip a lead hires: it may propose agents for the board to approve
 TASKS = ["framework-alignment", "board-review"]

@@ -41,6 +41,17 @@ Every test declares its tier with a marker the project's test runner supports (a
 - **Tier 2** — needs the database or another service. Never runs in CI: it runs on the dev site after each deploy, in the dev harness.
 - **Tier 3** — slow, end-to-end, browser-driven. Runs on dev, on demand or nightly.
 
+**The fast tier stays fast, by a hard limit.** From a merge to the work live on dev
+(Tier 1, the build, the deploy and the harness's run) is 15 minutes at most, set as the
+pipeline's timeout in the CI configuration: over it, the pipeline fails. The user: "if a
+deploy takes longer than 15 minutes i consider the fast tier as failing." The way back
+under it is fewer and faster Tier 1 tests, never a longer limit.
+
+**Tests prove function; they are not counted.** Test what a user or a caller can
+observe, not how the code is arranged inside. On a Paperclip board the refactor
+developer trims each ticket's tests to targeted proof once the founder has tried the
+work ([`paperclip-refactor.md`](paperclip-refactor.md)).
+
 CI never starts a database and never reaches one. Full rule, the harness page and the definition of done: [`dev-environment.md`](dev-environment.md) §"Test tiers and the dev harness" ([FWADR-037](adrs/fwadr-037-ci-runner-topology.md)).
 
 ```bash

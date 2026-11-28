@@ -23,9 +23,9 @@ metadata:
 
 # {{project_name}} — framework roles on Paperclip
 
-One framework project is one Paperclip company. This package creates the six agents
+One framework project is one Paperclip company. This package creates the seven agents
 (`FW_Paperclip_Lead`, `FW_Strategist`, `FW_Orchestrator`,
-`FW_Parallel_Developer`, `FW_Designer`, `FW_Curator`) and two recurring tasks. Nothing project-specific lives here: each agent reads
+`FW_Parallel_Developer`, `FW_Refactor_Developer`, `FW_Designer`, `FW_Curator`) and two recurring tasks. Nothing project-specific lives here: each agent reads
 the project's `CLAUDE.md` and `docs/framework_exceptions/dev_framework_exceptions.md` from
 the planning repo at run start, and the framework's role docs at the template's `main`. How the roles are played from an issue is one document,
 `docs/dev_framework/paperclip-mode.md`, decided in FWADR-040.
@@ -36,4 +36,4 @@ operator `.env` and stamps the framework commit. `status` reports when the templ
 moved past that commit.
 
 Org chart: `FW_Paperclip_Lead` and `FW_Strategist` report to the board; `FW_Orchestrator`, `FW_Designer` and
-`FW_Curator` report to the Strategist; the Parallel Developer reports to the Orchestrator on the org chart and takes planned tickets directly.
+`FW_Curator` report to the Strategist; the Parallel Developer and the Refactor Developer report to the Orchestrator on the org chart; the first takes planned tickets directly, the second takes a ticket when the founder declares "QA complete".

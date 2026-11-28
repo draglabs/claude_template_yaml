@@ -79,8 +79,8 @@ add a bubble to the dev page."
    accepts it. `env.yaml` is not a merge rule at all — only the operator's machine holds
    its key ([FWADR-041](fwadr-041-env-yaml.md)).
 6. **One agent holds a ticket from start to merge.** A planned ticket is assigned
-   straight to `FW_Parallel_Developer`, by whoever triaged it: it builds, runs its own
-   Reviewer subagent, merges, and checks the deploy. The Orchestrator is for big work —
+   straight to `FW_Parallel_Developer`, by whoever triaged it: it builds, self-tests,
+   merges, and checks the deploy. The Orchestrator is for big work —
    about 5 points and up, and a judgement that two or more agents in parallel, threaded
    into one work item, would finish faster — and on a board it runs Executors and the
    Reviewer as subagents inside its run, as in a chat session. The user: "it should not
@@ -90,11 +90,11 @@ add a bubble to the dev page."
 6a. **Self-test, the founder's QA, then one code review, then a post review**
    ([FWADR-045](fwadr-045-feature-flags-two-qa-rounds.md)). The builder self-tests and
    merges behind a feature flag; the founder tries the work on dev and declares "QA
-   complete"; only then the builder's Reviewer subagent runs, once, as a defensive
-   technical review. Blocking findings are fixed in one round without a second pass,
-   every other finding is listed as a concern, the Lead's rundown recommends a fix or not
-   for each, and the founder decides. The ticket stays with the builder throughout,
-   `blocked` and labelled while it waits for him. A review before the merge was tried
+   complete"; only then `FW_Refactor_Developer` reviews the merged code once, as a
+   defensive analyst, decides per item whether to act, acts in one round without a second
+   pass, and trims the ticket's tests. Declined items are listed, the Lead's rundown
+   recommends a fix or not for each, and the founder decides. The ticket is `blocked` and
+   labelled while it waits for him. A review before the merge was tried
    first and held up his QA without changing what merged: with builders weighing each
    finding they took 11 of 12, 9 of 10, 7 of 9 and 11 of 12 (THA-81, THA-82, THA-83,
    THA-88) at 20 to 70 minutes a ticket; with the verdict deciding, both tickets came
@@ -105,7 +105,7 @@ add a bubble to the dev page."
    no second review." **After the close, the founder's comment brings the builder
    back:** the Lead reassigns that ticket to its builder, with no new ticket ("i have
    feedback on the feature then that reopens the ticket, it does not create tickets").
-   After the founder's Accept the builder hands the ticket to the Paperclip Lead
+   After the founder's Accept the refactor developer hands the ticket to the Paperclip Lead
    (`lead_review`, set in the update that reassigns it), and the Lead posts a rundown of
    what happened for the founder and closes the ticket; it never sends one back
    ([FWADR-043](fwadr-043-paperclip-lead.md)).
@@ -175,16 +175,15 @@ add a bubble to the dev page."
 - **Named gap:** an Orchestrator's Executors die with its run. What they pushed survives;
   what they had not pushed does not. Unproven: no Orchestrator has yet run subagents on a
   board, and subagents multiply processes on an agent host that once hit its task limit.
-- **English-only:** that a builder self-tests on two questions only, reviews once after
-  the founder's QA, and fixes only blocking findings. A Reviewer that blocks too readily
-  brings the old cost back; the rundown records the verdict and what the fixes added. A
-  blocking fix is not re-reviewed.
+- **English-only:** that a builder self-tests on two questions only, and that the
+  refactor developer declines what is overly defensive; the rundown records the share.
+  Nothing it changes is re-reviewed.
 - **Paperclip starts runs on its own schedule, and nothing an agent writes delays it.**
   Seen on one board: a ticket reassigned to a busy builder was started nine minutes later
   beside that builder's other run; a hand-off was moved to `blocked` by Paperclip a
   minute after it was made; a retry started a second run on a ticket whose first run was
-  still working. Keeping the ticket with one builder through the founder's QA removes two
-  of the three hand-offs; the rest leans on the housekeeping schedule.
+  still working. A ticket waits for the founder on the agent that will act, so his press wakes it
+  directly; the two hand-offs that remain lean on the housekeeping schedule.
 - **Unproven:** the whole flow of decision 6 to 6c. Its first measured run is the
   experiment of 2026-11-23, against the 4 h 52 min above.
 - What waits on the human is in two places: a release, and the feedback that precedes
